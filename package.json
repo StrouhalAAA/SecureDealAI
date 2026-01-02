@@ -1,0 +1,42 @@
+{
+  "name": "securedealai",
+  "version": "1.0.0",
+  "description": "SecureDealAI - Vehicle Purchase Validation Service",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "test:db": "node src/test-connection.js",
+    "test": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:integration": "vitest run tests/integration",
+    "lint": "eslint src tests --ext .ts,.js",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc",
+    "supabase:start": "supabase start",
+    "supabase:stop": "supabase stop",
+    "supabase:status": "supabase status",
+    "supabase:db:push": "supabase db push",
+    "supabase:db:reset": "supabase db reset",
+    "supabase:functions:serve": "supabase functions serve validation-run --env-file .env",
+    "supabase:functions:deploy": "supabase functions deploy validation-run",
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs",
+    "docs:preview": "vitepress preview docs"
+  },
+  "keywords": [
+    "validation",
+    "supabase",
+    "vehicle",
+    "ocr"
+  ],
+  "author": "AURES Holdings",
+  "license": "PROPRIETARY",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.89.0",
+    "dotenv": "^17.2.3"
+  },
+  "devDependencies": {},
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

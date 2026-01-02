@@ -1,0 +1,1317 @@
+openapi: 3.0.3
+info:
+  title: SecureDealAI Validation Rules API
+  description: |
+    REST API for managing dynamic validation rules in SecureDealAI.
+
+    ## Overview
+    Rules are stored as JSON in PostgreSQL and can be managed without code deployments.
+    Each rule defines a comparison between source data (manual input) and target data (OCR/external registries).
+
+    ## Validation Status Logic
+    - **RED** (blocked): Any CRITICAL rule fails with MISMATCH
+    - **ORANGE** (manual review): Any WARNING rule fails OR CRITICAL rule has MISSING data
+    - **GREEN** (approved): All rules pass
+
+    ## Authentication
+    All endpoints require Bearer token authentication via Supabase JWT.
+    Admin endpoints require `role: admin` in JWT claims.
+  version: 1.0.0
+  contact:
+    name: SecureDealAI Team
+    email: dev@aures.cz
+  license:
+    name: Proprietary
+
+servers:
+  - url: https://api.securedealai.aures.app
+    description: Production
+  - url: https://{project-ref}.supabase.co/functions/v1
+    description: Development
+    variables:
+      project-ref:
+        default: your-project-ref
+        description: Supabase project reference
+
+tags:
+  - name: Validation
+    description: Execute and retrieve validation results
+  - name: Rules
+    description: CRUD operations for validation rules (Admin only)
+  - name: Rule Lifecycle
+    description: Activate, deactivate, and test rules
+  - name: Import/Export
+    description: Bulk operations for rules
+
+paths:
+  /api/v1/validate:
+    post:
+      tags:
+        - Validation
+      summary: Execute validation
+      description: Run all active validation rules against a buying opportunity
+      operationId: executeValidation
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - $ref: '#/components/schemas/ValidationRequestById'
+                - $ref: '#/components/schemas/ValidationRequestBySpz'
+            examples:
+              byId:
+                summary: By buying_opportunity_id
+                value:
+                  buying_opportunity_id: "550e8400-e29b-41d4-a716-446655440000"
+              bySpz:
+                summary: By SPZ
+                value:
+                  spz: "1AB2345"
+      responses:
+        '200':
+          description: Validation completed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/validate/{validationId}:
+    get:
+      tags:
+        - Validation
+      summary: Get validation result by ID
+      operationId: getValidationById
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: validationId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Validation result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationResult'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/validate/spz/{spz}:
+    get:
+      tags:
+        - Validation
+      summary: Get latest validation by SPZ
+      operationId: getLatestValidationBySpz
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: spz
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: '^[A-Z0-9]{1,8}$'
+      responses:
+        '200':
+          description: Latest validation result for SPZ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationResult'
+
+  /api/v1/validate/spz/{spz}/history:
+    get:
+      tags:
+        - Validation
+      summary: Get validation history for SPZ
+      operationId: getValidationHistory
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: spz
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+            maximum: 100
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: Validation history
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationHistory'
+
+  /api/v1/rules:
+    get:
+      tags:
+        - Rules
+      summary: List all validation rules
+      operationId: listRules
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: active_only
+          in: query
+          schema:
+            type: boolean
+            default: false
+        - name: category
+          in: query
+          schema:
+            $ref: '#/components/schemas/RuleCategory'
+        - name: severity
+          in: query
+          schema:
+            $ref: '#/components/schemas/Severity'
+        - name: phase
+          in: query
+          schema:
+            $ref: '#/components/schemas/Phase'
+        - name: vendor_type
+          in: query
+          description: Filter by vendor type applicability
+          schema:
+            $ref: '#/components/schemas/VendorType'
+        - name: buying_type
+          in: query
+          description: Filter by buying type applicability
+          schema:
+            $ref: '#/components/schemas/BuyingType'
+        - name: include_drafts
+          in: query
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: List of rules
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RuleList'
+
+    post:
+      tags:
+        - Rules
+      summary: Create a new validation rule
+      description: Creates a new rule as a draft. Use /rules/{id}/activate to activate.
+      operationId: createRule
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateRuleRequest'
+            example:
+              rule_definition:
+                id: "VEH-008"
+                name: "Color Match"
+                description: "Vehicle color should match ORV"
+                enabled: true
+                source:
+                  entity: "vehicle"
+                  field: "barva"
+                  transforms: ["UPPERCASE", "TRIM"]
+                target:
+                  entity: "ocr_orv"
+                  field: "color"
+                  transforms: ["UPPERCASE", "TRIM"]
+                comparison:
+                  type: "FUZZY"
+                  threshold: 0.8
+                severity: "WARNING"
+                blockOnFail: false
+                errorMessage:
+                  cs: "Barva vozidla se liší"
+                  en: "Vehicle color differs"
+                metadata:
+                  category: "vehicle"
+                  phase: "mvp"
+                  priority: 24
+      responses:
+        '201':
+          description: Rule created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RuleCreatedResponse'
+        '400':
+          $ref: '#/components/responses/SchemaValidationError'
+
+  /api/v1/rules/{ruleId}:
+    get:
+      tags:
+        - Rules
+      summary: Get rule by ID
+      operationId: getRuleById
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ruleId'
+      responses:
+        '200':
+          description: Rule details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RuleDetail'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags:
+        - Rules
+      summary: Update a rule
+      description: Updates an existing rule. Creates a new version if rule is active.
+      operationId: updateRule
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ruleId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateRuleRequest'
+      responses:
+        '200':
+          description: Rule updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RuleUpdatedResponse'
+
+    delete:
+      tags:
+        - Rules
+      summary: Delete a rule
+      description: Soft-deletes a rule. Use force=true to delete active rules.
+      operationId: deleteRule
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ruleId'
+        - name: force
+          in: query
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: Rule deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RuleDeletedResponse'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /api/v1/rules/{ruleId}/activate:
+    post:
+      tags:
+        - Rule Lifecycle
+      summary: Activate a draft rule
+      operationId: activateRule
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ruleId'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                activation_note:
+                  type: string
+                  example: "Approved by QA team after testing"
+      responses:
+        '200':
+          description: Rule activated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RuleActivatedResponse'
+
+  /api/v1/rules/{ruleId}/deactivate:
+    post:
+      tags:
+        - Rule Lifecycle
+      summary: Deactivate a rule
+      operationId: deactivateRule
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ruleId'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                deactivation_reason:
+                  type: string
+                  example: "Temporarily disabled for maintenance"
+      responses:
+        '200':
+          description: Rule deactivated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RuleDeactivatedResponse'
+
+  /api/v1/rules/{ruleId}/test:
+    post:
+      tags:
+        - Rule Lifecycle
+      summary: Test a rule with sample data
+      description: Execute a rule against sample data without saving results
+      operationId: testRule
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ruleId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TestRuleRequest'
+            example:
+              test_data:
+                vehicle:
+                  vin: "YV1PZA3TCL1103985"
+                  spz: "1AB2345"
+                ocr_orv:
+                  vin: "YV1PZA3TCL1103985"
+                  registrationPlateNumber: "1AB2345"
+      responses:
+        '200':
+          description: Test result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TestRuleResponse'
+
+  /api/v1/rules/{ruleId}/history:
+    get:
+      tags:
+        - Rules
+      summary: Get rule change history
+      operationId: getRuleHistory
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ruleId'
+      responses:
+        '200':
+          description: Rule history
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RuleHistory'
+
+  /api/v1/rules/schema:
+    get:
+      tags:
+        - Rules
+      summary: Get JSON Schema for rule validation
+      operationId: getRuleSchema
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: JSON Schema
+          content:
+            application/json:
+              schema:
+                type: object
+                description: JSON Schema draft-07 for validation rules
+
+  /api/v1/rules/import:
+    post:
+      tags:
+        - Import/Export
+      summary: Bulk import rules
+      operationId: importRules
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ImportRulesRequest'
+      responses:
+        '200':
+          description: Import result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportRulesResponse'
+
+  /api/v1/rules/export:
+    get:
+      tags:
+        - Import/Export
+      summary: Export all rules
+      operationId: exportRules
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: active_only
+          in: query
+          schema:
+            type: boolean
+            default: false
+        - name: format
+          in: query
+          schema:
+            type: string
+            enum: [json, yaml]
+            default: json
+      responses:
+        '200':
+          description: Exported rules
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExportRulesResponse'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Supabase JWT token
+
+  parameters:
+    ruleId:
+      name: ruleId
+      in: path
+      required: true
+      description: Rule ID (e.g., VEH-001)
+      schema:
+        type: string
+        pattern: '^[A-Z]{2,4}-[0-9]{3}$'
+
+  schemas:
+    # === Request/Response Schemas ===
+
+    ValidationRequestById:
+      type: object
+      required:
+        - buying_opportunity_id
+      properties:
+        buying_opportunity_id:
+          type: string
+          format: uuid
+
+    ValidationRequestBySpz:
+      type: object
+      required:
+        - spz
+      properties:
+        spz:
+          type: string
+          pattern: '^[A-Z0-9]{1,8}$'
+
+    ValidationResult:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        buying_opportunity_id:
+          type: string
+          format: uuid
+        overall_status:
+          $ref: '#/components/schemas/ValidationStatus'
+        field_validations:
+          type: array
+          items:
+            $ref: '#/components/schemas/FieldValidation'
+        statistics:
+          $ref: '#/components/schemas/ValidationStatistics'
+        duration_ms:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+
+    FieldValidation:
+      type: object
+      properties:
+        rule_id:
+          type: string
+        field:
+          type: string
+        manual_value:
+          type: string
+          nullable: true
+        ocr_value:
+          type: string
+          nullable: true
+        result:
+          type: string
+          enum: [MATCH, MISMATCH, MISSING]
+        severity:
+          $ref: '#/components/schemas/Severity'
+        status:
+          $ref: '#/components/schemas/ValidationStatus'
+        error_message:
+          type: string
+          nullable: true
+
+    ValidationStatistics:
+      type: object
+      properties:
+        total_rules_executed:
+          type: integer
+        rules_passed:
+          type: integer
+        rules_failed:
+          type: integer
+        rules_skipped:
+          type: integer
+        critical_issues:
+          type: integer
+        warning_issues:
+          type: integer
+
+    ValidationHistory:
+      type: object
+      properties:
+        spz:
+          type: string
+        total_count:
+          type: integer
+        validations:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+              overall_status:
+                $ref: '#/components/schemas/ValidationStatus'
+              created_at:
+                type: string
+                format: date-time
+
+    # === Rule Schemas ===
+
+    RuleList:
+      type: object
+      properties:
+        total_count:
+          type: integer
+        rules:
+          type: array
+          items:
+            $ref: '#/components/schemas/RuleSummary'
+
+    RuleSummary:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        rule_id:
+          type: string
+        name:
+          type: string
+        severity:
+          $ref: '#/components/schemas/Severity'
+        is_active:
+          type: boolean
+        is_draft:
+          type: boolean
+        version:
+          type: integer
+        category:
+          $ref: '#/components/schemas/RuleCategory'
+        phase:
+          $ref: '#/components/schemas/Phase'
+        updated_at:
+          type: string
+          format: date-time
+
+    RuleDetail:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        rule_id:
+          type: string
+        rule_definition:
+          $ref: '#/components/schemas/RuleDefinition'
+        is_active:
+          type: boolean
+        is_draft:
+          type: boolean
+        version:
+          type: integer
+        schema_version:
+          type: string
+        created_by:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        activated_by:
+          type: string
+          nullable: true
+        activated_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    RuleDefinition:
+      type: object
+      required:
+        - id
+        - name
+        - source
+        - target
+        - comparison
+        - severity
+      properties:
+        id:
+          type: string
+          pattern: '^[A-Z]{2,4}-[0-9]{3}$'
+          description: Unique rule identifier (e.g., VEH-001, ARES-002)
+          example: "VEH-001"
+        name:
+          type: string
+          minLength: 3
+          maxLength: 100
+          description: Human-readable rule name
+          example: "VIN Match"
+        description:
+          type: string
+          maxLength: 500
+          description: Detailed description of what this rule validates
+        enabled:
+          type: boolean
+          default: true
+        source:
+          $ref: '#/components/schemas/DataSource'
+        target:
+          $ref: '#/components/schemas/DataSource'
+        comparison:
+          $ref: '#/components/schemas/ComparisonConfig'
+        severity:
+          $ref: '#/components/schemas/Severity'
+        blockOnFail:
+          type: boolean
+          default: false
+        conditions:
+          $ref: '#/components/schemas/ConditionGroup'
+        errorMessage:
+          $ref: '#/components/schemas/LocalizedMessage'
+        metadata:
+          $ref: '#/components/schemas/RuleMetadata'
+
+    DataSource:
+      type: object
+      required:
+        - entity
+        - field
+      properties:
+        entity:
+          type: string
+          enum:
+            - buying_opportunity
+            - vehicle
+            - vendor
+            - ocr_orv
+            - ocr_op
+            - ocr_vtp
+            - ares
+            - adis
+            - cebia
+            - dolozky
+          description: |
+            Data entity/source type:
+            - `buying_opportunity` - Context entity (buying_type, status)
+            - `vehicle`, `vendor` - Manual input data
+            - `ocr_orv`, `ocr_op`, `ocr_vtp` - OCR extractions from documents
+            - `ares`, `adis`, `cebia`, `dolozky` - External registries
+        field:
+          type: string
+          description: Field path within the entity (supports dot notation)
+          example: "vin"
+        transforms:
+          type: array
+          items:
+            $ref: '#/components/schemas/Transform'
+          default: []
+          description: Transformations to apply before comparison
+
+    Transform:
+      type: string
+      enum:
+        - UPPERCASE
+        - LOWERCASE
+        - TRIM
+        - REMOVE_SPACES
+        - REMOVE_DIACRITICS
+        - NORMALIZE_DATE
+        - EXTRACT_NUMBER
+        - FORMAT_RC
+        - FORMAT_ICO
+        - FORMAT_DIC
+        - ADDRESS_NORMALIZE
+        - NAME_NORMALIZE
+        - VIN_NORMALIZE
+        - SPZ_NORMALIZE
+      description: |
+        Data transformation functions:
+        - `UPPERCASE/LOWERCASE` - Case conversion
+        - `TRIM` - Remove leading/trailing whitespace
+        - `REMOVE_SPACES` - Remove all spaces
+        - `REMOVE_DIACRITICS` - Remove accents (ěščřžýáíé → escrzyaie)
+        - `NORMALIZE_DATE` - Convert to YYYY-MM-DD
+        - `EXTRACT_NUMBER` - Extract numeric value
+        - `FORMAT_RC` - Format Czech personal ID (rodné číslo)
+        - `FORMAT_ICO` - Format company ID (8 digits with leading zeros)
+        - `FORMAT_DIC` - Format VAT ID (CZ + 8-10 digits)
+        - `ADDRESS_NORMALIZE` - Normalize street addresses
+        - `NAME_NORMALIZE` - Normalize person/company names
+        - `VIN_NORMALIZE` - Normalize VIN (17 chars, O→0, I→1)
+        - `SPZ_NORMALIZE` - Normalize registration plate
+
+    ComparisonConfig:
+      type: object
+      required:
+        - type
+      properties:
+        type:
+          type: string
+          enum:
+            - EXACT
+            - FUZZY
+            - CONTAINS
+            - REGEX
+            - NUMERIC_TOLERANCE
+            - DATE_TOLERANCE
+            - EXISTS
+            - NOT_EXISTS
+            - IN_LIST
+          description: |
+            Comparison method:
+            - `EXACT` - Exact string match
+            - `FUZZY` - Levenshtein similarity (requires threshold)
+            - `CONTAINS` - Source contains target
+            - `REGEX` - Regex pattern match (requires pattern)
+            - `NUMERIC_TOLERANCE` - Numeric comparison with tolerance
+            - `DATE_TOLERANCE` - Date comparison with tolerance in days
+            - `EXISTS` - Check if value exists
+            - `NOT_EXISTS` - Check if value does NOT exist
+            - `IN_LIST` - Value is in allowed list
+        caseSensitive:
+          type: boolean
+          default: false
+        threshold:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: Similarity threshold for FUZZY match (0.0-1.0)
+          example: 0.8
+        tolerance:
+          type: number
+          description: Tolerance value for NUMERIC_TOLERANCE or days for DATE_TOLERANCE
+        toleranceType:
+          type: string
+          enum: [absolute, percentage]
+          default: absolute
+        pattern:
+          type: string
+          description: Regex pattern for REGEX comparison
+        allowedValues:
+          type: array
+          items:
+            type: string
+          description: Allowed values for IN_LIST comparison
+
+    ConditionGroup:
+      type: object
+      required:
+        - conditions
+      properties:
+        operator:
+          type: string
+          enum: [AND, OR]
+          default: AND
+          description: Logical operator for combining conditions
+        conditions:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/Condition'
+
+    Condition:
+      type: object
+      required:
+        - field
+        - operator
+        - value
+      properties:
+        field:
+          type: string
+          description: Field path to evaluate (e.g., vendor.vendor_type)
+          example: "vendor.vendor_type"
+        operator:
+          type: string
+          enum:
+            - EQUALS
+            - NOT_EQUALS
+            - EXISTS
+            - NOT_EXISTS
+            - IN
+            - NOT_IN
+            - GREATER_THAN
+            - LESS_THAN
+        value:
+          description: Value to compare against
+
+    LocalizedMessage:
+      type: object
+      required:
+        - cs
+        - en
+      properties:
+        cs:
+          type: string
+          description: Czech message
+        en:
+          type: string
+          description: English message
+        sk:
+          type: string
+          description: Slovak message
+        pl:
+          type: string
+          description: Polish message
+
+    RuleMetadata:
+      type: object
+      properties:
+        category:
+          $ref: '#/components/schemas/RuleCategory'
+        phase:
+          $ref: '#/components/schemas/Phase'
+        requiresDocument:
+          type: string
+          enum: [ORV, OP, VTP]
+          nullable: true
+          deprecated: true
+          description: "DEPRECATED: Use requiresDocuments or requiresDocumentGroup instead"
+        requiresDocuments:
+          type: array
+          items:
+            type: integer
+          description: |
+            Document Type IDs required for this rule. All specified documents must be present.
+            Common IDs: 63=ORV (Malý technický průkaz), 1=OP (Občanský průkaz),
+            21=Technický průkaz, 116=Technický průkaz (BG)
+          example: [63]
+        requiresDocumentGroup:
+          $ref: '#/components/schemas/DocumentGroup'
+          description: Document group - rule applies if ANY document in the group is present
+        applicableTo:
+          type: array
+          items:
+            $ref: '#/components/schemas/VendorType'
+          description: Vendor types this rule applies to (FO/PO)
+        applicableToBuyingType:
+          type: array
+          items:
+            $ref: '#/components/schemas/BuyingType'
+          description: Buying types this rule applies to (BRANCH = default MVP, MOBILE_BUYING = Phase 2)
+        priority:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 50
+        tags:
+          type: array
+          items:
+            type: string
+
+    # === Enums ===
+
+    ValidationStatus:
+      type: string
+      enum: [GREEN, ORANGE, RED]
+      description: |
+        - `GREEN` - All validations passed
+        - `ORANGE` - Warnings or missing data, manual review needed
+        - `RED` - Critical validation failed, blocked
+
+    Severity:
+      type: string
+      enum: [CRITICAL, WARNING, INFO]
+      description: |
+        - `CRITICAL` - RED on fail, blocks process
+        - `WARNING` - ORANGE on fail, needs review
+        - `INFO` - Logged only, no impact
+
+    RuleCategory:
+      type: string
+      enum: [vehicle, vendor_fo, vendor_po, cross, external]
+      description: Rule category for grouping
+
+    Phase:
+      type: string
+      enum: [mvp, phase2, future]
+      description: Implementation phase
+
+    VendorType:
+      type: string
+      enum: [PHYSICAL_PERSON, COMPANY]
+      description: |
+        Vendor type for rule filtering:
+        - `PHYSICAL_PERSON` - Individual seller (FO)
+        - `COMPANY` - Company seller (PO)
+
+    BuyingType:
+      type: string
+      enum: [BRANCH, MOBILE_BUYING]
+      description: |
+        Buying type for rule filtering:
+        - `BRANCH` - Standard branch purchase (MVP default)
+        - `MOBILE_BUYING` - Mobile buying (Phase 2)
+
+    DocumentGroup:
+      type: string
+      enum: [VTP, ORV, OP]
+      description: |
+        Document group for rule filtering. Rule applies if ANY document in the group is present:
+        - `VTP` - Technicky prukaz (Document Type IDs: 21, 116)
+        - `ORV` - Maly technicky prukaz (Document Type ID: 63)
+        - `OP` - Obcansky prukaz (Document Type ID: 1)
+
+    # === CRUD Response Schemas ===
+
+    CreateRuleRequest:
+      type: object
+      required:
+        - rule_definition
+      properties:
+        rule_definition:
+          $ref: '#/components/schemas/RuleDefinition'
+
+    RuleCreatedResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        rule_id:
+          type: string
+        is_draft:
+          type: boolean
+        is_active:
+          type: boolean
+        version:
+          type: integer
+        message:
+          type: string
+
+    UpdateRuleRequest:
+      type: object
+      required:
+        - rule_definition
+      properties:
+        rule_definition:
+          $ref: '#/components/schemas/RuleDefinition'
+        change_reason:
+          type: string
+
+    RuleUpdatedResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        rule_id:
+          type: string
+        version:
+          type: integer
+        previous_version_id:
+          type: string
+          format: uuid
+        is_draft:
+          type: boolean
+        message:
+          type: string
+
+    RuleDeletedResponse:
+      type: object
+      properties:
+        rule_id:
+          type: string
+        deleted:
+          type: boolean
+        message:
+          type: string
+
+    RuleActivatedResponse:
+      type: object
+      properties:
+        rule_id:
+          type: string
+        is_active:
+          type: boolean
+        is_draft:
+          type: boolean
+        activated_at:
+          type: string
+          format: date-time
+        activated_by:
+          type: string
+
+    RuleDeactivatedResponse:
+      type: object
+      properties:
+        rule_id:
+          type: string
+        is_active:
+          type: boolean
+        deactivated_at:
+          type: string
+          format: date-time
+
+    TestRuleRequest:
+      type: object
+      required:
+        - test_data
+      properties:
+        test_data:
+          type: object
+          description: Sample data organized by entity type
+          additionalProperties:
+            type: object
+
+    TestRuleResponse:
+      type: object
+      properties:
+        rule_id:
+          type: string
+        test_result:
+          type: object
+          properties:
+            result:
+              type: string
+              enum: [MATCH, MISMATCH, MISSING]
+            status:
+              $ref: '#/components/schemas/ValidationStatus'
+            source_value:
+              type: string
+            target_value:
+              type: string
+            normalized_source:
+              type: string
+            normalized_target:
+              type: string
+        executed_at:
+          type: string
+          format: date-time
+
+    RuleHistory:
+      type: object
+      properties:
+        rule_id:
+          type: string
+        history:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+              change_type:
+                type: string
+                enum: [CREATE, UPDATE, ACTIVATE, DEACTIVATE, DELETE]
+              changed_by:
+                type: string
+              changed_at:
+                type: string
+                format: date-time
+              change_reason:
+                type: string
+
+    ImportRulesRequest:
+      type: object
+      required:
+        - rules
+      properties:
+        rules:
+          type: array
+          items:
+            $ref: '#/components/schemas/RuleDefinition'
+        options:
+          type: object
+          properties:
+            skip_existing:
+              type: boolean
+              default: true
+            activate_on_import:
+              type: boolean
+              default: false
+
+    ImportRulesResponse:
+      type: object
+      properties:
+        imported:
+          type: integer
+        skipped:
+          type: integer
+        errors:
+          type: integer
+        details:
+          type: array
+          items:
+            type: object
+            properties:
+              rule_id:
+                type: string
+              status:
+                type: string
+                enum: [imported, skipped, error]
+              reason:
+                type: string
+              id:
+                type: string
+                format: uuid
+
+    ExportRulesResponse:
+      type: object
+      properties:
+        version:
+          type: string
+        exported_at:
+          type: string
+          format: date-time
+        rules:
+          type: array
+          items:
+            $ref: '#/components/schemas/RuleDefinition'
+
+    # === Error Schemas ===
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+        code:
+          type: string
+
+    SchemaValidationError:
+      type: object
+      properties:
+        error:
+          type: string
+          example: validation_error
+        message:
+          type: string
+          example: Rule definition does not match schema
+        details:
+          type: array
+          items:
+            type: object
+            properties:
+              path:
+                type: string
+                example: "$.comparison.threshold"
+              message:
+                type: string
+                example: "threshold must be between 0 and 1"
+
+  responses:
+    BadRequest:
+      description: Bad Request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: validation_error
+            message: Missing required parameter
+            code: MISSING_PARAMETER
+
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: unauthorized
+            message: Missing or invalid token
+            code: UNAUTHORIZED
+
+    NotFound:
+      description: Not Found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: not_found
+            message: Resource not found
+            code: NOT_FOUND
+
+    Conflict:
+      description: Conflict
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: conflict
+            message: Cannot delete active rule. Deactivate first or use force=true
+            code: CONFLICT
+
+    SchemaValidationError:
+      description: Schema Validation Error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/SchemaValidationError'

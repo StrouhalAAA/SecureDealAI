@@ -1,0 +1,1147 @@
+{
+  "$schema": "./VALIDATION_RULES_SCHEMA.json",
+  "version": "1.0.0",
+  "description": "SecureDealAI MVP - All validation rules migrated from VALIDATION_SCHEMA.ts",
+  "generated": "2026-01-01",
+  "rules": [
+    {
+      "id": "VEH-001",
+      "name": "VIN Match",
+      "description": "VIN must match exactly between manual input and OCR from ORV",
+      "enabled": true,
+      "source": {
+        "entity": "vehicle",
+        "field": "vin",
+        "transforms": ["REMOVE_SPACES", "UPPERCASE", "VIN_NORMALIZE"]
+      },
+      "target": {
+        "entity": "ocr_orv",
+        "field": "vin",
+        "transforms": ["REMOVE_SPACES", "UPPERCASE", "VIN_NORMALIZE"]
+      },
+      "comparison": {
+        "type": "EXACT",
+        "caseSensitive": false
+      },
+      "severity": "CRITICAL",
+      "blockOnFail": true,
+      "errorMessage": {
+        "cs": "VIN se neshoduje s technickým průkazem",
+        "en": "VIN does not match the vehicle registration certificate"
+      },
+      "metadata": {
+        "category": "vehicle",
+        "phase": "mvp",
+        "requiresDocument": "ORV",
+        "priority": 1,
+        "tags": ["critical", "vehicle-identity"]
+      }
+    },
+    {
+      "id": "VEH-002",
+      "name": "SPZ Match",
+      "description": "Registration plate must match exactly between manual input and OCR",
+      "enabled": true,
+      "source": {
+        "entity": "vehicle",
+        "field": "spz",
+        "transforms": ["REMOVE_SPACES", "UPPERCASE", "SPZ_NORMALIZE"]
+      },
+      "target": {
+        "entity": "ocr_orv",
+        "field": "registrationPlateNumber",
+        "transforms": ["REMOVE_SPACES", "UPPERCASE", "SPZ_NORMALIZE"]
+      },
+      "comparison": {
+        "type": "EXACT",
+        "caseSensitive": false
+      },
+      "severity": "CRITICAL",
+      "blockOnFail": true,
+      "errorMessage": {
+        "cs": "SPZ se neshoduje s technickým průkazem",
+        "en": "Registration plate does not match the vehicle registration certificate"
+      },
+      "metadata": {
+        "category": "vehicle",
+        "phase": "mvp",
+        "requiresDocument": "ORV",
+        "priority": 2,
+        "tags": ["critical", "vehicle-identity"]
+      }
+    },
+    {
+      "id": "VEH-003",
+      "name": "Owner Name Match",
+      "description": "Owner name from ORV must match exactly",
+      "enabled": true,
+      "source": {
+        "entity": "vehicle",
+        "field": "majitel",
+        "transforms": ["UPPERCASE", "TRIM", "NAME_NORMALIZE"]
+      },
+      "target": {
+        "entity": "ocr_orv",
+        "field": "keeperName",
+        "transforms": ["UPPERCASE", "TRIM", "NAME_NORMALIZE"]
+      },
+      "comparison": {
+        "type": "EXACT",
+        "caseSensitive": false
+      },
+      "severity": "CRITICAL",
+      "blockOnFail": true,
+      "errorMessage": {
+        "cs": "Jméno majitele se neshoduje s technickým průkazem",
+        "en": "Owner name does not match the vehicle registration certificate"
+      },
+      "metadata": {
+        "category": "vehicle",
+        "phase": "mvp",
+        "requiresDocument": "ORV",
+        "priority": 3,
+        "tags": ["critical", "ownership"]
+      }
+    },
+    {
+      "id": "VEH-004",
+      "name": "Brand Match",
+      "description": "Vehicle brand similarity check",
+      "enabled": true,
+      "source": {
+        "entity": "vehicle",
+        "field": "znacka",
+        "transforms": ["UPPERCASE", "TRIM"]
+      },
+      "target": {
+        "entity": "ocr_orv",
+        "field": "make",
+        "transforms": ["UPPERCASE", "TRIM"]
+      },
+      "comparison": {
+        "type": "FUZZY",
+        "threshold": 0.8,
+        "caseSensitive": false
+      },
+      "severity": "WARNING",
+      "blockOnFail": false,
+      "errorMessage": {
+        "cs": "Značka vozidla se liší od technického průkazu",
+        "en": "Vehicle brand differs from the registration certificate"
+      },
+      "metadata": {
+        "category": "vehicle",
+        "phase": "mvp",
+        "requiresDocument": "ORV",
+        "priority": 20,
+        "tags": ["warning", "vehicle-details"]
+      }
+    },
+    {
+      "id": "VEH-005",
+      "name": "Model Match",
+      "description": "Vehicle model similarity check",
+      "enabled": true,
+      "source": {
+        "entity": "vehicle",
+        "field": "model",
+        "transforms": ["UPPERCASE", "TRIM"]
+      },
+      "target": {
+        "entity": "ocr_orv",
+        "field": "model",
+        "transforms": ["UPPERCASE", "TRIM"]
+      },
+      "comparison": {
+        "type": "FUZZY",
+        "threshold": 0.7,
+        "caseSensitive": false
+      },
+      "severity": "WARNING",
+      "blockOnFail": false,
+      "errorMessage": {
+        "cs": "Model vozidla se liší od technického průkazu",
+        "en": "Vehicle model differs from the registration certificate"
+      },
+      "metadata": {
+        "category": "vehicle",
+        "phase": "mvp",
+        "requiresDocument": "ORV",
+        "priority": 21,
+        "tags": ["warning", "vehicle-details"]
+      }
+    },
+    {
+      "id": "VEH-006",
+      "name": "First Registration Date",
+      "description": "First registration date match",
+      "enabled": true,
+      "source": {
+        "entity": "vehicle",
+        "field": "datum_1_registrace",
+        "transforms": ["NORMALIZE_DATE"]
+      },
+      "target": {
+        "entity": "ocr_orv",
+        "field": "firstRegistrationDate",
+        "transforms": ["NORMALIZE_DATE"]
+      },
+      "comparison": {
+        "type": "EXACT",
+        "caseSensitive": false
+      },
+      "severity": "WARNING",
+      "blockOnFail": false,
+      "errorMessage": {
+        "cs": "Datum první registrace se neshoduje",
+        "en": "First registration date does not match"
+      },
+      "metadata": {
+        "category": "vehicle",
+        "phase": "mvp",
+        "requiresDocument": "ORV",
+        "priority": 22,
+        "tags": ["warning", "vehicle-details"]
+      }
+    },
+    {
+      "id": "VEH-007",
+      "name": "Engine Power Match",
+      "description": "Engine power within 5% tolerance",
+      "enabled": true,
+      "source": {
+        "entity": "vehicle",
+        "field": "vykon_kw",
+        "transforms": ["EXTRACT_NUMBER"]
+      },
+      "target": {
+        "entity": "ocr_orv",
+        "field": "maxPower",
+        "transforms": ["EXTRACT_NUMBER"]
+      },
+      "comparison": {
+        "type": "NUMERIC_TOLERANCE",
+        "tolerance": 0.05,
+        "toleranceType": "percentage"
+      },
+      "severity": "WARNING",
+      "blockOnFail": false,
+      "errorMessage": {
+        "cs": "Výkon motoru se liší o více než 5%",
+        "en": "Engine power differs by more than 5%"
+      },
+      "metadata": {
+        "category": "vehicle",
+        "phase": "mvp",
+        "requiresDocument": "ORV",
+        "priority": 23,
+        "tags": ["warning", "vehicle-details"]
+      }
+    },
+    {
+      "id": "VND-001",
+      "name": "Full Name Match",
+      "description": "Vendor name must match ID card for physical persons",
+      "enabled": true,
+      "source": {
+        "entity": "vendor",
+        "field": "name",
+        "transforms": ["UPPERCASE", "TRIM", "REMOVE_DIACRITICS"]
+      },
+      "target": {
+        "entity": "ocr_op",
+        "field": "fullName",
+        "transforms": ["UPPERCASE", "TRIM", "REMOVE_DIACRITICS"]
+      },
+      "comparison": {
+        "type": "EXACT",
+        "caseSensitive": false
+      },
+      "severity": "CRITICAL",
+      "blockOnFail": true,
+      "conditions": {
+        "operator": "AND",
+        "conditions": [
+          { "field": "vendor.vendor_type", "operator": "EQUALS", "value": "PHYSICAL_PERSON" },
+          { "field": "ocr_op", "operator": "EXISTS", "value": true }
+        ]
+      },
+      "errorMessage": {
+        "cs": "Jméno dodavatele se neshoduje s občanským průkazem",
+        "en": "Vendor name does not match ID card"
+      },
+      "metadata": {
+        "category": "vendor_fo",
+        "phase": "mvp",
+        "requiresDocument": "OP",
+        "applicableTo": ["PHYSICAL_PERSON"],
+        "priority": 10,
+        "tags": ["critical", "vendor-identity"]
+      }
+    },
+    {
+      "id": "VND-002",
+      "name": "Personal ID Match",
+      "description": "Personal ID (RČ) must match exactly",
+      "enabled": true,
+      "source": {
+        "entity": "vendor",
+        "field": "personal_id",
+        "transforms": ["FORMAT_RC"]
+      },
+      "target": {
+        "entity": "ocr_op",
+        "field": "personalNumber",
+        "transforms": ["FORMAT_RC"]
+      },
+      "comparison": {
+        "type": "EXACT",
+        "caseSensitive": false
+      },
+      "severity": "CRITICAL",
+      "blockOnFail": true,
+      "conditions": {
+        "operator": "AND",
+        "conditions": [
+          { "field": "vendor.vendor_type", "operator": "EQUALS", "value": "PHYSICAL_PERSON" },
+          { "field": "ocr_op", "operator": "EXISTS", "value": true }
+        ]
+      },
+      "errorMessage": {
+        "cs": "Rodné číslo se neshoduje s občanským průkazem",
+        "en": "Personal ID does not match ID card"
+      },
+      "metadata": {
+        "category": "vendor_fo",
+        "phase": "mvp",
+        "requiresDocument": "OP",
+        "applicableTo": ["PHYSICAL_PERSON"],
+        "priority": 11,
+        "tags": ["critical", "vendor-identity"]
+      }
+    },
+    {
+      "id": "VND-003",
+      "name": "Street Address Match",
+      "description": "Street address similarity check",
+      "enabled": true,
+      "source": {
+        "entity": "vendor",
+        "field": "address_street",
+        "transforms": ["UPPERCASE", "TRIM", "ADDRESS_NORMALIZE"]
+      },
+      "target": {
+        "entity": "ocr_op",
+        "field": "permanentStay",
+        "transforms": ["UPPERCASE", "TRIM", "ADDRESS_NORMALIZE"]
+      },
+      "comparison": {
+        "type": "FUZZY",
+        "threshold": 0.6,
+        "caseSensitive": false
+      },
+      "severity": "WARNING",
+      "blockOnFail": false,
+      "conditions": {
+        "operator": "AND",
+        "conditions": [
+          { "field": "vendor.vendor_type", "operator": "EQUALS", "value": "PHYSICAL_PERSON" },
+          { "field": "ocr_op", "operator": "EXISTS", "value": true }
+        ]
+      },
+      "errorMessage": {
+        "cs": "Adresa se liší od občanského průkazu",
+        "en": "Street address differs from ID card"
+      },
+      "metadata": {
+        "category": "vendor_fo",
+        "phase": "mvp",
+        "requiresDocument": "OP",
+        "applicableTo": ["PHYSICAL_PERSON"],
+        "priority": 30,
+        "tags": ["warning", "vendor-address"]
+      }
+    },
+    {
+      "id": "VND-004",
+      "name": "City Match",
+      "description": "City similarity check",
+      "enabled": true,
+      "source": {
+        "entity": "vendor",
+        "field": "address_city",
+        "transforms": ["UPPERCASE", "TRIM"]
+      },
+      "target": {
+        "entity": "ocr_op",
+        "field": "permanentStay",
+        "transforms": ["UPPERCASE", "TRIM"]
+      },
+      "comparison": {
+        "type": "FUZZY",
+        "threshold": 0.8,
+        "caseSensitive": false
+      },
+      "severity": "WARNING",
+      "blockOnFail": false,
+      "conditions": {
+        "operator": "AND",
+        "conditions": [
+          { "field": "vendor.vendor_type", "operator": "EQUALS", "value": "PHYSICAL_PERSON" },
+          { "field": "ocr_op", "operator": "EXISTS", "value": true }
+        ]
+      },
+      "errorMessage": {
+        "cs": "Město se liší od občanského průkazu",
+        "en": "City differs from ID card"
+      },
+      "metadata": {
+        "category": "vendor_fo",
+        "phase": "mvp",
+        "requiresDocument": "OP",
+        "applicableTo": ["PHYSICAL_PERSON"],
+        "priority": 31,
+        "tags": ["warning", "vendor-address"]
+      }
+    },
+    {
+      "id": "VND-005",
+      "name": "Postal Code Match",
+      "description": "Postal code exact match",
+      "enabled": true,
+      "source": {
+        "entity": "vendor",
+        "field": "address_postal_code",
+        "transforms": ["REMOVE_SPACES"]
+      },
+      "target": {
+        "entity": "ocr_op",
+        "field": "permanentStay",
+        "transforms": ["REMOVE_SPACES"]
+      },
+      "comparison": {
+        "type": "EXACT",
+        "caseSensitive": false
+      },
+      "severity": "WARNING",
+      "blockOnFail": false,
+      "conditions": {
+        "operator": "AND",
+        "conditions": [
+          { "field": "vendor.vendor_type", "operator": "EQUALS", "value": "PHYSICAL_PERSON" },
+          { "field": "ocr_op", "operator": "EXISTS", "value": true }
+        ]
+      },
+      "errorMessage": {
+        "cs": "PSČ se neshoduje",
+        "en": "Postal code does not match"
+      },
+      "metadata": {
+        "category": "vendor_fo",
+        "phase": "mvp",
+        "requiresDocument": "OP",
+        "applicableTo": ["PHYSICAL_PERSON"],
+        "priority": 32,
+        "tags": ["warning", "vendor-address"]
+      }
+    },
+    {
+      "id": "VND-006",
+      "name": "Date of Birth",
+      "description": "Date of birth from ID card",
+      "enabled": true,
+      "source": {
+        "entity": "vendor",
+        "field": "date_of_birth",
+        "transforms": ["NORMALIZE_DATE"]
+      },
+      "target": {
+        "entity": "ocr_op",
+        "field": "dateOfBirth",
+        "transforms": ["NORMALIZE_DATE"]
+      },
+      "comparison": {
+        "type": "EXACT",
+        "caseSensitive": false
+      },
+      "severity": "INFO",
+      "blockOnFail": false,
+      "conditions": {
+        "operator": "AND",
+        "conditions": [
+          { "field": "vendor.vendor_type", "operator": "EQUALS", "value": "PHYSICAL_PERSON" },
+          { "field": "ocr_op", "operator": "EXISTS", "value": true }
+        ]
+      },
+      "errorMessage": {
+        "cs": "Datum narození se neshoduje",
+        "en": "Date of birth does not match"
+      },
+      "metadata": {
+        "category": "vendor_fo",
+        "phase": "mvp",
+        "requiresDocument": "OP",
+        "applicableTo": ["PHYSICAL_PERSON"],
+        "priority": 40,
+        "tags": ["info", "vendor-details"]
+      }
+    },
+    {
+      "id": "ARES-001",
+      "name": "Company Existence",
+      "description": "Company must exist in ARES registry",
+      "enabled": true,
+      "source": {
+        "entity": "vendor",
+        "field": "company_id",
+        "transforms": ["FORMAT_ICO"]
+      },
+      "target": {
+        "entity": "ares",
+        "field": "ico",
+        "transforms": []
+      },
+      "comparison": {
+        "type": "EXISTS"
+      },
+      "severity": "CRITICAL",
+      "blockOnFail": true,
+      "conditions": {
+        "operator": "AND",
+        "conditions": [
+          { "field": "vendor.vendor_type", "operator": "EQUALS", "value": "COMPANY" }
+        ]
+      },
+      "errorMessage": {
+        "cs": "Společnost nebyla nalezena v registru ARES",
+        "en": "Company not found in ARES registry"
+      },
+      "metadata": {
+        "category": "vendor_po",
+        "phase": "mvp",
+        "applicableTo": ["COMPANY"],
+        "priority": 5,
+        "tags": ["critical", "company-verification", "ares"]
+      }
+    },
+    {
+      "id": "ARES-002",
+      "name": "Company Name Match",
+      "description": "Company name similarity check against ARES",
+      "enabled": true,
+      "source": {
+        "entity": "vendor",
+        "field": "name",
+        "transforms": ["UPPERCASE", "TRIM"]
+      },
+      "target": {
+        "entity": "ares",
+        "field": "obchodniJmeno",
+        "transforms": ["UPPERCASE", "TRIM"]
+      },
+      "comparison": {
+        "type": "FUZZY",
+        "threshold": 0.8,
+        "caseSensitive": false
+      },
+      "severity": "WARNING",
+      "blockOnFail": false,
+      "conditions": {
+        "operator": "AND",
+        "conditions": [
+          { "field": "vendor.vendor_type", "operator": "EQUALS", "value": "COMPANY" }
+        ]
+      },
+      "errorMessage": {
+        "cs": "Název společnosti se liší od záznamu v ARES",
+        "en": "Company name differs from ARES record"
+      },
+      "metadata": {
+        "category": "vendor_po",
+        "phase": "mvp",
+        "applicableTo": ["COMPANY"],
+        "priority": 25,
+        "tags": ["warning", "company-verification", "ares"]
+      }
+    },
+    {
+      "id": "ARES-003",
+      "name": "VAT ID Match",
+      "description": "VAT ID (DIČ) must match ARES record",
+      "enabled": true,
+      "source": {
+        "entity": "vendor",
+        "field": "vat_id",
+        "transforms": ["UPPERCASE", "TRIM", "FORMAT_DIC"]
+      },
+      "target": {
+        "entity": "ares",
+        "field": "dic",
+        "transforms": ["UPPERCASE", "TRIM", "FORMAT_DIC"]
+      },
+      "comparison": {
+        "type": "EXACT",
+        "caseSensitive": false
+      },
+      "severity": "CRITICAL",
+      "blockOnFail": true,
+      "conditions": {
+        "operator": "AND",
+        "conditions": [
+          { "field": "vendor.vendor_type", "operator": "EQUALS", "value": "COMPANY" },
+          { "field": "vendor.vat_id", "operator": "EXISTS", "value": true }
+        ]
+      },
+      "errorMessage": {
+        "cs": "DIČ se neshoduje se záznamem v ARES",
+        "en": "VAT ID does not match ARES record"
+      },
+      "metadata": {
+        "category": "vendor_po",
+        "phase": "mvp",
+        "applicableTo": ["COMPANY"],
+        "priority": 6,
+        "tags": ["critical", "company-verification", "ares"]
+      }
+    },
+    {
+      "id": "ARES-004",
+      "name": "Company Age Check",
+      "description": "Company should be at least 1 year old",
+      "enabled": true,
+      "source": {
+        "entity": "vendor",
+        "field": "company_id",
+        "transforms": ["FORMAT_ICO"]
+      },
+      "target": {
+        "entity": "ares",
+        "field": "datumVzniku",
+        "transforms": ["NORMALIZE_DATE"]
+      },
+      "comparison": {
+        "type": "DATE_TOLERANCE",
+        "tolerance": 365,
+        "toleranceType": "absolute"
+      },
+      "severity": "WARNING",
+      "blockOnFail": false,
+      "conditions": {
+        "operator": "AND",
+        "conditions": [
+          { "field": "vendor.vendor_type", "operator": "EQUALS", "value": "COMPANY" }
+        ]
+      },
+      "errorMessage": {
+        "cs": "Společnost existuje méně než 1 rok",
+        "en": "Company has been in existence for less than 1 year"
+      },
+      "metadata": {
+        "category": "vendor_po",
+        "phase": "mvp",
+        "applicableTo": ["COMPANY"],
+        "priority": 26,
+        "tags": ["warning", "company-verification", "ares"]
+      }
+    },
+    {
+      "id": "DPH-001",
+      "name": "VAT Payer Status",
+      "description": "Company must be active VAT payer",
+      "enabled": true,
+      "source": {
+        "entity": "vendor",
+        "field": "vat_id",
+        "transforms": ["FORMAT_DIC"]
+      },
+      "target": {
+        "entity": "adis",
+        "field": "statusPlatce",
+        "transforms": []
+      },
+      "comparison": {
+        "type": "EXACT"
+      },
+      "severity": "CRITICAL",
+      "blockOnFail": true,
+      "conditions": {
+        "operator": "AND",
+        "conditions": [
+          { "field": "vendor.vendor_type", "operator": "EQUALS", "value": "COMPANY" },
+          { "field": "vendor.vat_id", "operator": "EXISTS", "value": true }
+        ]
+      },
+      "errorMessage": {
+        "cs": "Společnost není aktivním plátcem DPH",
+        "en": "Company is not an active VAT payer"
+      },
+      "metadata": {
+        "category": "vendor_po",
+        "phase": "mvp",
+        "applicableTo": ["COMPANY"],
+        "priority": 7,
+        "tags": ["critical", "vat-verification", "adis"]
+      }
+    },
+    {
+      "id": "DPH-002",
+      "name": "Unreliable VAT Payer Check",
+      "description": "Company must not be unreliable VAT payer",
+      "enabled": true,
+      "source": {
+        "entity": "vendor",
+        "field": "vat_id",
+        "transforms": ["FORMAT_DIC"]
+      },
+      "target": {
+        "entity": "adis",
+        "field": "nespolehlivyPlatce",
+        "transforms": []
+      },
+      "comparison": {
+        "type": "EXACT"
+      },
+      "severity": "CRITICAL",
+      "blockOnFail": true,
+      "conditions": {
+        "operator": "AND",
+        "conditions": [
+          { "field": "vendor.vendor_type", "operator": "EQUALS", "value": "COMPANY" },
+          { "field": "vendor.vat_id", "operator": "EXISTS", "value": true }
+        ]
+      },
+      "errorMessage": {
+        "cs": "Společnost je nespolehlivým plátcem DPH",
+        "en": "Company is an unreliable VAT payer"
+      },
+      "metadata": {
+        "category": "vendor_po",
+        "phase": "mvp",
+        "applicableTo": ["COMPANY"],
+        "priority": 8,
+        "tags": ["critical", "vat-verification", "adis"]
+      }
+    },
+    {
+      "id": "DPH-003",
+      "name": "Bank Account Registration",
+      "description": "Bank account should be registered in VAT registry",
+      "enabled": true,
+      "source": {
+        "entity": "vendor",
+        "field": "bank_account",
+        "transforms": ["REMOVE_SPACES"]
+      },
+      "target": {
+        "entity": "adis",
+        "field": "seznamUctu",
+        "transforms": ["REMOVE_SPACES"]
+      },
+      "comparison": {
+        "type": "CONTAINS"
+      },
+      "severity": "WARNING",
+      "blockOnFail": false,
+      "conditions": {
+        "operator": "AND",
+        "conditions": [
+          { "field": "vendor.vendor_type", "operator": "EQUALS", "value": "COMPANY" },
+          { "field": "vendor.bank_account", "operator": "EXISTS", "value": true }
+        ]
+      },
+      "errorMessage": {
+        "cs": "Bankovní účet není registrován v registru DPH",
+        "en": "Bank account is not registered in VAT registry"
+      },
+      "metadata": {
+        "category": "vendor_po",
+        "phase": "mvp",
+        "applicableTo": ["COMPANY"],
+        "priority": 27,
+        "tags": ["warning", "vat-verification", "adis"]
+      }
+    },
+    {
+      "id": "XV-001",
+      "name": "Vehicle Owner = Vendor",
+      "description": "Vehicle owner from ORV must match vendor name",
+      "enabled": true,
+      "source": {
+        "entity": "vehicle",
+        "field": "majitel",
+        "transforms": ["UPPERCASE", "TRIM", "REMOVE_DIACRITICS"]
+      },
+      "target": {
+        "entity": "vendor",
+        "field": "name",
+        "transforms": ["UPPERCASE", "TRIM", "REMOVE_DIACRITICS"]
+      },
+      "comparison": {
+        "type": "FUZZY",
+        "threshold": 0.95,
+        "caseSensitive": false
+      },
+      "severity": "CRITICAL",
+      "blockOnFail": true,
+      "errorMessage": {
+        "cs": "Majitel vozidla se neshoduje s dodavatelem",
+        "en": "Vehicle owner does not match the vendor"
+      },
+      "metadata": {
+        "category": "cross",
+        "phase": "mvp",
+        "priority": 4,
+        "tags": ["critical", "cross-validation", "ownership"]
+      }
+    },
+    {
+      "id": "DOL-001",
+      "name": "ID Card Validity",
+      "description": "Check if ID card is valid via Doložky.cz",
+      "enabled": false,
+      "source": {
+        "entity": "vendor",
+        "field": "document_number",
+        "transforms": []
+      },
+      "target": {
+        "entity": "dolozky",
+        "field": "isValid",
+        "transforms": []
+      },
+      "comparison": {
+        "type": "EXACT"
+      },
+      "severity": "CRITICAL",
+      "blockOnFail": true,
+      "conditions": {
+        "operator": "AND",
+        "conditions": [
+          { "field": "vendor.vendor_type", "operator": "EQUALS", "value": "PHYSICAL_PERSON" },
+          { "field": "ocr_op", "operator": "EXISTS", "value": true }
+        ]
+      },
+      "errorMessage": {
+        "cs": "Občanský průkaz není platný",
+        "en": "ID card is not valid"
+      },
+      "metadata": {
+        "category": "vendor_fo",
+        "phase": "phase2",
+        "requiresDocument": "OP",
+        "applicableTo": ["PHYSICAL_PERSON"],
+        "priority": 12,
+        "tags": ["critical", "id-verification", "dolozky"]
+      }
+    },
+    {
+      "id": "DOL-002",
+      "name": "ID Card Expiry",
+      "description": "Check if ID card is not expired",
+      "enabled": false,
+      "source": {
+        "entity": "vendor",
+        "field": "document_expiry_date",
+        "transforms": ["NORMALIZE_DATE"]
+      },
+      "target": {
+        "entity": "dolozky",
+        "field": "expiryDate",
+        "transforms": ["NORMALIZE_DATE"]
+      },
+      "comparison": {
+        "type": "DATE_TOLERANCE",
+        "tolerance": 0,
+        "toleranceType": "absolute"
+      },
+      "severity": "CRITICAL",
+      "blockOnFail": true,
+      "conditions": {
+        "operator": "AND",
+        "conditions": [
+          { "field": "vendor.vendor_type", "operator": "EQUALS", "value": "PHYSICAL_PERSON" },
+          { "field": "ocr_op", "operator": "EXISTS", "value": true }
+        ]
+      },
+      "errorMessage": {
+        "cs": "Občanský průkaz má prošlou platnost",
+        "en": "ID card has expired"
+      },
+      "metadata": {
+        "category": "vendor_fo",
+        "phase": "phase2",
+        "requiresDocument": "OP",
+        "applicableTo": ["PHYSICAL_PERSON"],
+        "priority": 13,
+        "tags": ["critical", "id-verification", "dolozky"]
+      }
+    },
+    {
+      "id": "DOL-003",
+      "name": "Personal Data Cross-validation",
+      "description": "Verify OCR data matches Doložky.cz record",
+      "enabled": false,
+      "source": {
+        "entity": "vendor",
+        "field": "personal_id",
+        "transforms": ["FORMAT_RC"]
+      },
+      "target": {
+        "entity": "dolozky",
+        "field": "personalData",
+        "transforms": ["FORMAT_RC"]
+      },
+      "comparison": {
+        "type": "EXACT"
+      },
+      "severity": "CRITICAL",
+      "blockOnFail": true,
+      "conditions": {
+        "operator": "AND",
+        "conditions": [
+          { "field": "vendor.vendor_type", "operator": "EQUALS", "value": "PHYSICAL_PERSON" },
+          { "field": "ocr_op", "operator": "EXISTS", "value": true }
+        ]
+      },
+      "errorMessage": {
+        "cs": "Osobní údaje se neshodují s registrem Doložky.cz",
+        "en": "Personal data does not match Doložky.cz registry"
+      },
+      "metadata": {
+        "category": "vendor_fo",
+        "phase": "phase2",
+        "requiresDocument": "OP",
+        "applicableTo": ["PHYSICAL_PERSON"],
+        "priority": 14,
+        "tags": ["critical", "id-verification", "dolozky"]
+      }
+    },
+    {
+      "id": "CEB-001",
+      "name": "Vehicle Execution Check",
+      "description": "Check if vehicle has no active execution",
+      "enabled": false,
+      "source": {
+        "entity": "vehicle",
+        "field": "vin",
+        "transforms": ["VIN_NORMALIZE"]
+      },
+      "target": {
+        "entity": "cebia",
+        "field": "exekuce",
+        "transforms": []
+      },
+      "comparison": {
+        "type": "NOT_EXISTS"
+      },
+      "severity": "CRITICAL",
+      "blockOnFail": true,
+      "errorMessage": {
+        "cs": "Na vozidlo je vedena exekuce",
+        "en": "Vehicle has an active execution"
+      },
+      "metadata": {
+        "category": "vehicle",
+        "phase": "phase2",
+        "priority": 50,
+        "tags": ["critical", "vehicle-legal", "cebia"]
+      }
+    },
+    {
+      "id": "CEB-002",
+      "name": "Vehicle Lien Check",
+      "description": "Check if vehicle has no active lien",
+      "enabled": false,
+      "source": {
+        "entity": "vehicle",
+        "field": "vin",
+        "transforms": ["VIN_NORMALIZE"]
+      },
+      "target": {
+        "entity": "cebia",
+        "field": "zastava",
+        "transforms": []
+      },
+      "comparison": {
+        "type": "NOT_EXISTS"
+      },
+      "severity": "CRITICAL",
+      "blockOnFail": true,
+      "errorMessage": {
+        "cs": "Na vozidle je zástava",
+        "en": "Vehicle has an active lien"
+      },
+      "metadata": {
+        "category": "vehicle",
+        "phase": "phase2",
+        "priority": 51,
+        "tags": ["critical", "vehicle-legal", "cebia"]
+      }
+    },
+    {
+      "id": "CEB-003",
+      "name": "Stolen Vehicle Check",
+      "description": "Check if vehicle is not reported stolen",
+      "enabled": false,
+      "source": {
+        "entity": "vehicle",
+        "field": "vin",
+        "transforms": ["VIN_NORMALIZE"]
+      },
+      "target": {
+        "entity": "cebia",
+        "field": "kradene",
+        "transforms": []
+      },
+      "comparison": {
+        "type": "NOT_EXISTS"
+      },
+      "severity": "CRITICAL",
+      "blockOnFail": true,
+      "errorMessage": {
+        "cs": "Vozidlo je hlášeno jako odcizené",
+        "en": "Vehicle is reported as stolen"
+      },
+      "metadata": {
+        "category": "vehicle",
+        "phase": "phase2",
+        "priority": 52,
+        "tags": ["critical", "vehicle-legal", "cebia"]
+      }
+    },
+    {
+      "id": "CEB-004",
+      "name": "Person Execution Check",
+      "description": "Check if person has no active execution",
+      "enabled": false,
+      "source": {
+        "entity": "vendor",
+        "field": "personal_id",
+        "transforms": ["FORMAT_RC"]
+      },
+      "target": {
+        "entity": "cebia",
+        "field": "exekuceOsoba",
+        "transforms": []
+      },
+      "comparison": {
+        "type": "NOT_EXISTS"
+      },
+      "severity": "CRITICAL",
+      "blockOnFail": true,
+      "conditions": {
+        "operator": "AND",
+        "conditions": [
+          { "field": "vendor.vendor_type", "operator": "EQUALS", "value": "PHYSICAL_PERSON" }
+        ]
+      },
+      "errorMessage": {
+        "cs": "Na osobu je vedena exekuce",
+        "en": "Person has an active execution"
+      },
+      "metadata": {
+        "category": "vendor_fo",
+        "phase": "phase2",
+        "applicableTo": ["PHYSICAL_PERSON"],
+        "priority": 53,
+        "tags": ["critical", "person-legal", "cebia"]
+      }
+    },
+    {
+      "id": "CEB-005",
+      "name": "Person Insolvency Check",
+      "description": "Check if person is not in insolvency",
+      "enabled": false,
+      "source": {
+        "entity": "vendor",
+        "field": "personal_id",
+        "transforms": ["FORMAT_RC"]
+      },
+      "target": {
+        "entity": "cebia",
+        "field": "insolvence",
+        "transforms": []
+      },
+      "comparison": {
+        "type": "NOT_EXISTS"
+      },
+      "severity": "CRITICAL",
+      "blockOnFail": true,
+      "conditions": {
+        "operator": "AND",
+        "conditions": [
+          { "field": "vendor.vendor_type", "operator": "EQUALS", "value": "PHYSICAL_PERSON" }
+        ]
+      },
+      "errorMessage": {
+        "cs": "Osoba je v insolvenci",
+        "en": "Person is in insolvency"
+      },
+      "metadata": {
+        "category": "vendor_fo",
+        "phase": "phase2",
+        "applicableTo": ["PHYSICAL_PERSON"],
+        "priority": 54,
+        "tags": ["critical", "person-legal", "cebia"]
+      }
+    },
+    {
+      "id": "CEB-006",
+      "name": "Company Insolvency Check",
+      "description": "Check if company is not in insolvency",
+      "enabled": false,
+      "source": {
+        "entity": "vendor",
+        "field": "company_id",
+        "transforms": ["FORMAT_ICO"]
+      },
+      "target": {
+        "entity": "cebia",
+        "field": "insolvence",
+        "transforms": []
+      },
+      "comparison": {
+        "type": "NOT_EXISTS"
+      },
+      "severity": "CRITICAL",
+      "blockOnFail": true,
+      "conditions": {
+        "operator": "AND",
+        "conditions": [
+          { "field": "vendor.vendor_type", "operator": "EQUALS", "value": "COMPANY" }
+        ]
+      },
+      "errorMessage": {
+        "cs": "Společnost je v insolvenci",
+        "en": "Company is in insolvency"
+      },
+      "metadata": {
+        "category": "vendor_po",
+        "phase": "phase2",
+        "applicableTo": ["COMPANY"],
+        "priority": 55,
+        "tags": ["critical", "company-legal", "cebia"]
+      }
+    }
+  ],
+  "summary": {
+    "total": 31,
+    "byPhase": {
+      "mvp": 21,
+      "phase2": 10
+    },
+    "byCategory": {
+      "vehicle": 11,
+      "vendor_fo": 11,
+      "vendor_po": 8,
+      "cross": 1
+    },
+    "bySeverity": {
+      "CRITICAL": 18,
+      "WARNING": 12,
+      "INFO": 1
+    },
+    "enabled": 21,
+    "disabled": 10
+  }
+}

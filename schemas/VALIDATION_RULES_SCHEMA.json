@@ -1,0 +1,378 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://securedealai.aures.app/schemas/validation-rule.json",
+  "title": "SecureDealAI Validation Rule Schema",
+  "description": "JSON Schema for dynamic validation rules in SecureDealAI MVP",
+  "version": "1.0.0",
+  "type": "object",
+  "required": ["id", "name", "source", "target", "comparison", "severity"],
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Z]{2,4}-[0-9]{3}$",
+      "description": "Unique rule identifier (e.g., VEH-001, ARES-002, DPH-001)",
+      "examples": ["VEH-001", "VND-002", "ARES-003", "DPH-001"]
+    },
+    "name": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 100,
+      "description": "Human-readable rule name",
+      "examples": ["VIN Match", "Company Existence", "VAT Payer Status"]
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 500,
+      "description": "Detailed description of what this rule validates"
+    },
+    "enabled": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether the rule is enabled for validation"
+    },
+    "source": {
+      "$ref": "#/definitions/dataSource",
+      "description": "Source data to compare (typically manual input)"
+    },
+    "target": {
+      "$ref": "#/definitions/dataSource",
+      "description": "Target data to compare against (typically OCR/ARES/ADIS)"
+    },
+    "comparison": {
+      "$ref": "#/definitions/comparisonConfig",
+      "description": "How to compare source and target values"
+    },
+    "severity": {
+      "$ref": "#/definitions/severity",
+      "description": "Impact level when validation fails"
+    },
+    "blockOnFail": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether to block the process on validation failure"
+    },
+    "conditions": {
+      "$ref": "#/definitions/conditionGroup",
+      "description": "Optional conditions for when to apply this rule"
+    },
+    "errorMessage": {
+      "$ref": "#/definitions/localizedMessage",
+      "description": "Error message shown on validation failure"
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Additional metadata for the rule",
+      "properties": {
+        "category": {
+          "type": "string",
+          "enum": ["vehicle", "vendor_fo", "vendor_po", "cross", "external"],
+          "description": "Rule category for grouping"
+        },
+        "phase": {
+          "type": "string",
+          "enum": ["mvp", "phase2", "future"],
+          "default": "mvp",
+          "description": "Implementation phase"
+        },
+        "requiresDocument": {
+          "type": "string",
+          "enum": ["ORV", "OP", "VTP", null],
+          "description": "Required document type for this rule"
+        },
+        "applicableTo": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["PHYSICAL_PERSON", "COMPANY"]
+          },
+          "description": "Vendor types this rule applies to"
+        },
+        "priority": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "default": 50,
+          "description": "Execution priority (lower = executed first)"
+        },
+        "tags": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Tags for filtering and categorization"
+        }
+      }
+    }
+  },
+  "definitions": {
+    "dataSource": {
+      "type": "object",
+      "required": ["entity", "field"],
+      "additionalProperties": false,
+      "properties": {
+        "entity": {
+          "type": "string",
+          "enum": ["vehicle", "vendor", "ocr_orv", "ocr_op", "ocr_vtp", "ares", "adis", "cebia", "dolozky"],
+          "description": "Data entity/source type"
+        },
+        "field": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Field path within the entity (supports dot notation)",
+          "examples": ["vin", "name", "address.city", "personalNumber"]
+        },
+        "transforms": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/transform"
+          },
+          "default": [],
+          "description": "Transformations to apply before comparison"
+        }
+      }
+    },
+    "transform": {
+      "type": "string",
+      "enum": [
+        "UPPERCASE",
+        "LOWERCASE",
+        "TRIM",
+        "REMOVE_SPACES",
+        "REMOVE_DIACRITICS",
+        "NORMALIZE_DATE",
+        "EXTRACT_NUMBER",
+        "FORMAT_RC",
+        "FORMAT_ICO",
+        "FORMAT_DIC",
+        "ADDRESS_NORMALIZE",
+        "NAME_NORMALIZE",
+        "VIN_NORMALIZE",
+        "SPZ_NORMALIZE"
+      ],
+      "description": "Data transformation type"
+    },
+    "comparisonConfig": {
+      "type": "object",
+      "required": ["type"],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["EXACT", "FUZZY", "CONTAINS", "REGEX", "NUMERIC_TOLERANCE", "DATE_TOLERANCE", "EXISTS", "NOT_EXISTS", "IN_LIST"],
+          "description": "Comparison method"
+        },
+        "caseSensitive": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether comparison is case-sensitive"
+        },
+        "threshold": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Similarity threshold for FUZZY match (0.0-1.0)"
+        },
+        "tolerance": {
+          "type": "number",
+          "description": "Numeric tolerance for NUMERIC_TOLERANCE or days for DATE_TOLERANCE"
+        },
+        "toleranceType": {
+          "type": "string",
+          "enum": ["absolute", "percentage"],
+          "default": "absolute",
+          "description": "How to interpret tolerance value"
+        },
+        "pattern": {
+          "type": "string",
+          "description": "Regex pattern for REGEX comparison type"
+        },
+        "allowedValues": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Allowed values for IN_LIST comparison type"
+        }
+      }
+    },
+    "severity": {
+      "type": "string",
+      "enum": ["CRITICAL", "WARNING", "INFO"],
+      "description": "CRITICAL=RED on fail, WARNING=ORANGE on fail, INFO=logged only"
+    },
+    "conditionGroup": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "operator": {
+          "type": "string",
+          "enum": ["AND", "OR"],
+          "default": "AND",
+          "description": "Logical operator for combining conditions"
+        },
+        "conditions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/condition"
+          },
+          "minItems": 1,
+          "description": "List of conditions to evaluate"
+        }
+      },
+      "required": ["conditions"]
+    },
+    "condition": {
+      "type": "object",
+      "required": ["field", "operator", "value"],
+      "additionalProperties": false,
+      "properties": {
+        "field": {
+          "type": "string",
+          "description": "Field path to evaluate (e.g., vendor.vendor_type, ocr_op)"
+        },
+        "operator": {
+          "type": "string",
+          "enum": ["EQUALS", "NOT_EQUALS", "EXISTS", "NOT_EXISTS", "IN", "NOT_IN", "GREATER_THAN", "LESS_THAN"],
+          "description": "Condition operator"
+        },
+        "value": {
+          "description": "Value to compare against (type depends on operator)"
+        }
+      }
+    },
+    "localizedMessage": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "cs": {
+          "type": "string",
+          "description": "Czech message"
+        },
+        "en": {
+          "type": "string",
+          "description": "English message"
+        },
+        "sk": {
+          "type": "string",
+          "description": "Slovak message"
+        },
+        "pl": {
+          "type": "string",
+          "description": "Polish message"
+        }
+      },
+      "required": ["cs", "en"]
+    }
+  },
+  "examples": [
+    {
+      "id": "VEH-001",
+      "name": "VIN Match",
+      "description": "VIN must match exactly between manual input and OCR from ORV",
+      "enabled": true,
+      "source": {
+        "entity": "vehicle",
+        "field": "vin",
+        "transforms": ["REMOVE_SPACES", "UPPERCASE", "VIN_NORMALIZE"]
+      },
+      "target": {
+        "entity": "ocr_orv",
+        "field": "vin",
+        "transforms": ["REMOVE_SPACES", "UPPERCASE", "VIN_NORMALIZE"]
+      },
+      "comparison": {
+        "type": "EXACT",
+        "caseSensitive": false
+      },
+      "severity": "CRITICAL",
+      "blockOnFail": true,
+      "errorMessage": {
+        "cs": "VIN se neshoduje s technickým průkazem",
+        "en": "VIN does not match the vehicle registration certificate"
+      },
+      "metadata": {
+        "category": "vehicle",
+        "phase": "mvp",
+        "requiresDocument": "ORV",
+        "priority": 1,
+        "tags": ["critical", "vehicle-identity"]
+      }
+    },
+    {
+      "id": "VND-001",
+      "name": "Full Name Match",
+      "description": "Vendor name must match ID card for physical persons",
+      "enabled": true,
+      "source": {
+        "entity": "vendor",
+        "field": "name",
+        "transforms": ["UPPERCASE", "TRIM", "REMOVE_DIACRITICS"]
+      },
+      "target": {
+        "entity": "ocr_op",
+        "field": "fullName",
+        "transforms": ["UPPERCASE", "TRIM", "REMOVE_DIACRITICS"]
+      },
+      "comparison": {
+        "type": "EXACT",
+        "caseSensitive": false
+      },
+      "severity": "CRITICAL",
+      "blockOnFail": true,
+      "conditions": {
+        "operator": "AND",
+        "conditions": [
+          { "field": "vendor.vendor_type", "operator": "EQUALS", "value": "PHYSICAL_PERSON" },
+          { "field": "ocr_op", "operator": "EXISTS", "value": true }
+        ]
+      },
+      "errorMessage": {
+        "cs": "Jméno dodavatele se neshoduje s občanským průkazem",
+        "en": "Vendor name does not match ID card"
+      },
+      "metadata": {
+        "category": "vendor_fo",
+        "phase": "mvp",
+        "requiresDocument": "OP",
+        "applicableTo": ["PHYSICAL_PERSON"],
+        "priority": 10,
+        "tags": ["critical", "vendor-identity"]
+      }
+    },
+    {
+      "id": "ARES-001",
+      "name": "Company Existence",
+      "description": "Company must exist in ARES registry",
+      "enabled": true,
+      "source": {
+        "entity": "vendor",
+        "field": "company_id",
+        "transforms": ["FORMAT_ICO"]
+      },
+      "target": {
+        "entity": "ares",
+        "field": "ico",
+        "transforms": []
+      },
+      "comparison": {
+        "type": "EXISTS"
+      },
+      "severity": "CRITICAL",
+      "blockOnFail": true,
+      "conditions": {
+        "operator": "AND",
+        "conditions": [
+          { "field": "vendor.vendor_type", "operator": "EQUALS", "value": "COMPANY" }
+        ]
+      },
+      "errorMessage": {
+        "cs": "Společnost nebyla nalezena v registru ARES",
+        "en": "Company not found in ARES registry"
+      },
+      "metadata": {
+        "category": "vendor_po",
+        "phase": "mvp",
+        "applicableTo": ["COMPANY"],
+        "priority": 5,
+        "tags": ["critical", "company-verification", "ares"]
+      }
+    }
+  ]
+}
