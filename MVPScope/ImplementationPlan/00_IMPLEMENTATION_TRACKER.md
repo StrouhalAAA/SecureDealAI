@@ -17,10 +17,10 @@ This document tracks the implementation progress of SecureDealAI MVP. Each task 
 | Phase | Total Tasks | Completed | In Progress | Pending |
 |-------|-------------|-----------|-------------|---------|
 | Phase 1: Infrastructure | 5 | 4 | 0 | 1 |
-| Phase 2: Backend API | 9 | 5 | 0 | 4 |
-| Phase 3: Frontend | 10 | 0 | 0 | 10 |
+| Phase 2: Backend API | 9 | 8 | 0 | 1 |
+| Phase 3: Frontend | 10 | 1 | 0 | 9 |
 | Phase 4: Testing | 2 | 0 | 0 | 2 |
-| **TOTAL** | **26** | **9** | **0** | **17** |
+| **TOTAL** | **26** | **13** | **0** | **13** |
 
 ---
 
@@ -44,9 +44,9 @@ This document tracks the implementation progress of SecureDealAI MVP. Each task 
 | 2.2 | Vehicle CRUD | [02_02_VEHICLE_CRUD.md](./02_02_VEHICLE_CRUD.md) | [x] Implemented | 2026-01-03 |
 | 2.3 | Vendor CRUD | [02_03_VENDOR_CRUD.md](./02_03_VENDOR_CRUD.md) | [x] Implemented | 2026-01-03 |
 | 2.4 | ARES Lookup (Instant) | [02_04_ARES_LOOKUP.md](./02_04_ARES_LOOKUP.md) | [x] Implemented | 2026-01-03 |
-| 2.5 | Document Upload | [02_05_DOCUMENT_UPLOAD.md](./02_05_DOCUMENT_UPLOAD.md) | [ ] Pending | - |
-| 2.6 | OCR Extract (Mistral) | [02_06_OCR_EXTRACT_MISTRAL.md](./02_06_OCR_EXTRACT_MISTRAL.md) | [ ] Pending | - |
-| 2.7 | ARES Validate (Full) | [02_07_ARES_VALIDATE.md](./02_07_ARES_VALIDATE.md) | [ ] Pending | - |
+| 2.5 | Document Upload | [02_05_DOCUMENT_UPLOAD.md](./02_05_DOCUMENT_UPLOAD.md) | [x] Implemented | 2026-01-03 |
+| 2.6 | OCR Extract (Mistral) | [02_06_OCR_EXTRACT_MISTRAL.md](./02_06_OCR_EXTRACT_MISTRAL.md) | [x] Implemented | 2026-01-03 |
+| 2.7 | ARES Validate (Full) | [02_07_ARES_VALIDATE.md](./02_07_ARES_VALIDATE.md) | [x] Implemented | 2026-01-03 |
 | 2.8 | Validation Run (Deploy) | [02_08_VALIDATION_RUN_DEPLOY.md](./02_08_VALIDATION_RUN_DEPLOY.md) | [x] Implemented | - |
 | 2.9 | Validation Preview | [02_09_VALIDATION_PREVIEW.md](./02_09_VALIDATION_PREVIEW.md) | [ ] Pending | - |
 
@@ -57,7 +57,7 @@ This document tracks the implementation progress of SecureDealAI MVP. Each task 
 | # | Task | Document | Status | Completed Date |
 |---|------|----------|--------|----------------|
 | 3.1 | Vue.js Project Setup | [03_01_VUEJS_PROJECT_SETUP.md](./03_01_VUEJS_PROJECT_SETUP.md) | [ ] Pending | - |
-| 3.2 | Dashboard Page | [03_02_DASHBOARD_PAGE.md](./03_02_DASHBOARD_PAGE.md) | [ ] Pending | - |
+| 3.2 | Dashboard Page | [03_02_DASHBOARD_PAGE.md](./03_02_DASHBOARD_PAGE.md) | [x] Implemented | 2026-01-03 |
 | 3.3 | Vehicle Form Component | [03_03_VEHICLE_FORM.md](./03_03_VEHICLE_FORM.md) | [ ] Pending | - |
 | 3.4 | Vendor Form Component | [03_04_VENDOR_FORM.md](./03_04_VENDOR_FORM.md) | [ ] Pending | - |
 | 3.5 | ARES Status Component | [03_05_ARES_STATUS.md](./03_05_ARES_STATUS.md) | [ ] Pending | - |
@@ -136,10 +136,11 @@ When completing a task:
 ## Notes
 
 - Task 2.8 (Validation Run) is marked as implemented - complete Edge Function exists in `MVPScope/supabase/functions/validation-run/` with index.ts entry point
-- Task 2.6 (OCR Extract) is **NOT yet an Edge Function** - only schemas and Mistral client code prepared:
-  - `MVPScope/supabase/functions/ocr-extract/schemas/` - JSON schemas for ORV, OP, VTP
-  - `MVPScope/supabase/functions/ocr-extract/mistral-client.ts` - API client code
-  - **Missing**: `index.ts` (Edge Function entry point), HTTP handler, Supabase Storage integration
+- Task 2.6 (OCR Extract) is **NOW IMPLEMENTED** - complete Edge Function exists in `MVPScope/supabase/functions/ocr-extract/`:
+  - `index.ts` - Edge Function entry point with HTTP handler
+  - `mistral-client.ts` - Mistral API client with retry logic
+  - `transformer.ts` - Data normalization (dates, IČO, rodné číslo, SPZ, VIN)
+  - `schemas/` - JSON schemas for ORV, OP, VTP document types
 - OCR/Mistral API tested locally via Node.js script (`test-mistral-ocr.mjs`):
   - ORV: 2 pages, 4.5s - VIN, SPZ, keeper info, vehicle specs ✅
   - OP: 1 page, 3.7s - name, personal number, document number, addresses ✅
