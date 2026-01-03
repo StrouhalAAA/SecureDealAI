@@ -6,7 +6,11 @@
   "main": "src/index.js",
   "scripts": {
     "test:db": "node src/test-connection.js",
-    "test": "vitest",
+    "test": "npm run test:backend && npm run test:frontend",
+    "test:backend": "cd MVPScope/supabase && ~/.deno/bin/deno task test",
+    "test:frontend": "cd MVPScope/frontend && npm run test",
+    "test:e2e": "cd MVPScope/frontend && npx playwright test",
+    "test:all": "npm run test && npm run test:e2e",
     "test:coverage": "vitest run --coverage",
     "test:integration": "vitest run tests/integration",
     "lint": "eslint src tests --ext .ts,.js",

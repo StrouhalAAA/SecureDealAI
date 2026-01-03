@@ -3,6 +3,12 @@
 .env.local
 .env.*.local
 
+# Supabase environment files
+supabase/.env
+supabase/.env.local
+MVPScope/supabase/.env
+MVPScope/supabase/.env.local
+
 # Dependencies
 node_modules/
 

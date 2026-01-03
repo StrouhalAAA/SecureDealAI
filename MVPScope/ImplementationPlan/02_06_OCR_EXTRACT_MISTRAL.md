@@ -1,11 +1,11 @@
 # Task 2.6: OCR Extract (Mistral API)
 
 > **Phase**: 2 - Backend API
-> **Status**: [ ] Pending
+> **Status**: [x] Implemented
 > **Priority**: High
 > **Depends On**: 2.5 Document Upload, INT_01 Mistral OCR API Spec
 > **Estimated Effort**: High
-> **Last Updated**: 2026-01-02
+> **Last Updated**: 2026-01-03
 
 ---
 

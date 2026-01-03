@@ -1,7 +1,7 @@
 # Task 3.4: Vendor Form Component
 
 > **Phase**: 3 - Frontend
-> **Status**: [ ] Pending
+> **Status**: [x] Implemented
 > **Priority**: High
 > **Depends On**: 3.1 Vue.js Setup, 2.3 Vendor CRUD, 2.4 ARES Lookup
 > **Estimated Effort**: High
@@ -429,24 +429,24 @@ const lookupAres = useDebounceFn(async () => {
 
 ## Validation Criteria
 
-- [ ] Vendor type toggle works
-- [ ] Company: IČO validation (8 digits)
-- [ ] Company: ARES auto-lookup on IČO
-- [ ] Company: Auto-fill from ARES data
-- [ ] Company: ARES status indicator
-- [ ] FO: Rodné číslo validation
-- [ ] FO: Format with slash (######/####)
-- [ ] Common fields work for both types
-- [ ] Saves to database correctly
-- [ ] Edit mode loads existing data
+- [x] Vendor type toggle works
+- [x] Company: IČO validation (8 digits)
+- [x] Company: ARES auto-lookup on IČO
+- [x] Company: Auto-fill from ARES data
+- [x] Company: ARES status indicator
+- [x] FO: Rodné číslo validation
+- [x] FO: Format with slash (######/####)
+- [x] Common fields work for both types
+- [x] Saves to database correctly
+- [x] Edit mode loads existing data
 
 ---
 
 ## Completion Checklist
 
-- [ ] VendorForm.vue created
-- [ ] ARES integration working
-- [ ] All validations working
-- [ ] Auto-fill highlighting
-- [ ] Edit mode working
-- [ ] Update tracker: `00_IMPLEMENTATION_TRACKER.md`
+- [x] VendorForm.vue created
+- [x] ARES integration working
+- [x] All validations working
+- [x] Auto-fill highlighting
+- [x] Edit mode working
+- [x] Update tracker: `00_IMPLEMENTATION_TRACKER.md`
