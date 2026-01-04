@@ -75,6 +75,8 @@ async function loadValidationData(
   console.log(`[DataLoader] Loading data for buying opportunity: ${buyingOpportunityId}`);
 
   // Load buying opportunity with related data
+  // Note: ocr_extractions uses SPZ-linking (ACBS pattern) without FK,
+  // so we query it separately below instead of using PostgREST join syntax
   const { data: opportunity, error: oppError } = await supabase
     .from('buying_opportunities')
     .select(`
@@ -82,8 +84,7 @@ async function loadValidationData(
       spz,
       vin,
       vehicles (*),
-      vendors (*),
-      ocr_extractions (*)
+      vendors (*)
     `)
     .eq('id', buyingOpportunityId)
     .single();
@@ -96,8 +97,23 @@ async function loadValidationData(
     throw new Error(`Buying opportunity not found: ${buyingOpportunityId}`);
   }
 
-  // Parse OCR extractions by document type
-  const ocrExtractions = opportunity.ocr_extractions ?? [];
+  // Query OCR extractions separately by SPZ (ACBS pattern - no FK relationship)
+  let ocrExtractions: Array<{ document_type: string; extracted_data: unknown }> = [];
+  if (opportunity.spz) {
+    const { data: ocrData, error: ocrError } = await supabase
+      .from('ocr_extractions')
+      .select('document_type, extracted_data')
+      .eq('spz', opportunity.spz)
+      .eq('ocr_status', 'COMPLETED')
+      .order('created_at', { ascending: false });
+
+    if (ocrError) {
+      console.warn(`[DataLoader] Failed to load OCR extractions: ${ocrError.message}`);
+      // Continue without OCR data - validation can still run with partial data
+    } else {
+      ocrExtractions = ocrData ?? [];
+    }
+  }
   const ocrOrv = ocrExtractions.find((e: { document_type: string }) => e.document_type === 'ORV')?.extracted_data;
   const ocrOp = ocrExtractions.find((e: { document_type: string }) => e.document_type === 'OP')?.extracted_data;
   const ocrVtp = ocrExtractions.find((e: { document_type: string }) => e.document_type === 'VTP')?.extracted_data;
@@ -136,6 +152,7 @@ async function loadValidationData(
   console.log(`[DataLoader] - Vendor: ${inputData.vendor ? `${inputData.vendor.vendor_type}` : 'no'}`);
   console.log(`[DataLoader] - OCR ORV: ${inputData.ocr_orv ? 'yes' : 'no'}`);
   console.log(`[DataLoader] - OCR OP: ${inputData.ocr_op ? 'yes' : 'no'}`);
+  console.log(`[DataLoader] - OCR VTP: ${inputData.ocr_vtp ? 'yes' : 'no'}`);
   console.log(`[DataLoader] - ARES: ${inputData.ares ? 'yes' : 'no'}`);
 
   return inputData;

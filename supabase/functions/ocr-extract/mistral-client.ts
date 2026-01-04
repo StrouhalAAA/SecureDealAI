@@ -142,9 +142,20 @@ export async function extractDocument(
       .map((page) => page.markdown || "")
       .join("\n\n---\n\n");
 
+    // Parse document_annotation if it's a string (Mistral returns it serialized)
+    let annotation = result.document_annotation;
+    if (typeof annotation === "string") {
+      try {
+        annotation = JSON.parse(annotation);
+      } catch (e) {
+        console.error("[Mistral] Failed to parse document_annotation:", e);
+        // Keep as-is if parsing fails
+      }
+    }
+
     return {
       success: true,
-      data: result.document_annotation,
+      data: annotation,
       rawMarkdown,
       pagesProcessed: result.usage_info.pages_processed,
     };
