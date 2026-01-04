@@ -82,7 +82,6 @@ async function loadValidationData(
     .select(`
       id,
       spz,
-      vin,
       vehicles (*),
       vendors (*)
     `)
@@ -166,23 +165,36 @@ async function findBuyingOpportunity(
   spz?: string,
   vin?: string
 ): Promise<string> {
-  let query = supabase.from('buying_opportunities').select('id');
-
   if (spz) {
-    query = query.eq('spz', spz.toUpperCase().replace(/\s/g, ''));
+    const { data, error } = await supabase
+      .from('buying_opportunities')
+      .select('id')
+      .eq('spz', spz.toUpperCase().replace(/\s/g, ''))
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (error || !data) {
+      throw new Error(`Buying opportunity not found for SPZ: ${spz}`);
+    }
+    return data.id;
   } else if (vin) {
-    query = query.eq('vin', vin.toUpperCase().replace(/\s/g, ''));
+    // VIN is on vehicles table, not buying_opportunities
+    const { data, error } = await supabase
+      .from('vehicles')
+      .select('buying_opportunity_id')
+      .eq('vin', vin.toUpperCase().replace(/\s/g, ''))
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (error || !data) {
+      throw new Error(`Buying opportunity not found for VIN: ${vin}`);
+    }
+    return data.buying_opportunity_id;
   } else {
     throw new Error('Either spz or vin must be provided');
   }
-
-  const { data, error } = await query.order('created_at', { ascending: false }).limit(1).single();
-
-  if (error || !data) {
-    throw new Error(`Buying opportunity not found for ${spz ? `SPZ: ${spz}` : `VIN: ${vin}`}`);
-  }
-
-  return data.id;
 }
 
 // =============================================================================
