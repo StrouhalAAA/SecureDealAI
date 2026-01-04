@@ -15,7 +15,8 @@
  * - SUPABASE_URL - Supabase project URL
  * - SUPABASE_SERVICE_ROLE_KEY - Service role key for DB access
  * - ACCESS_CODE_HASH - SHA-256 hash(es) of valid access code(s), comma-separated
- * - JWT_SECRET - Secret for signing JWT tokens
+ * - JWT_SECRET - Supabase's JWT secret (from Dashboard: Project Settings > Data API > JWT Secret)
+ *               IMPORTANT: This MUST be Supabase's JWT secret for tokens to work with PostgREST/REST API
  */
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
@@ -75,7 +76,7 @@ async function sha256(str: string): Promise<string> {
 /**
  * Create a signed JWT token
  */
-async function createJWT(secret: string, codeId: string): Promise<{ token: string; expiresAt: Date }> {
+async function createJWT(secret: string, codeId: string, supabaseUrl: string): Promise<{ token: string; expiresAt: Date }> {
   const now = Math.floor(Date.now() / 1000);
   const expiresAt = new Date((now + JWT_EXPIRY_HOURS * 60 * 60) * 1000);
 
@@ -84,11 +85,16 @@ async function createJWT(secret: string, codeId: string): Promise<{ token: strin
     typ: "JWT"
   };
 
+  // Extract project ref from SUPABASE_URL (e.g., "bdmygmbxtdgujkytpxha" from "https://bdmygmbxtdgujkytpxha.supabase.co")
+  const projectRef = supabaseUrl.match(/https:\/\/([^.]+)\.supabase\.co/)?.[1] || "unknown";
+
   const payload = {
-    iss: "securedealai",
+    // Use Supabase's expected issuer format for PostgREST compatibility
+    iss: `https://${projectRef}.supabase.co/auth/v1`,
     sub: "internal-user",
     iat: now,
     exp: now + JWT_EXPIRY_HOURS * 60 * 60,
+    // Custom claims for our app
     access_type: "internal",
     code_id: codeId,
     // Supabase requires these for RLS
@@ -312,7 +318,7 @@ serve(async (req) => {
 
     // Valid code - create JWT
     const codeId = providedCodeHash.substring(0, 8); // Short identifier for audit
-    const { token, expiresAt } = await createJWT(jwtSecret, codeId);
+    const { token, expiresAt } = await createJWT(jwtSecret, codeId, supabaseUrl);
 
     // Record successful attempt
     await recordAttempt(supabase, clientIP, true, codeId);
