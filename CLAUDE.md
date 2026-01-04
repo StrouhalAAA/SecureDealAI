@@ -16,7 +16,7 @@ npm run test:db
 
 # Local Supabase development
 supabase start
-supabase functions serve validation-run --env-file .env.local
+supabase functions serve validation-run --env-file supabase/.env.local
 
 # Deploy Edge Function
 supabase functions deploy validation-run
@@ -25,13 +25,17 @@ supabase secrets set SUPABASE_SERVICE_ROLE_KEY=your-key
 # Database operations
 supabase db push                    # Apply migrations
 supabase link --project-ref REF    # Link to remote project
+
+# Frontend development (using npm workspaces)
+npm run dev                         # Start frontend dev server
+npm run build                       # Build frontend
 ```
 
 ## Architecture
 
 ### Core Validation Engine
 
-Located in `MVPScope/supabase/functions/validation-run/`:
+Located in `supabase/functions/validation-run/`:
 
 | File | Purpose |
 |------|---------|
@@ -44,7 +48,7 @@ Located in `MVPScope/supabase/functions/validation-run/`:
 
 ### Dynamic Rules System
 
-Rules are stored as JSON in PostgreSQL, not hardcoded. Schema defined in `MVPScope/VALIDATION_RULES_SCHEMA.json`, initial 31 rules in `MVPScope/VALIDATION_RULES_SEED.json`.
+Rules are stored as JSON in PostgreSQL, not hardcoded. Schema defined in `docs/architecture/VALIDATION_RULES_SCHEMA.json`, initial 31 rules in `docs/architecture/VALIDATION_RULES_SEED.json`.
 
 ### Validation Status Logic
 
@@ -64,11 +68,10 @@ EXACT, FUZZY (Levenshtein), CONTAINS, REGEX, NUMERIC_TOLERANCE, DATE_TOLERANCE, 
 
 ## Key Documentation
 
-- `MVPScope/README.md` - MVP overview and quick start
-- `MVPScope/IMPLEMENTATION_PLAN.md` - Architecture and phases
-- `MVPScope/VALIDATION_BACKEND_ARCHITECTURE.md` - Backend design
-- `MVPScope/RULE_MANAGEMENT_API.md` - REST API specifications
-- `MVPScope/DB_SCHEMA_DYNAMIC_RULES.sql` - PostgreSQL schema
+- `docs/architecture/IMPLEMENTATION_PLAN.md` - Architecture and phases
+- `docs/architecture/VALIDATION_BACKEND_ARCHITECTURE.md` - Backend design
+- `docs/architecture/RULE_MANAGEMENT_API.md` - REST API specifications
+- `docs/architecture/DB_SCHEMA_DYNAMIC_RULES.sql` - PostgreSQL schema
 
 ## Database Tables
 
