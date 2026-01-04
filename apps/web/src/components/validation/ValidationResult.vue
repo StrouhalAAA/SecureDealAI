@@ -12,8 +12,8 @@
     <!-- Attempt Info -->
     <div class="text-sm text-gray-500 mb-4">
       Pokus #{{ result.attempt_number }} •
-      {{ formatDate(result.completed_at) }} •
-      {{ result.duration_ms }}ms
+      {{ formatDate(result.completed_at) }}
+      <span v-if="result.duration_ms != null"> • {{ result.duration_ms }}ms</span>
     </div>
 
     <!-- Field Comparisons -->
@@ -37,10 +37,10 @@
             >
               <td class="px-4 py-3 font-medium">{{ formatFieldName(field.field) }}</td>
               <td class="px-4 py-3 font-mono text-sm">
-                {{ truncate(field.manual || field.expected, 30) }}
+                {{ truncate(field.sourceValue ?? field.manual ?? field.expected, 30) }}
               </td>
               <td class="px-4 py-3 font-mono text-sm">
-                {{ truncate(field.ocr || field.actual, 30) }}
+                {{ truncate(field.targetValue ?? field.ocr ?? field.actual, 30) }}
               </td>
               <td class="px-4 py-3">
                 <FieldStatus :field="field" />
@@ -144,8 +144,15 @@ const statusLabel = computed(() => statusConfig.value.label);
 const statusDescription = computed(() => statusConfig.value.description);
 const statusBannerClass = computed(() => statusConfig.value.bannerClass);
 
-function formatDate(date: string): string {
-  return format(new Date(date), 'dd.MM.yyyy HH:mm', { locale: cs });
+function formatDate(date: string | null | undefined): string {
+  if (!date) return '-';
+  try {
+    const d = new Date(date);
+    if (isNaN(d.getTime())) return '-';
+    return format(d, 'dd.MM.yyyy HH:mm', { locale: cs });
+  } catch {
+    return '-';
+  }
 }
 
 function formatFieldName(field: string): string {
@@ -166,8 +173,9 @@ function formatFieldName(field: string): string {
   return names[field] || field;
 }
 
-function truncate(text: string | null | undefined, length: number): string {
-  if (!text) return '-';
+function truncate(value: string | number | null | undefined, length: number): string {
+  if (value === null || value === undefined) return '-';
+  const text = String(value);
   return text.length > length ? `${text.slice(0, length)}...` : text;
 }
 

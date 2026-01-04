@@ -53,11 +53,21 @@ export interface FieldValidation {
   field: string;
   result: FieldValidationResult;
   status: ValidationStatus;
+  // New field names from validation engine
+  sourceValue?: string | number | null;
+  targetValue?: string | number | null;
+  normalizedSource?: string | number | null;
+  normalizedTarget?: string | number | null;
+  // Legacy field names (for backward compatibility)
   manual?: string | null;
   ocr?: string | null;
   expected?: string | null;
   actual?: string | null;
+  // Common fields
   similarity?: number | null;
+  ruleId?: string;
+  ruleName?: string;
+  severity?: 'CRITICAL' | 'WARNING' | 'INFO';
 }
 
 export interface ValidationIssue {
@@ -75,8 +85,8 @@ export interface ValidationResult {
   buying_opportunity_id: string;
   overall_status: ValidationStatus;
   attempt_number: number;
-  completed_at: string;
-  duration_ms: number;
+  completed_at: string | null;
+  duration_ms: number | null;
   field_validations: FieldValidation[];
   issues?: ValidationIssue[];
 }
