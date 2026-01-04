@@ -19,11 +19,8 @@ Vehicle purchase validation service - validates vehicle and vendor data by compa
 ### Installation
 
 ```bash
-# Install root dependencies
+# Install all dependencies (uses npm workspaces)
 npm install
-
-# Install frontend dependencies
-cd MVPScope/frontend && npm install
 ```
 
 ### Environment Setup
@@ -35,7 +32,7 @@ cp .env.example .env
 
 2. Copy frontend env:
 ```bash
-cp MVPScope/frontend/.env.example MVPScope/frontend/.env
+cp apps/web/.env.example apps/web/.env
 ```
 
 Required variables:
@@ -49,9 +46,11 @@ Required variables:
 #### Frontend (Vue.js)
 
 ```bash
-# Start dev server
-cd MVPScope/frontend
+# From root - using npm workspaces
 npm run dev
+
+# Or directly
+cd apps/web && npm run dev
 
 # App runs at http://localhost:5173
 ```
@@ -72,10 +71,11 @@ npm run supabase:functions:serve
 
 | Command | Description |
 |---------|-------------|
-| `npm run dev` | Start frontend dev server (from MVPScope/frontend) |
+| `npm run dev` | Start frontend dev server |
+| `npm run build` | Build frontend for production |
 | `npm run test` | Run all tests (backend + frontend) |
 | `npm run test:backend` | Run backend tests only |
-| `npm run test:frontend` | Run frontend tests only |
+| `npm run test:web` | Run frontend tests only |
 | `npm run test:e2e` | Run Playwright E2E tests |
 | `supabase start` | Start local Supabase |
 | `supabase stop` | Stop local Supabase |
@@ -100,7 +100,7 @@ supabase link --project-ref YOUR_PROJECT_REF
 
 ```bash
 # Serve locally
-supabase functions serve validation-run --env-file .env
+supabase functions serve validation-run --env-file supabase/.env.local
 
 # Deploy to production
 supabase functions deploy validation-run
@@ -110,26 +110,28 @@ supabase functions deploy validation-run
 
 ```
 SecureDealAI/
-├── MVPScope/
-│   ├── frontend/          # Vue.js frontend
-│   │   ├── src/
-│   │   │   ├── components/
-│   │   │   ├── views/
-│   │   │   ├── stores/
-│   │   │   └── lib/
-│   │   └── package.json
-│   ├── supabase/
-│   │   └── functions/     # Edge Functions
-│   └── ImplementationPlan/
+├── apps/
+│   └── web/               # Vue.js frontend
+│       ├── src/
+│       │   ├── components/
+│       │   ├── views/
+│       │   ├── stores/
+│       │   └── lib/
+│       └── package.json
 ├── supabase/
+│   ├── functions/         # Edge Functions
+│   │   └── validation-run/
 │   └── migrations/        # Database migrations
+├── docs/
+│   ├── architecture/      # Architecture documentation
+│   └── implementation/    # Implementation plans
 ├── package.json
 └── .env.example
 ```
 
 ## Documentation
 
-- [Implementation Tracker](MVPScope/ImplementationPlan/00_IMPLEMENTATION_TRACKER.md)
+- [Implementation Tracker](docs/implementation/00_IMPLEMENTATION_TRACKER.md)
 - [CLAUDE.md](CLAUDE.md) - AI assistant context
 
 ## License

@@ -12,6 +12,7 @@ export type ValidationStatus = 'GREEN' | 'ORANGE' | 'RED';
 export type ValidationResult = 'MATCH' | 'MISMATCH' | 'MISSING' | 'SKIPPED' | 'ERROR';
 
 export type EntityType =
+  | 'buying_opportunity'  // Context entity for buying_type conditions
   | 'vehicle'
   | 'vendor'
   | 'ocr_orv'
@@ -60,6 +61,7 @@ export type ConditionOperator =
   | 'LESS_THAN';
 
 export type VendorType = 'PHYSICAL_PERSON' | 'COMPANY';
+export type BuyingType = 'BRANCH' | 'MOBILE_BUYING';  // BRANCH = default (MVP), MOBILE_BUYING = Phase 2
 export type TriggerSource = 'API' | 'UI' | 'BATCH' | 'SCHEDULER' | 'WEBHOOK';
 
 // =============================================================================
@@ -100,11 +102,20 @@ export interface LocalizedMessage {
   pl?: string;
 }
 
+/** Document group keys for logical grouping of document types */
+export type DocumentGroupKey = 'VTP' | 'ORV' | 'OP';
+
 export interface RuleMetadata {
   category?: 'vehicle' | 'vendor_fo' | 'vendor_po' | 'cross' | 'external';
   phase?: 'mvp' | 'phase2' | 'future';
+  /** @deprecated Use requiresDocuments or requiresDocumentGroup instead */
   requiresDocument?: 'ORV' | 'OP' | 'VTP' | null;
-  applicableTo?: VendorType[];
+  /** Document Type IDs required for this rule. All must be present. */
+  requiresDocuments?: number[];
+  /** Document group - rule applies if ANY document in the group is present */
+  requiresDocumentGroup?: DocumentGroupKey;
+  applicableTo?: VendorType[];           // Filter by vendor type (PHYSICAL_PERSON, COMPANY)
+  applicableToBuyingType?: BuyingType[]; // Filter by buying type (BRANCH, MOBILE_BUYING)
   priority?: number;
   tags?: string[];
 }
@@ -167,23 +178,116 @@ export interface VendorData {
 }
 
 export interface OcrOrvData {
-  vin?: string;
-  registrationPlateNumber?: string;
-  make?: string;
-  model?: string;
-  keeperName?: string;
-  firstRegistrationDate?: string;
-  maxPower?: number;
-  color?: string;
+  // Core vehicle identification
+  vin?: string;                        // E. IDENTIFIKAČNÍ ČÍSLO (VIN)
+  registrationPlateNumber?: string;    // A. REGISTRAČNÍ ZNAČKA
+  firstRegistrationDate?: string;      // B. DATUM PRVNÍ REGISTRACE (YYYY-MM-DD)
+
+  // Keeper/operator info
+  keeperName?: string;                 // C.1.1./C.1.2. PROVOZOVATEL
+  keeperAddress?: string;              // C.1.3. ADRESA POBYTU/SÍDLO
+
+  // Vehicle specs
+  make?: string;                       // D.1. TOVÁRNÍ ZNAČKA
+  model?: string;                      // D.3. OBCHODNÍ OZNAČENÍ
+  makeTypeVariantVersion?: string;     // D.1. + D.2. TYP, VARIANTA, VERZE
+
+  // Technical specs
+  fuelType?: string;                   // P.3. PALIVO
+  engineCcm?: number;                  // P.1. ZDVIHOVÝ OBJEM [cm³]
+  maxPower?: string;                   // P.2. MAX. VÝKON [kW] / OT. (e.g., "228/5700")
+  seats?: number;                      // S.1. POČET MÍST K SEZENÍ
+  color?: string;                      // R. BARVA
+  vehicleType?: string;                // J. DRUH VOZIDLA
+  maxSpeed?: number;                   // T. NEJVYŠŠÍ RYCHLOST [km/h]
+
+  // Document info
+  orvDocumentNumber?: string;          // Document serial number
 }
 
 export interface OcrOpData {
-  firstName?: string;
-  lastName?: string;
-  fullName?: string;
-  personalNumber?: string;
-  dateOfBirth?: string;
-  permanentStay?: string;
+  // Personal identity (front side)
+  firstName?: string;                  // JMÉNO / GIVEN NAMES
+  lastName?: string;                   // PŘÍJMENÍ / SURNAME
+  fullName?: string;                   // Derived: firstName + lastName
+  dateOfBirth?: string;                // DATUM NAROZENÍ (YYYY-MM-DD)
+  placeOfBirth?: string;               // MÍSTO NAROZENÍ / PLACE OF BIRTH
+  nationality?: string;                // STÁTNÍ OBČANSTVÍ / NATIONALITY
+  sex?: string;                        // POHLAVÍ / SEX (M/F)
+
+  // Back side info
+  personalNumber?: string;             // RODNÉ ČÍSLO / PERSONAL NO. (######/####)
+  permanentStay?: string;              // TRVALÝ POBYT / PERMANENT STAY
+  issuingAuthority?: string;           // VYDAL / AUTHORITY
+
+  // Document info
+  documentNumber?: string;             // ČÍSLO DOKLADU / DOCUMENT NO.
+  dateOfIssue?: string;                // DATUM VYDÁNÍ (YYYY-MM-DD)
+  dateOfExpiry?: string;               // PLATNOST DO (YYYY-MM-DD)
+}
+
+/**
+ * OCR VTP Data - Technical Certificate Part II (Technický průkaz)
+ * CRITICAL: Contains owner IČO required for ARES validation
+ */
+export interface OcrVtpData {
+  // Basic Registration
+  registrationPlateNumber?: string;    // A. Registrační značka vozidla
+  firstRegistrationDate?: string;      // B. Datum první registrace (YYYY-MM-DD)
+  firstRegistrationDateCZ?: string;    // Datum první registrace v ČR (YYYY-MM-DD)
+  vtpDocumentNumber?: string;          // Document serial number (e.g., "UJ 41A767")
+
+  // Owner Info - CRITICAL for ARES validation
+  ownerName?: string;                  // C.2.1./C.2.2. Vlastník
+  ownerIco?: string;                   // RČ/IČ - Company ID for ARES validation
+  ownerAddress?: string;               // C.2.3. Adresa pobytu/sídlo
+
+  // Vehicle Identity
+  vin?: string;                        // E. Identifikační číslo vozidla (VIN)
+  make?: string;                       // D.1. Tovární značka
+  type?: string;                       // D.2. Typ
+  variant?: string;                    // Varianta
+  version?: string;                    // Verze
+  commercialName?: string;             // D.3. Obchodní označení
+  manufacturer?: string;               // 3. Výrobce vozidla
+
+  // Technical Specs
+  vehicleCategory?: string;            // J. Kategorie vozidla (e.g., "M1")
+  bodyType?: string;                   // 2. Karoserie (e.g., "AC KOMBI")
+  vehicleType?: string;                // J. Druh vozidla (e.g., "OSOBNÍ AUTOMOBIL")
+  engineType?: string;                 // 5. Typ motoru
+  color?: string;                      // R. Barva
+  fuelType?: string;                   // P.3. Palivo
+  engineCcm?: number;                  // P.1. Zdvih. objem [cm³]
+  maxPowerKw?: number;                 // P.2. Max. výkon [kW]
+  maxPowerRpm?: number;                // P.4. ot. [min⁻¹]
+
+  // Dimensions (mm)
+  length?: number;                     // 12. Celková délka
+  width?: number;                      // 13. Celková šířka
+  height?: number;                     // 14. Celková výška
+  wheelbase?: number;                  // M. Rozvor
+
+  // Weights (kg)
+  operatingWeight?: number;            // G. Provozní hmotnost
+  maxPermittedWeight?: number;         // F.2. Povolená hmotnost
+  trailerWeightBraked?: number;        // O.1. Hmotnost přívěsu brzděného
+  trailerWeightUnbraked?: number;      // O.2. Hmotnost přívěsu nebrzděného
+  combinedWeight?: number;             // F.3. Hmotnost soupravy
+
+  // Performance
+  maxSpeed?: number;                   // T. Nejvyšší rychlost [km/h]
+  seats?: number;                      // S.1. Počet míst k sezení
+  standingPlaces?: number;             // S.2. Počet míst k stání
+
+  // Environmental
+  co2Emissions?: string;               // V.7 CO₂ [g/km] (e.g., "232/155/183")
+  fuelConsumption?: string;            // 25. Spotřeba paliva (e.g., "10.0/6.7/7.9")
+  emissionStandard?: string;           // Předpis EHS/ES/EU
+
+  // Technical Inspection
+  lastInspectionDate?: string;         // OSVĚDČENÍ O TECHNICKÉ ZPŮSOBILOSTI (YYYY-MM-DD)
+  nextInspectionDue?: string;          // Platí do (YYYY-MM-DD)
 }
 
 export interface AresData {
@@ -214,12 +318,20 @@ export interface DolozkyData {
   personalData?: string;
 }
 
+export interface BuyingOpportunityData {
+  id?: string;
+  spz?: string;
+  buying_type: BuyingType;   // BRANCH (default), MOBILE_BUYING
+  status?: string;
+}
+
 export interface ValidationInputData {
+  buying_opportunity?: BuyingOpportunityData;  // Context for rule conditions
   vehicle?: VehicleData;
   vendor?: VendorData;
   ocr_orv?: OcrOrvData;
   ocr_op?: OcrOpData;
-  ocr_vtp?: Record<string, unknown>;
+  ocr_vtp?: OcrVtpData;    // VTP contains owner IČO for ARES validation
   ares?: AresData;
   adis?: AdisData;
   cebia?: CebiaData;
@@ -334,6 +446,7 @@ export const DEFAULT_ENGINE_CONFIG: EngineConfig = {
   defaultLanguage: 'cs',
   enableCaching: true,
   cacheTtlSeconds: {
+    buying_opportunity: 0,  // No caching - always fresh
     vehicle: 0,
     vendor: 0,
     ocr_orv: 604800,    // 7 days

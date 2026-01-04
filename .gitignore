@@ -6,8 +6,7 @@
 # Supabase environment files
 supabase/.env
 supabase/.env.local
-MVPScope/supabase/.env
-MVPScope/supabase/.env.local
+supabase/.temp/
 
 # Dependencies
 node_modules/
@@ -16,6 +15,7 @@ node_modules/
 dist/
 build/
 .next/
+apps/web/dist/
 
 # IDE
 .idea/
@@ -30,3 +30,7 @@ Thumbs.db
 # Logs
 *.log
 npm-debug.log*
+
+# Agent outputs with secrets
+agents/
+AgenticCoding/
