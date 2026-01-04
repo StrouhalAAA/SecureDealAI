@@ -1,20 +1,27 @@
 <template>
-  <div class="min-h-screen bg-gray-50">
-    <!-- Header -->
-    <header class="bg-white shadow">
-      <div class="max-w-7xl mx-auto px-4 py-6 flex justify-between items-center">
-        <h1 class="text-2xl font-bold text-gray-900">SecureDealAI</h1>
-        <button
-          @click="openCreateModal"
-          class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
-        >
-          + Nová příležitost
-        </button>
-      </div>
-    </header>
+  <div>
+    <!-- App Description Section -->
+    <section class="bg-blue-50 border border-blue-100 rounded-lg p-4 mb-6">
+      <h2 class="text-lg font-semibold text-blue-900 mb-2">O aplikaci</h2>
+      <ul class="text-sm text-blue-800 space-y-1">
+        <li>• Tato aplikace slouží k simulaci procesu nákupu vozidel</li>
+        <li>• Umožňuje validovat data podle definovaných pravidel</li>
+        <li>• Podporuje tvorbu nových validačních pravidel pro end-to-end testování</li>
+      </ul>
+    </section>
+
+    <!-- Action Bar -->
+    <div class="flex justify-between items-center mb-6">
+      <h2 class="text-xl font-semibold text-gray-900">Příležitosti k nákupu</h2>
+      <button
+        @click="openCreateModal"
+        class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+      >
+        + Nová příležitost
+      </button>
+    </div>
 
     <!-- Main Content -->
-    <main class="max-w-7xl mx-auto px-4 py-8">
       <!-- Search -->
       <div class="mb-6">
         <div class="flex gap-2">
@@ -23,6 +30,7 @@
             type="text"
             placeholder="Hledat podle SPZ..."
             class="flex-1 px-4 py-2 border rounded-lg"
+            aria-label="Vyhledávání příležitostí podle SPZ"
             @keyup.enter="search"
           />
           <button
@@ -116,7 +124,6 @@
           </div>
         </div>
       </div>
-    </main>
 
     <!-- Create Modal -->
     <CreateOpportunityModal

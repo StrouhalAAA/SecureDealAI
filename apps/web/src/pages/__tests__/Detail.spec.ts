@@ -256,7 +256,7 @@ describe('Detail Page - Loading State', () => {
     const wrapper = mount(Detail, { global: { plugins: [router] } })
     await flushPromises()
 
-    expect(wrapper.text()).toContain('Nacitani')
+    expect(wrapper.text()).toContain('Načítání')
   })
 })
 
