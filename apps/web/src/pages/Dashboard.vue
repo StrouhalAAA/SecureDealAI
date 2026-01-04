@@ -195,8 +195,15 @@ async function fetchOpportunities() {
   }
 }
 
-function formatDate(dateString: string): string {
-  return format(new Date(dateString), 'dd.MM.yyyy', { locale: cs });
+function formatDate(dateString: string | null | undefined): string {
+  if (!dateString) return '-';
+  try {
+    const d = new Date(dateString);
+    if (isNaN(d.getTime())) return '-';
+    return format(d, 'dd.MM.yyyy', { locale: cs });
+  } catch {
+    return '-';
+  }
 }
 
 function openDetail(id: string) {
