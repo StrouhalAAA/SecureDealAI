@@ -4,6 +4,87 @@ This document provides guidance for starting new implementations in the SecureDe
 
 ---
 
+## SecureDealAI ADWS Scripts
+
+Custom automation scripts adapted for the SecureDealAI project structure.
+
+### Quick Start
+
+```bash
+# Run a single task
+uv run ADWS/run_task.py 02_06
+
+# Run a single task with --dry-run to see what would happen
+uv run ADWS/run_task.py 02_06 --dry-run --skip-deps
+
+# Run all tasks in a phase
+uv run ADWS/run_phase.py 1
+
+# Run phase with dry-run
+uv run ADWS/run_phase.py 2 --dry-run
+```
+
+### Available Scripts
+
+| Script | Purpose | Usage |
+|--------|---------|-------|
+| `run_task.py` | Run a single implementation task | `uv run ADWS/run_task.py <task_id>` |
+| `run_phase.py` | Run all tasks in a phase | `uv run ADWS/run_phase.py <phase>` |
+
+### run_task.py Options
+
+| Option | Description |
+|--------|-------------|
+| `--dry-run` | Show what would be done without executing |
+| `--resume` | Resume from last state |
+| `--skip-deps` | Skip dependency checking |
+| `--issue N` | Link to GitHub issue number |
+
+### run_phase.py Options
+
+| Option | Description |
+|--------|-------------|
+| `--dry-run` | Show what would be done without executing |
+| `--skip-completed` | Skip already completed tasks |
+| `--continue` | Continue running after a task failure |
+| `--skip-deps` | Skip dependency checking |
+
+### Task ID Format
+
+Tasks use format `XX_YY` where `XX` is phase and `YY` is task number:
+- `01_01` = Phase 1, Task 1 (Database Schema)
+- `02_06` = Phase 2, Task 6 (OCR Extract Mistral)
+- `03_09` = Phase 3, Task 9 (Detail Page)
+
+### File Structure
+
+```
+ADWS/
+├── run_task.py           # Single task runner
+├── run_phase.py          # Phase runner (batch)
+├── REFERENCE.md          # This file
+└── adw_modules/
+    ├── __init__.py
+    ├── agent.py          # Claude CLI wrapper
+    ├── data_types.py     # Type definitions
+    ├── state.py          # Workflow state management
+    ├── task_parser.py    # Implementation plan parser
+    └── utils.py          # Utility functions
+```
+
+### Output Logs
+
+All execution logs are written to `agents/{adw_id}/`:
+```
+agents/
+└── a1b2c3d4/             # Unique ADW ID per run
+    ├── adw_state.json    # Workflow state
+    └── run_task/
+        └── execution.log # Detailed execution log
+```
+
+---
+
 ## Current Setup Overview
 
 ### Your `.claude/` Folder
