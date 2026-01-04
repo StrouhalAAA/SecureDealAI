@@ -31,8 +31,9 @@ class ADWState:
         valid_fields = {
             "adw_id", "task_id", "task_name", "phase", "plan_file",
             "status", "current_step", "total_steps", "started_at",
-            "completed_at", "issue_number", "validation_results",
-            "dependencies", "dependencies_met", "error_message"
+            "completed_at", "issue_number", "issue_url", "repo_path",
+            "validation_results", "dependencies", "dependencies_met",
+            "error_message"
         }
         for key, value in kwargs.items():
             if key in valid_fields:

@@ -1,0 +1,1128 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SecureDealAI - Správa validačních pravidel</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'Consolas', 'monospace'],
+                    },
+                    colors: {
+                        primary: {
+                            100: '#DBEAFE',
+                            600: '#2563EB',
+                            700: '#1D4ED8',
+                        },
+                        status: {
+                            green: { bg: '#D1FAE5', text: '#065F46', badge: '#10B981' },
+                            orange: { bg: '#FFEDD5', text: '#9A3412', badge: '#F97316' },
+                            red: { bg: '#FEE2E2', text: '#991B1B', badge: '#EF4444' },
+                            gray: { bg: '#F3F4F6', text: '#374151', badge: '#6B7280' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Status badges */
+        .badge-critical { background-color: #FEE2E2; color: #991B1B; }
+        .badge-warning { background-color: #FFEDD5; color: #9A3412; }
+        .badge-info { background-color: #DBEAFE; color: #1E40AF; }
+        .badge-active { background-color: #D1FAE5; color: #065F46; }
+        .badge-inactive { background-color: #F3F4F6; color: #6B7280; }
+        .badge-draft { background-color: #FEF3C7; color: #92400E; }
+
+        /* Entity type badges */
+        .badge-vehicle { background-color: #E0E7FF; color: #3730A3; }
+        .badge-vendor { background-color: #FCE7F3; color: #9D174D; }
+        .badge-ares { background-color: #CFFAFE; color: #155E75; }
+        .badge-ocr { background-color: #FEF9C3; color: #854D0E; }
+
+        /* Table styles */
+        .table-hover tbody tr:hover { background-color: #F9FAFB; cursor: pointer; }
+        .sticky-head { position: sticky; top: 0; z-index: 10; }
+
+        /* Tooltip */
+        .tooltip-container { position: relative; }
+        .tooltip-text {
+            position: absolute;
+            background: #1F2937;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            bottom: calc(100% + 8px);
+            left: 50%;
+            transform: translateX(-50%);
+            white-space: nowrap;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.2s;
+            font-size: 12px;
+            max-width: 300px;
+            white-space: normal;
+            z-index: 50;
+        }
+        .tooltip-container:hover .tooltip-text { opacity: 1; visibility: visible; }
+
+        /* Modal */
+        .modal-backdrop {
+            background-color: rgba(0, 0, 0, 0.5);
+        }
+
+        /* Code blocks */
+        .code-block {
+            background-color: #1F2937;
+            color: #E5E7EB;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            border-radius: 6px;
+            padding: 16px;
+            overflow-x: auto;
+        }
+
+        /* Transforms/Comparators chips */
+        .chip {
+            display: inline-flex;
+            align-items: center;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 500;
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .chip-transform { background-color: #EDE9FE; color: #5B21B6; }
+        .chip-comparator { background-color: #ECFDF5; color: #047857; }
+    </style>
+</head>
+<body class="bg-gray-50 font-sans">
+    <!-- Header -->
+    <header class="bg-white shadow-sm border-b border-gray-200">
+        <div class="px-6 py-4">
+            <div class="flex justify-between items-center">
+                <div class="flex items-center space-x-4">
+                    <a href="#" class="text-gray-500 hover:text-gray-700">
+                        <i class="fas fa-arrow-left"></i>
+                    </a>
+                    <div>
+                        <h1 class="text-xl font-semibold text-gray-900">Validační pravidla</h1>
+                        <p class="text-sm text-gray-500">Správa a konfigurace pravidel pro validaci dat</p>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <button class="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+                        <i class="fas fa-download mr-2"></i>Export
+                    </button>
+                    <button class="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+                        <i class="fas fa-upload mr-2"></i>Import
+                    </button>
+                    <button onclick="openModal('addRuleModal')" class="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors">
+                        <i class="fas fa-plus mr-2"></i>Nové pravidlo
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Stats Bar -->
+    <div class="bg-white border-b border-gray-200 px-6 py-3">
+        <div class="flex items-center space-x-8">
+            <div class="flex items-center space-x-2">
+                <span class="text-2xl font-bold text-gray-900">35</span>
+                <span class="text-sm text-gray-500">pravidel celkem</span>
+            </div>
+            <div class="h-8 w-px bg-gray-200"></div>
+            <div class="flex items-center space-x-2">
+                <span class="w-3 h-3 rounded-full bg-green-500"></span>
+                <span class="text-sm font-medium text-gray-700">25 aktivních</span>
+            </div>
+            <div class="flex items-center space-x-2">
+                <span class="w-3 h-3 rounded-full bg-gray-400"></span>
+                <span class="text-sm font-medium text-gray-700">10 neaktivních</span>
+            </div>
+            <div class="h-8 w-px bg-gray-200"></div>
+            <div class="flex items-center space-x-4">
+                <div class="flex items-center space-x-1">
+                    <span class="px-2 py-0.5 badge-critical rounded text-xs font-medium">CRITICAL</span>
+                    <span class="text-sm text-gray-600">21</span>
+                </div>
+                <div class="flex items-center space-x-1">
+                    <span class="px-2 py-0.5 badge-warning rounded text-xs font-medium">WARNING</span>
+                    <span class="text-sm text-gray-600">13</span>
+                </div>
+                <div class="flex items-center space-x-1">
+                    <span class="px-2 py-0.5 badge-info rounded text-xs font-medium">INFO</span>
+                    <span class="text-sm text-gray-600">1</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="flex">
+        <!-- Table Section -->
+        <div class="flex-1 p-6">
+            <!-- Search & Quick Filters -->
+            <div class="bg-white rounded-lg border border-gray-200 p-4 mb-4">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-4 flex-1">
+                        <div class="relative flex-1 max-w-md">
+                            <input type="text" placeholder="Hledat pravidla (ID, název, popis)..."
+                                   class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-600 focus:border-primary-600 outline-none">
+                            <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                        </div>
+
+                        <!-- Quick Filter Chips -->
+                        <div class="flex items-center space-x-2">
+                            <button class="px-3 py-1.5 bg-primary-100 text-primary-700 rounded-full text-sm font-medium hover:bg-primary-200 transition-colors">
+                                Vše
+                            </button>
+                            <button class="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-full text-sm font-medium hover:bg-gray-200 transition-colors">
+                                Vozidlo
+                            </button>
+                            <button class="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-full text-sm font-medium hover:bg-gray-200 transition-colors">
+                                Dodavatel
+                            </button>
+                            <button class="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-full text-sm font-medium hover:bg-gray-200 transition-colors">
+                                ARES
+                            </button>
+                            <button class="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-full text-sm font-medium hover:bg-gray-200 transition-colors">
+                                OCR
+                            </button>
+                        </div>
+                    </div>
+
+                    <button class="flex items-center space-x-2 px-3 py-2 text-gray-600 hover:text-gray-900">
+                        <i class="fas fa-filter"></i>
+                        <span class="text-sm">Filtry</span>
+                        <span class="px-1.5 py-0.5 bg-primary-600 text-white text-xs rounded-full">2</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Rules Table -->
+            <div class="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200 table-hover">
+                        <thead class="bg-gray-50 sticky-head">
+                            <tr>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-28">
+                                    <div class="flex items-center space-x-1 cursor-pointer hover:text-gray-700">
+                                        <span>ID</span>
+                                        <i class="fas fa-sort text-gray-400"></i>
+                                    </div>
+                                </th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Název pravidla
+                                </th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-28">
+                                    Závažnost
+                                </th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">
+                                    Stav
+                                </th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Zdroj → Cíl
+                                </th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32">
+                                    Porovnání
+                                </th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">
+                                    Fáze
+                                </th>
+                                <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-28">
+                                    Akce
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            <!-- Row 1: VEH-001 -->
+                            <tr class="hover:bg-gray-50" onclick="openModal('ruleDetailModal')">
+                                <td class="px-4 py-3">
+                                    <span class="font-mono text-sm font-medium text-primary-600">VEH-001</span>
+                                </td>
+                                <td class="px-4 py-3">
+                                    <div>
+                                        <div class="text-sm font-medium text-gray-900">VIN shoda</div>
+                                        <div class="text-xs text-gray-500">Porovnání VIN z manuálního vstupu s OCR z ORV</div>
+                                    </div>
+                                </td>
+                                <td class="px-4 py-3">
+                                    <span class="px-2 py-1 badge-critical rounded-full text-xs font-medium">
+                                        CRITICAL
+                                    </span>
+                                </td>
+                                <td class="px-4 py-3">
+                                    <span class="px-2 py-1 badge-active rounded-full text-xs font-medium">
+                                        <i class="fas fa-check-circle mr-1"></i>Aktivní
+                                    </span>
+                                </td>
+                                <td class="px-4 py-3">
+                                    <div class="flex items-center space-x-2 text-sm">
+                                        <span class="px-2 py-0.5 badge-vehicle rounded text-xs">vehicle</span>
+                                        <i class="fas fa-arrow-right text-gray-400 text-xs"></i>
+                                        <span class="px-2 py-0.5 badge-ocr rounded text-xs">ocr_orv</span>
+                                    </div>
+                                    <div class="text-xs text-gray-500 mt-1 font-mono">vin → vin</div>
+                                </td>
+                                <td class="px-4 py-3">
+                                    <span class="chip chip-comparator">EXACT</span>
+                                </td>
+                                <td class="px-4 py-3">
+                                    <span class="text-xs text-gray-600">MVP</span>
+                                </td>
+                                <td class="px-4 py-3">
+                                    <div class="flex justify-center space-x-1">
+                                        <button class="p-1.5 text-gray-500 hover:text-primary-600 hover:bg-primary-50 rounded" title="Upravit">
+                                            <i class="fas fa-edit text-sm"></i>
+                                        </button>
+                                        <button class="p-1.5 text-gray-500 hover:text-purple-600 hover:bg-purple-50 rounded" title="Testovat">
+                                            <i class="fas fa-flask text-sm"></i>
+                                        </button>
+                                        <button class="p-1.5 text-gray-500 hover:text-amber-600 hover:bg-amber-50 rounded" title="Historie">
+                                            <i class="fas fa-history text-sm"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+
+                            <!-- Row 2: VEH-002 -->
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-4 py-3">
+                                    <span class="font-mono text-sm font-medium text-primary-600">VEH-002</span>
+                                </td>
+                                <td class="px-4 py-3">
+                                    <div>
+                                        <div class="text-sm font-medium text-gray-900">SPZ shoda</div>
+                                        <div class="text-xs text-gray-500">Porovnání SPZ z manuálního vstupu s OCR z ORV</div>
+                                    </div>
+                                </td>
+                                <td class="px-4 py-3">
+                                    <span class="px-2 py-1 badge-critical rounded-full text-xs font-medium">
+                                        CRITICAL
+                                    </span>
+                                </td>
+                                <td class="px-4 py-3">
+                                    <span class="px-2 py-1 badge-active rounded-full text-xs font-medium">
+                                        <i class="fas fa-check-circle mr-1"></i>Aktivní
+                                    </span>
+                                </td>
+                                <td class="px-4 py-3">
+                                    <div class="flex items-center space-x-2 text-sm">
+                                        <span class="px-2 py-0.5 badge-vehicle rounded text-xs">vehicle</span>
+                                        <i class="fas fa-arrow-right text-gray-400 text-xs"></i>
+                                        <span class="px-2 py-0.5 badge-ocr rounded text-xs">ocr_orv</span>
+                                    </div>
+                                    <div class="text-xs text-gray-500 mt-1 font-mono">spz → registration_plate</div>
+                                </td>
+                                <td class="px-4 py-3">
+                                    <div class="flex flex-col space-y-1">
+                                        <span class="chip chip-comparator">EXACT</span>
+                                        <span class="chip chip-transform">SPZ_NORMALIZE</span>
+                                    </div>
+                                </td>
+                                <td class="px-4 py-3">
+                                    <span class="text-xs text-gray-600">MVP</span>
+                                </td>
+                                <td class="px-4 py-3">
+                                    <div class="flex justify-center space-x-1">
+                                        <button class="p-1.5 text-gray-500 hover:text-primary-600 hover:bg-primary-50 rounded" title="Upravit">
+                                            <i class="fas fa-edit text-sm"></i>
+                                        </button>
+                                        <button class="p-1.5 text-gray-500 hover:text-purple-600 hover:bg-purple-50 rounded" title="Testovat">
+                                            <i class="fas fa-flask text-sm"></i>
+                                        </button>
+                                        <button class="p-1.5 text-gray-500 hover:text-amber-600 hover:bg-amber-50 rounded" title="Historie">
+                                            <i class="fas fa-history text-sm"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+
+                            <!-- Row 3: VEH-003 -->
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-4 py-3">
+                                    <span class="font-mono text-sm font-medium text-primary-600">VEH-003</span>
+                                </td>
+                                <td class="px-4 py-3">
+                                    <div>
+                                        <div class="text-sm font-medium text-gray-900">Majitel / Provozovatel shoda</div>
+                                        <div class="text-xs text-gray-500">Fuzzy porovnání jména majitele/provozovatele</div>
+                                    </div>
+                                </td>
+                                <td class="px-4 py-3">
+                                    <span class="px-2 py-1 badge-warning rounded-full text-xs font-medium">
+                                        WARNING
+                                    </span>
+                                </td>
+                                <td class="px-4 py-3">
+                                    <span class="px-2 py-1 badge-active rounded-full text-xs font-medium">
+                                        <i class="fas fa-check-circle mr-1"></i>Aktivní
+                                    </span>
+                                </td>
+                                <td class="px-4 py-3">
+                                    <div class="flex items-center space-x-2 text-sm">
+                                        <span class="px-2 py-0.5 badge-vehicle rounded text-xs">vehicle</span>
+                                        <i class="fas fa-arrow-right text-gray-400 text-xs"></i>
+                                        <span class="px-2 py-0.5 badge-ocr rounded text-xs">ocr_orv</span>
+                                    </div>
+                                    <div class="text-xs text-gray-500 mt-1 font-mono">owner_name → owner</div>
+                                </td>
+                                <td class="px-4 py-3">
+                                    <div class="flex flex-col space-y-1">
+                                        <span class="chip chip-comparator">FUZZY</span>
+                                        <span class="chip chip-transform">NAME_NORMALIZE</span>
+                                    </div>
+                                </td>
+                                <td class="px-4 py-3">
+                                    <span class="text-xs text-gray-600">MVP</span>
+                                </td>
+                                <td class="px-4 py-3">
+                                    <div class="flex justify-center space-x-1">
+                                        <button class="p-1.5 text-gray-500 hover:text-primary-600 hover:bg-primary-50 rounded" title="Upravit">
+                                            <i class="fas fa-edit text-sm"></i>
+                                        </button>
+                                        <button class="p-1.5 text-gray-500 hover:text-purple-600 hover:bg-purple-50 rounded" title="Testovat">
+                                            <i class="fas fa-flask text-sm"></i>
+                                        </button>
+                                        <button class="p-1.5 text-gray-500 hover:text-amber-600 hover:bg-amber-50 rounded" title="Historie">
+                                            <i class="fas fa-history text-sm"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+
+                            <!-- Row 4: ARES-001 -->
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-4 py-3">
+                                    <span class="font-mono text-sm font-medium text-primary-600">ARES-001</span>
+                                </td>
+                                <td class="px-4 py-3">
+                                    <div>
+                                        <div class="text-sm font-medium text-gray-900">Subjekt existuje v ARES</div>
+                                        <div class="text-xs text-gray-500">Ověření existence IČO v registru ARES</div>
+                                    </div>
+                                </td>
+                                <td class="px-4 py-3">
+                                    <span class="px-2 py-1 badge-critical rounded-full text-xs font-medium">
+                                        CRITICAL
+                                    </span>
+                                </td>
+                                <td class="px-4 py-3">
+                                    <span class="px-2 py-1 badge-active rounded-full text-xs font-medium">
+                                        <i class="fas fa-check-circle mr-1"></i>Aktivní
+                                    </span>
+                                </td>
+                                <td class="px-4 py-3">
+                                    <div class="flex items-center space-x-2 text-sm">
+                                        <span class="px-2 py-0.5 badge-vendor rounded text-xs">vendor</span>
+                                        <i class="fas fa-arrow-right text-gray-400 text-xs"></i>
+                                        <span class="px-2 py-0.5 badge-ares rounded text-xs">ares</span>
+                                    </div>
+                                    <div class="text-xs text-gray-500 mt-1 font-mono">ico → ico</div>
+                                </td>
+                                <td class="px-4 py-3">
+                                    <span class="chip chip-comparator">EXISTS</span>
+                                </td>
+                                <td class="px-4 py-3">
+                                    <span class="text-xs text-gray-600">MVP</span>
+                                </td>
+                                <td class="px-4 py-3">
+                                    <div class="flex justify-center space-x-1">
+                                        <button class="p-1.5 text-gray-500 hover:text-primary-600 hover:bg-primary-50 rounded" title="Upravit">
+                                            <i class="fas fa-edit text-sm"></i>
+                                        </button>
+                                        <button class="p-1.5 text-gray-500 hover:text-purple-600 hover:bg-purple-50 rounded" title="Testovat">
+                                            <i class="fas fa-flask text-sm"></i>
+                                        </button>
+                                        <button class="p-1.5 text-gray-500 hover:text-amber-600 hover:bg-amber-50 rounded" title="Historie">
+                                            <i class="fas fa-history text-sm"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+
+                            <!-- Row 5: CEB-001 (Inactive Phase 2) -->
+                            <tr class="hover:bg-gray-50 opacity-60">
+                                <td class="px-4 py-3">
+                                    <span class="font-mono text-sm font-medium text-gray-500">CEB-001</span>
+                                </td>
+                                <td class="px-4 py-3">
+                                    <div>
+                                        <div class="text-sm font-medium text-gray-700">CEBIA - Kontrola exekucí</div>
+                                        <div class="text-xs text-gray-500">Ověření vozidla v registru exekucí CEBIA</div>
+                                    </div>
+                                </td>
+                                <td class="px-4 py-3">
+                                    <span class="px-2 py-1 badge-critical rounded-full text-xs font-medium">
+                                        CRITICAL
+                                    </span>
+                                </td>
+                                <td class="px-4 py-3">
+                                    <span class="px-2 py-1 badge-inactive rounded-full text-xs font-medium">
+                                        <i class="fas fa-pause-circle mr-1"></i>Neaktivní
+                                    </span>
+                                </td>
+                                <td class="px-4 py-3">
+                                    <div class="flex items-center space-x-2 text-sm">
+                                        <span class="px-2 py-0.5 badge-vehicle rounded text-xs">vehicle</span>
+                                        <i class="fas fa-arrow-right text-gray-400 text-xs"></i>
+                                        <span class="px-2 py-0.5 bg-orange-100 text-orange-800 rounded text-xs">cebia</span>
+                                    </div>
+                                    <div class="text-xs text-gray-500 mt-1 font-mono">vin → vin</div>
+                                </td>
+                                <td class="px-4 py-3">
+                                    <span class="chip chip-comparator">NOT_EXISTS</span>
+                                </td>
+                                <td class="px-4 py-3">
+                                    <span class="px-2 py-0.5 bg-purple-100 text-purple-800 rounded text-xs font-medium">Phase 2</span>
+                                </td>
+                                <td class="px-4 py-3">
+                                    <div class="flex justify-center space-x-1">
+                                        <button class="p-1.5 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded" title="Upravit">
+                                            <i class="fas fa-edit text-sm"></i>
+                                        </button>
+                                        <button class="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded" title="Aktivovat">
+                                            <i class="fas fa-play text-sm"></i>
+                                        </button>
+                                        <button class="p-1.5 text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded" title="Historie">
+                                            <i class="fas fa-history text-sm"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+
+                            <!-- Row 6: DPH-001 -->
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-4 py-3">
+                                    <span class="font-mono text-sm font-medium text-primary-600">DPH-001</span>
+                                </td>
+                                <td class="px-4 py-3">
+                                    <div>
+                                        <div class="text-sm font-medium text-gray-900">Plátce DPH - ADIS</div>
+                                        <div class="text-xs text-gray-500">Ověření statusu plátce DPH v registru ADIS</div>
+                                    </div>
+                                </td>
+                                <td class="px-4 py-3">
+                                    <span class="px-2 py-1 badge-warning rounded-full text-xs font-medium">
+                                        WARNING
+                                    </span>
+                                </td>
+                                <td class="px-4 py-3">
+                                    <span class="px-2 py-1 badge-active rounded-full text-xs font-medium">
+                                        <i class="fas fa-check-circle mr-1"></i>Aktivní
+                                    </span>
+                                </td>
+                                <td class="px-4 py-3">
+                                    <div class="flex items-center space-x-2 text-sm">
+                                        <span class="px-2 py-0.5 badge-vendor rounded text-xs">vendor</span>
+                                        <i class="fas fa-arrow-right text-gray-400 text-xs"></i>
+                                        <span class="px-2 py-0.5 bg-teal-100 text-teal-800 rounded text-xs">adis</span>
+                                    </div>
+                                    <div class="text-xs text-gray-500 mt-1 font-mono">dic → dic</div>
+                                </td>
+                                <td class="px-4 py-3">
+                                    <span class="chip chip-comparator">EXISTS</span>
+                                </td>
+                                <td class="px-4 py-3">
+                                    <span class="text-xs text-gray-600">MVP</span>
+                                </td>
+                                <td class="px-4 py-3">
+                                    <div class="flex justify-center space-x-1">
+                                        <button class="p-1.5 text-gray-500 hover:text-primary-600 hover:bg-primary-50 rounded" title="Upravit">
+                                            <i class="fas fa-edit text-sm"></i>
+                                        </button>
+                                        <button class="p-1.5 text-gray-500 hover:text-purple-600 hover:bg-purple-50 rounded" title="Testovat">
+                                            <i class="fas fa-flask text-sm"></i>
+                                        </button>
+                                        <button class="p-1.5 text-gray-500 hover:text-amber-600 hover:bg-amber-50 rounded" title="Historie">
+                                            <i class="fas fa-history text-sm"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination -->
+                <div class="flex justify-between items-center px-4 py-3 border-t border-gray-200 bg-gray-50">
+                    <div class="text-sm text-gray-700">
+                        Zobrazeno <span class="font-medium">1-6</span> z <span class="font-medium">35</span> pravidel
+                    </div>
+                    <div class="flex items-center space-x-1">
+                        <button class="px-3 py-1 border border-gray-300 rounded-lg hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                            <i class="fas fa-chevron-left text-sm"></i>
+                        </button>
+                        <button class="px-3 py-1 border border-primary-600 bg-primary-600 text-white rounded-lg">1</button>
+                        <button class="px-3 py-1 border border-gray-300 rounded-lg hover:bg-gray-100">2</button>
+                        <button class="px-3 py-1 border border-gray-300 rounded-lg hover:bg-gray-100">3</button>
+                        <span class="px-2 text-gray-500">...</span>
+                        <button class="px-3 py-1 border border-gray-300 rounded-lg hover:bg-gray-100">6</button>
+                        <button class="px-3 py-1 border border-gray-300 rounded-lg hover:bg-gray-100">
+                            <i class="fas fa-chevron-right text-sm"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Sidebar - Filters -->
+        <div class="w-80 bg-white border-l border-gray-200 p-4 hidden lg:block">
+            <div class="sticky top-4">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">
+                    <i class="fas fa-sliders-h mr-2 text-gray-500"></i>Pokročilé filtry
+                </h3>
+
+                <!-- Severity Filter -->
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Závažnost</label>
+                    <div class="space-y-2">
+                        <label class="flex items-center">
+                            <input type="checkbox" checked class="rounded text-primary-600 focus:ring-primary-500">
+                            <span class="ml-2 text-sm text-gray-700 flex items-center">
+                                <span class="w-2 h-2 rounded-full bg-red-500 mr-2"></span>CRITICAL
+                            </span>
+                        </label>
+                        <label class="flex items-center">
+                            <input type="checkbox" checked class="rounded text-primary-600 focus:ring-primary-500">
+                            <span class="ml-2 text-sm text-gray-700 flex items-center">
+                                <span class="w-2 h-2 rounded-full bg-orange-500 mr-2"></span>WARNING
+                            </span>
+                        </label>
+                        <label class="flex items-center">
+                            <input type="checkbox" checked class="rounded text-primary-600 focus:ring-primary-500">
+                            <span class="ml-2 text-sm text-gray-700 flex items-center">
+                                <span class="w-2 h-2 rounded-full bg-blue-500 mr-2"></span>INFO
+                            </span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Status Filter -->
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Stav</label>
+                    <select class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-600 focus:border-primary-600 outline-none">
+                        <option value="">Všechny stavy</option>
+                        <option value="active" selected>Aktivní</option>
+                        <option value="inactive">Neaktivní</option>
+                        <option value="draft">Draft</option>
+                    </select>
+                </div>
+
+                <!-- Phase Filter -->
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Fáze</label>
+                    <select class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-600 focus:border-primary-600 outline-none">
+                        <option value="">Všechny fáze</option>
+                        <option value="mvp" selected>MVP</option>
+                        <option value="phase2">Phase 2</option>
+                    </select>
+                </div>
+
+                <!-- Source Entity Filter -->
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Zdrojová entita</label>
+                    <select class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-600 focus:border-primary-600 outline-none">
+                        <option value="">Všechny entity</option>
+                        <option value="vehicle">vehicle</option>
+                        <option value="vendor">vendor</option>
+                        <option value="buying_opportunity">buying_opportunity</option>
+                    </select>
+                </div>
+
+                <!-- Comparator Filter -->
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Typ porovnání</label>
+                    <div class="space-y-2">
+                        <label class="flex items-center">
+                            <input type="checkbox" class="rounded text-primary-600 focus:ring-primary-500">
+                            <span class="ml-2 text-sm text-gray-700 font-mono">EXACT</span>
+                        </label>
+                        <label class="flex items-center">
+                            <input type="checkbox" class="rounded text-primary-600 focus:ring-primary-500">
+                            <span class="ml-2 text-sm text-gray-700 font-mono">FUZZY</span>
+                        </label>
+                        <label class="flex items-center">
+                            <input type="checkbox" class="rounded text-primary-600 focus:ring-primary-500">
+                            <span class="ml-2 text-sm text-gray-700 font-mono">EXISTS</span>
+                        </label>
+                        <label class="flex items-center">
+                            <input type="checkbox" class="rounded text-primary-600 focus:ring-primary-500">
+                            <span class="ml-2 text-sm text-gray-700 font-mono">CONTAINS</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Active Filters -->
+                <div class="mb-4">
+                    <div class="text-sm font-medium text-gray-700 mb-2">Aktivní filtry:</div>
+                    <div class="flex flex-wrap gap-2">
+                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-primary-100 text-primary-800">
+                            Stav: Aktivní
+                            <button class="ml-1.5 text-primary-600 hover:text-primary-800">
+                                <i class="fas fa-times text-xs"></i>
+                            </button>
+                        </span>
+                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            Fáze: MVP
+                            <button class="ml-1.5 text-green-600 hover:text-green-800">
+                                <i class="fas fa-times text-xs"></i>
+                            </button>
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Clear Filters -->
+                <button class="w-full px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors">
+                    <i class="fas fa-times mr-2"></i>Zrušit všechny filtry
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Rule Detail Modal -->
+    <div id="ruleDetailModal" class="fixed inset-0 z-50 hidden">
+        <div class="modal-backdrop absolute inset-0" onclick="closeModal('ruleDetailModal')"></div>
+        <div class="absolute inset-4 md:inset-10 lg:inset-20 bg-white rounded-xl shadow-2xl overflow-hidden flex flex-col">
+            <!-- Modal Header -->
+            <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-gray-50">
+                <div class="flex items-center space-x-4">
+                    <span class="font-mono text-lg font-bold text-primary-600">VEH-001</span>
+                    <span class="px-2 py-1 badge-critical rounded-full text-xs font-medium">CRITICAL</span>
+                    <span class="px-2 py-1 badge-active rounded-full text-xs font-medium">
+                        <i class="fas fa-check-circle mr-1"></i>Aktivní
+                    </span>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <button class="px-3 py-1.5 text-purple-600 bg-purple-50 hover:bg-purple-100 rounded-lg text-sm font-medium transition-colors">
+                        <i class="fas fa-flask mr-1"></i>Testovat pravidlo
+                    </button>
+                    <button class="px-3 py-1.5 text-primary-600 bg-primary-50 hover:bg-primary-100 rounded-lg text-sm font-medium transition-colors">
+                        <i class="fas fa-edit mr-1"></i>Upravit
+                    </button>
+                    <button onclick="closeModal('ruleDetailModal')" class="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Modal Content -->
+            <div class="flex-1 overflow-y-auto p-6">
+                <div class="max-w-4xl mx-auto space-y-6">
+                    <!-- Basic Info -->
+                    <div class="bg-gray-50 rounded-lg p-4">
+                        <h3 class="text-lg font-semibold text-gray-900 mb-3">VIN shoda</h3>
+                        <p class="text-gray-600">Porovnání VIN (Vehicle Identification Number) z manuálního vstupu s hodnotou extrahovanou OCR z ORV (Osvědčení o registraci vozidla).</p>
+                    </div>
+
+                    <!-- Source & Target -->
+                    <div class="grid grid-cols-2 gap-6">
+                        <div class="bg-white border border-gray-200 rounded-lg p-4">
+                            <h4 class="text-sm font-medium text-gray-500 uppercase tracking-wider mb-3">Zdroj (Source)</h4>
+                            <div class="space-y-2">
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">Entita:</span>
+                                    <span class="px-2 py-0.5 badge-vehicle rounded text-xs font-medium">vehicle</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">Pole:</span>
+                                    <span class="font-mono text-sm">vin</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">Transformace:</span>
+                                    <span class="chip chip-transform">VIN_NORMALIZE</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-white border border-gray-200 rounded-lg p-4">
+                            <h4 class="text-sm font-medium text-gray-500 uppercase tracking-wider mb-3">Cíl (Target)</h4>
+                            <div class="space-y-2">
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">Entita:</span>
+                                    <span class="px-2 py-0.5 badge-ocr rounded text-xs font-medium">ocr_orv</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">Pole:</span>
+                                    <span class="font-mono text-sm">vin</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">Transformace:</span>
+                                    <span class="chip chip-transform">VIN_NORMALIZE</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Comparison Settings -->
+                    <div class="bg-white border border-gray-200 rounded-lg p-4">
+                        <h4 class="text-sm font-medium text-gray-500 uppercase tracking-wider mb-3">Nastavení porovnání</h4>
+                        <div class="grid grid-cols-3 gap-4">
+                            <div>
+                                <span class="text-gray-600 text-sm">Typ:</span>
+                                <div class="mt-1">
+                                    <span class="chip chip-comparator text-sm">EXACT</span>
+                                </div>
+                            </div>
+                            <div>
+                                <span class="text-gray-600 text-sm">Tolerance:</span>
+                                <div class="mt-1 text-gray-900">N/A</div>
+                            </div>
+                            <div>
+                                <span class="text-gray-600 text-sm">Case Sensitive:</span>
+                                <div class="mt-1 text-gray-900">Ne (po normalizaci)</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Error Messages -->
+                    <div class="bg-white border border-gray-200 rounded-lg p-4">
+                        <h4 class="text-sm font-medium text-gray-500 uppercase tracking-wider mb-3">Chybové zprávy</h4>
+                        <div class="space-y-3">
+                            <div class="flex items-start space-x-3">
+                                <span class="px-2 py-0.5 bg-gray-100 text-gray-700 rounded text-xs font-medium mt-0.5">CS</span>
+                                <div>
+                                    <div class="font-medium text-gray-900">VIN nesouhlasí s ORV</div>
+                                    <div class="text-sm text-gray-500">VIN zadané manuálně ({source}) se neshoduje s VIN z OCR ({target})</div>
+                                </div>
+                            </div>
+                            <div class="flex items-start space-x-3">
+                                <span class="px-2 py-0.5 bg-gray-100 text-gray-700 rounded text-xs font-medium mt-0.5">EN</span>
+                                <div>
+                                    <div class="font-medium text-gray-900">VIN mismatch with ORV</div>
+                                    <div class="text-sm text-gray-500">Manually entered VIN ({source}) does not match OCR VIN ({target})</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Metadata -->
+                    <div class="bg-white border border-gray-200 rounded-lg p-4">
+                        <h4 class="text-sm font-medium text-gray-500 uppercase tracking-wider mb-3">Metadata</h4>
+                        <div class="grid grid-cols-2 gap-4 text-sm">
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Kategorie:</span>
+                                <span class="text-gray-900">vehicle_validation</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Fáze:</span>
+                                <span class="text-gray-900">MVP</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Priorita:</span>
+                                <span class="text-gray-900">100</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Vyžaduje dokumenty:</span>
+                                <span class="font-mono text-xs bg-gray-100 px-2 py-0.5 rounded">ORV</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Verze:</span>
+                                <span class="text-gray-900">1.0.0</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Schema verze:</span>
+                                <span class="text-gray-900">1.1.0</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- JSON Definition -->
+                    <div>
+                        <div class="flex items-center justify-between mb-2">
+                            <h4 class="text-sm font-medium text-gray-500 uppercase tracking-wider">JSON definice</h4>
+                            <button class="text-sm text-primary-600 hover:text-primary-700">
+                                <i class="fas fa-copy mr-1"></i>Kopírovat
+                            </button>
+                        </div>
+                        <div class="code-block">
+<pre>{
+  "id": "VEH-001",
+  "name": "VIN shoda",
+  "description": "Porovnání VIN z manuálního vstupu s OCR z ORV",
+  "source": {
+    "entity": "vehicle",
+    "field": "vin",
+    "transforms": ["VIN_NORMALIZE"]
+  },
+  "target": {
+    "entity": "ocr_orv",
+    "field": "vin",
+    "transforms": ["VIN_NORMALIZE"]
+  },
+  "comparison": {
+    "type": "EXACT"
+  },
+  "severity": "CRITICAL",
+  "enabled": true,
+  "metadata": {
+    "category": "vehicle_validation",
+    "phase": "mvp",
+    "priority": 100,
+    "requiresDocuments": ["ORV"]
+  }
+}</pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="flex items-center justify-between px-6 py-4 border-t border-gray-200 bg-gray-50">
+                <div class="text-sm text-gray-500">
+                    <span>Vytvořeno: 01.01.2026 10:00</span>
+                    <span class="mx-2">|</span>
+                    <span>Naposledy upraveno: 01.01.2026 14:30</span>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <button class="px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                        <i class="fas fa-power-off mr-2"></i>Deaktivovat
+                    </button>
+                    <button onclick="closeModal('ruleDetailModal')" class="px-4 py-2 text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-lg transition-colors">
+                        Zavřít
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add/Edit Rule Modal -->
+    <div id="addRuleModal" class="fixed inset-0 z-50 hidden">
+        <div class="modal-backdrop absolute inset-0" onclick="closeModal('addRuleModal')"></div>
+        <div class="absolute inset-4 md:inset-10 lg:inset-16 bg-white rounded-xl shadow-2xl overflow-hidden flex flex-col">
+            <!-- Modal Header -->
+            <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-gray-50">
+                <div class="flex items-center space-x-3">
+                    <i class="fas fa-plus-circle text-primary-600 text-xl"></i>
+                    <h2 class="text-lg font-semibold text-gray-900">Nové validační pravidlo</h2>
+                </div>
+                <button onclick="closeModal('addRuleModal')" class="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <!-- Modal Content -->
+            <div class="flex-1 overflow-y-auto p-6">
+                <div class="max-w-3xl mx-auto space-y-6">
+                    <!-- Basic Info -->
+                    <div class="space-y-4">
+                        <h3 class="text-md font-semibold text-gray-900 flex items-center">
+                            <span class="w-6 h-6 rounded-full bg-primary-100 text-primary-600 flex items-center justify-center text-sm mr-2">1</span>
+                            Základní informace
+                        </h3>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">ID pravidla *</label>
+                                <input type="text" placeholder="např. VEH-008"
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-600 focus:border-primary-600 outline-none font-mono">
+                                <p class="text-xs text-gray-500 mt-1">Formát: XX-NNN (např. VEH-001, ARES-002)</p>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Závažnost *</label>
+                                <select class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-600 focus:border-primary-600 outline-none">
+                                    <option value="">Vyberte závažnost</option>
+                                    <option value="CRITICAL">CRITICAL - Blokující</option>
+                                    <option value="WARNING">WARNING - Vyžaduje kontrolu</option>
+                                    <option value="INFO">INFO - Informativní</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Název pravidla *</label>
+                            <input type="text" placeholder="např. VIN shoda s ORV"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-600 focus:border-primary-600 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Popis</label>
+                            <textarea rows="2" placeholder="Detailní popis pravidla a jeho účelu..."
+                                      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-600 focus:border-primary-600 outline-none resize-none"></textarea>
+                        </div>
+                    </div>
+
+                    <hr class="border-gray-200">
+
+                    <!-- Source Configuration -->
+                    <div class="space-y-4">
+                        <h3 class="text-md font-semibold text-gray-900 flex items-center">
+                            <span class="w-6 h-6 rounded-full bg-primary-100 text-primary-600 flex items-center justify-center text-sm mr-2">2</span>
+                            Zdroj (Source)
+                        </h3>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Zdrojová entita *</label>
+                                <select class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-600 focus:border-primary-600 outline-none">
+                                    <option value="">Vyberte entitu</option>
+                                    <option value="buying_opportunity">buying_opportunity</option>
+                                    <option value="vehicle">vehicle</option>
+                                    <option value="vendor">vendor</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Zdrojové pole *</label>
+                                <input type="text" placeholder="např. vin, spz, ico"
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-600 focus:border-primary-600 outline-none font-mono">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Transformace (volitelné)</label>
+                            <div class="flex flex-wrap gap-2">
+                                <label class="inline-flex items-center px-3 py-1.5 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50">
+                                    <input type="checkbox" class="rounded text-primary-600 mr-2">
+                                    <span class="text-sm font-mono">UPPERCASE</span>
+                                </label>
+                                <label class="inline-flex items-center px-3 py-1.5 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50">
+                                    <input type="checkbox" class="rounded text-primary-600 mr-2">
+                                    <span class="text-sm font-mono">TRIM</span>
+                                </label>
+                                <label class="inline-flex items-center px-3 py-1.5 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50">
+                                    <input type="checkbox" class="rounded text-primary-600 mr-2">
+                                    <span class="text-sm font-mono">REMOVE_DIACRITICS</span>
+                                </label>
+                                <label class="inline-flex items-center px-3 py-1.5 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50">
+                                    <input type="checkbox" class="rounded text-primary-600 mr-2">
+                                    <span class="text-sm font-mono">VIN_NORMALIZE</span>
+                                </label>
+                                <label class="inline-flex items-center px-3 py-1.5 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50">
+                                    <input type="checkbox" class="rounded text-primary-600 mr-2">
+                                    <span class="text-sm font-mono">SPZ_NORMALIZE</span>
+                                </label>
+                                <label class="inline-flex items-center px-3 py-1.5 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50">
+                                    <input type="checkbox" class="rounded text-primary-600 mr-2">
+                                    <span class="text-sm font-mono">FORMAT_ICO</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr class="border-gray-200">
+
+                    <!-- Target Configuration -->
+                    <div class="space-y-4">
+                        <h3 class="text-md font-semibold text-gray-900 flex items-center">
+                            <span class="w-6 h-6 rounded-full bg-primary-100 text-primary-600 flex items-center justify-center text-sm mr-2">3</span>
+                            Cíl (Target)
+                        </h3>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Cílová entita *</label>
+                                <select class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-600 focus:border-primary-600 outline-none">
+                                    <option value="">Vyberte entitu</option>
+                                    <option value="ocr_orv">ocr_orv</option>
+                                    <option value="ocr_op">ocr_op</option>
+                                    <option value="ocr_vtp">ocr_vtp</option>
+                                    <option value="ares">ares</option>
+                                    <option value="adis">adis</option>
+                                    <option value="cebia">cebia</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Cílové pole *</label>
+                                <input type="text" placeholder="např. vin, registration_plate"
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-600 focus:border-primary-600 outline-none font-mono">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Transformace (volitelné)</label>
+                            <div class="flex flex-wrap gap-2">
+                                <label class="inline-flex items-center px-3 py-1.5 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50">
+                                    <input type="checkbox" class="rounded text-primary-600 mr-2">
+                                    <span class="text-sm font-mono">UPPERCASE</span>
+                                </label>
+                                <label class="inline-flex items-center px-3 py-1.5 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50">
+                                    <input type="checkbox" class="rounded text-primary-600 mr-2">
+                                    <span class="text-sm font-mono">TRIM</span>
+                                </label>
+                                <label class="inline-flex items-center px-3 py-1.5 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50">
+                                    <input type="checkbox" class="rounded text-primary-600 mr-2">
+                                    <span class="text-sm font-mono">REMOVE_DIACRITICS</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr class="border-gray-200">
+
+                    <!-- Comparison Configuration -->
+                    <div class="space-y-4">
+                        <h3 class="text-md font-semibold text-gray-900 flex items-center">
+                            <span class="w-6 h-6 rounded-full bg-primary-100 text-primary-600 flex items-center justify-center text-sm mr-2">4</span>
+                            Porovnání
+                        </h3>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Typ porovnání *</label>
+                                <select class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-600 focus:border-primary-600 outline-none">
+                                    <option value="">Vyberte typ</option>
+                                    <option value="EXACT">EXACT - Přesná shoda</option>
+                                    <option value="FUZZY">FUZZY - Podobnost (Levenshtein)</option>
+                                    <option value="CONTAINS">CONTAINS - Obsahuje</option>
+                                    <option value="REGEX">REGEX - Regulární výraz</option>
+                                    <option value="NUMERIC_TOLERANCE">NUMERIC_TOLERANCE - Číselná tolerance</option>
+                                    <option value="DATE_TOLERANCE">DATE_TOLERANCE - Datumová tolerance</option>
+                                    <option value="EXISTS">EXISTS - Hodnota existuje</option>
+                                    <option value="NOT_EXISTS">NOT_EXISTS - Hodnota neexistuje</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Tolerance (pro FUZZY/NUMERIC)</label>
+                                <input type="number" placeholder="např. 0.8 nebo 5" step="0.1"
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-600 focus:border-primary-600 outline-none">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="flex items-center justify-between px-6 py-4 border-t border-gray-200 bg-gray-50">
+                <div class="flex items-center space-x-2">
+                    <label class="inline-flex items-center">
+                        <input type="checkbox" class="rounded text-primary-600 focus:ring-primary-500">
+                        <span class="ml-2 text-sm text-gray-700">Uložit jako draft</span>
+                    </label>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <button onclick="closeModal('addRuleModal')" class="px-4 py-2 text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-lg transition-colors">
+                        Zrušit
+                    </button>
+                    <button class="px-4 py-2 bg-primary-600 text-white hover:bg-primary-700 rounded-lg transition-colors">
+                        <i class="fas fa-save mr-2"></i>Uložit pravidlo
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function openModal(modalId) {
+            document.getElementById(modalId).classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.add('hidden');
+            document.body.style.overflow = 'auto';
+        }
+
+        // Close modal on Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                document.querySelectorAll('.fixed.z-50:not(.hidden)').forEach(modal => {
+                    modal.classList.add('hidden');
+                });
+                document.body.style.overflow = 'auto';
+            }
+        });
+    </script>
+</body>
+</html>
