@@ -11,6 +11,7 @@ Usage:
     uv run run_phase.py 2 --dry-run    # Show what would be done
     uv run run_phase.py 2 --continue   # Continue from last failed task
     uv run run_phase.py 3 --skip-completed  # Skip already completed tasks
+    uv run run_phase.py 5 --issue 42   # Run Phase 5, report to GitHub issue #42
 
 Examples:
     # Run Phase 1 (Infrastructure) tasks
@@ -18,6 +19,9 @@ Examples:
 
     # Run Phase 2 (Backend) tasks, skipping completed ones
     uv run run_phase.py 2 --skip-completed
+
+    # Run Phase 5 with GitHub issue tracking
+    uv run run_phase.py 5 --issue 42
 """
 
 import sys
@@ -36,6 +40,13 @@ from adw_modules.task_parser import (
     get_completed_tasks_from_tracker,
     check_dependencies,
     get_dependency_map,
+)
+from adw_modules.github import (
+    get_repo_url,
+    extract_repo_path,
+    post_issue_comment,
+    mark_issue_in_progress,
+    update_issue_labels,
 )
 
 
@@ -75,8 +86,14 @@ def topological_sort(tasks: list, dep_map: dict) -> list:
     return [task_map[tid] for tid in result if tid in task_map]
 
 
-def run_task(task_id: str, dry_run: bool = False, skip_deps: bool = False) -> bool:
+def run_task(task_id: str, dry_run: bool = False, skip_deps: bool = False, issue: int = None) -> bool:
     """Run a single task using run_task.py.
+
+    Args:
+        task_id: Task identifier (e.g., "05_01")
+        dry_run: If True, only print what would be done
+        skip_deps: If True, skip dependency checks
+        issue: GitHub issue number for progress reporting
 
     Returns True if successful.
     """
@@ -86,6 +103,8 @@ def run_task(task_id: str, dry_run: bool = False, skip_deps: bool = False) -> bo
     cmd = ["uv", "run", run_task_script, task_id]
     if skip_deps:
         cmd.append("--skip-deps")
+    if issue:
+        cmd.extend(["--issue", str(issue)])
 
     if dry_run:
         print(f"  Would run: {' '.join(cmd)}")
@@ -111,10 +130,13 @@ Examples:
   uv run run_phase.py 2 --dry-run     Show what would be done
   uv run run_phase.py 2 --skip-completed  Skip completed tasks
   uv run run_phase.py 3 --continue    Continue after failure
+  uv run run_phase.py 5 --issue 42    Run with GitHub issue tracking
         """
     )
-    parser.add_argument("phase", type=int, choices=[1, 2, 3, 4],
-                        help="Phase number (1-4)")
+    parser.add_argument("phase", type=int, choices=[1, 2, 3, 4, 5],
+                        help="Phase number (1-5)")
+    parser.add_argument("--issue", type=int,
+                        help="GitHub issue number for progress reporting")
     parser.add_argument("--dry-run", action="store_true",
                         help="Show what would be done")
     parser.add_argument("--skip-completed", action="store_true",
@@ -126,6 +148,18 @@ Examples:
     args = parser.parse_args()
 
     phase = args.phase
+    issue_number = args.issue
+
+    # Setup GitHub integration if --issue provided
+    repo_path = None
+    if issue_number:
+        repo_url = get_repo_url()
+        if repo_url:
+            repo_path = extract_repo_path(repo_url)
+            print(f"GitHub issue tracking enabled: Issue #{issue_number}")
+        else:
+            print("Warning: Could not determine repository. GitHub comments disabled.")
+            issue_number = None
 
     # Get all tasks for this phase
     tasks = get_tasks_for_phase(phase)
@@ -169,7 +203,8 @@ Examples:
         1: "Infrastructure Setup",
         2: "Backend API (Edge Functions)",
         3: "Frontend (Vue.js)",
-        4: "Testing & Polish"
+        4: "Testing & Polish",
+        5: "Access Code Authentication"
     }
     print(f"Phase: {phase_names.get(phase, 'Unknown')}")
     print(f"\nTasks in execution order:")
@@ -196,6 +231,22 @@ Examples:
         print("Aborted.")
         sys.exit(0)
 
+    # Post start comment to GitHub issue
+    if issue_number and repo_path:
+        task_list = "\n".join(f"- [ ] `{t['task_id']}` - {t['task_name']}" for t in tasks)
+        start_comment = f"""## 🚀 ADWS Phase {phase} Started
+
+**Phase**: {phase_names.get(phase, 'Unknown')}
+**ADW ID**: `{phase_adw_id}`
+**Tasks to execute**: {len(tasks)}
+
+### Task Checklist
+{task_list}
+
+_Progress will be reported as each task completes._"""
+        post_issue_comment(issue_number, repo_path, start_comment)
+        mark_issue_in_progress(issue_number, repo_path)
+
     # Run tasks
     failed_tasks = []
     successful_tasks = []
@@ -218,7 +269,7 @@ Examples:
                     break
                 continue
 
-        success = run_task(task_id, skip_deps=True)  # Skip deps since we checked above
+        success = run_task(task_id, skip_deps=True, issue=issue_number)  # Skip deps since we checked above
 
         if success:
             successful_tasks.append(task_id)
@@ -248,6 +299,42 @@ Examples:
         print(f"\nFailed tasks:")
         for tid, reason in failed_tasks:
             print(f"  - {tid}: {reason}")
+
+    # Post completion comment to GitHub issue
+    if issue_number and repo_path:
+        success_list = "\n".join(f"- [x] `{tid}` ✅" for tid in successful_tasks)
+        failed_list = "\n".join(f"- [ ] `{tid}` ❌ {reason}" for tid, reason in failed_tasks)
+
+        if failed_tasks:
+            status_emoji = "⚠️"
+            status_text = "Completed with Failures"
+            update_issue_labels(issue_number, repo_path,
+                              add_labels=["needs-attention"],
+                              remove_labels=["in-progress"])
+        else:
+            status_emoji = "✅"
+            status_text = "Completed Successfully"
+            update_issue_labels(issue_number, repo_path,
+                              add_labels=["ready-for-review"],
+                              remove_labels=["in-progress"])
+
+        completion_comment = f"""## {status_emoji} ADWS Phase {phase} {status_text}
+
+**Phase**: {phase_names.get(phase, 'Unknown')}
+**ADW ID**: `{phase_adw_id}`
+
+### Results
+| Metric | Count |
+|--------|-------|
+| Successful | {len(successful_tasks)} |
+| Failed | {len(failed_tasks)} |
+
+### Task Results
+{success_list if success_list else "_None_"}
+{failed_list if failed_list else ""}
+
+_Phase execution complete._"""
+        post_issue_comment(issue_number, repo_path, completion_comment)
 
     logger.info(f"Phase {phase} complete: {len(successful_tasks)} successful, {len(failed_tasks)} failed")
 

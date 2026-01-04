@@ -50,7 +50,7 @@ uv run ADWS/run_issue.py --dry-run https://github.com/.../issues/4 docs/plan.md
 |--------|-------------|----------|-------------------|
 | `run_issue.py` | Terminal | **Recommended**: Full automation with issue tracking | Full (comments, labels) |
 | `run_task.py` | Terminal | Implementation tracker tasks (01_01, 02_06, etc.) | Optional (--issue N) |
-| `run_phase.py` | Terminal | Batch execution of entire phases | None |
+| `run_phase.py` | Terminal | Batch execution of entire phases | Optional (--issue N) |
 | `/issue` | Claude Code | Interactive issue-driven workflow | Full (comments, labels) |
 | `/implement` | Claude Code | Execute any plan file | Optional (--issue flag) |
 | `/feature` | Claude Code | Create new feature plans | None |
@@ -165,12 +165,13 @@ uv run ADWS/run_task.py 02_06 --resume
 
 ### 3. `run_phase.py` - Batch Phase Execution
 
-**Purpose**: Run all tasks in a phase with automatic dependency ordering (topological sort).
+**Purpose**: Run all tasks in a phase with automatic dependency ordering (topological sort). Optionally reports progress to a GitHub issue.
 
 **When to Use**:
 - Starting a new MVP phase
 - Batch implementation of related tasks
 - Ensuring correct execution order
+- Tracking phase progress on a GitHub issue
 
 **Usage**:
 ```bash
@@ -180,6 +181,7 @@ uv run ADWS/run_phase.py <phase_number> [options]
 **Options**:
 | Option | Description |
 |--------|-------------|
+| `--issue N` | GitHub issue number for progress reporting |
 | `--dry-run` | Preview task order without executing |
 | `--skip-completed` | Skip already completed tasks |
 | `--continue` | Continue after task failure |
@@ -189,6 +191,9 @@ uv run ADWS/run_phase.py <phase_number> [options]
 ```bash
 # Run all Phase 1 tasks
 uv run ADWS/run_phase.py 1
+
+# Run Phase 5 with GitHub issue tracking
+uv run ADWS/run_phase.py 5 --issue 42
 
 # Preview Phase 2 execution order
 uv run ADWS/run_phase.py 2 --dry-run
@@ -207,6 +212,7 @@ uv run ADWS/run_phase.py 3 --continue
 | 2 | 02_01 - 02_09 | Backend (Edge Functions, APIs) |
 | 3 | 03_01 - 03_10 | Frontend (Vue Components, Pages) |
 | 4 | 04_01 - 04_02 | Testing & Polish |
+| 5 | 05_01 - 05_07 | Access Code Authentication |
 
 ---
 
@@ -518,6 +524,30 @@ ADWS/
 ---
 
 ## Changelog
+
+### 2026-01-04 - Phase 5 & run_phase.py GitHub Integration
+
+**Added**:
+- Phase 5 (Access Code Authentication) - 7 tasks for internal-user access control
+- `--issue N` flag for `run_phase.py` - GitHub issue tracking for entire phases
+- GitHub comment posting at phase start with task checklist
+- GitHub comment posting at phase completion with results summary
+- Label management for phase execution (in-progress → ready-for-review/needs-attention)
+
+**Phase 5 Task Files** (in `docs/implementation/`):
+- `05_01_VERIFY_ACCESS_CODE.md` - Edge Function for access code validation
+- `05_02_ENABLE_JWT_VERIFICATION.md` - Enable JWT verification on Edge Functions
+- `05_03_UPDATE_RLS_POLICIES.md` - Switch RLS from anon to authenticated
+- `05_04_ACCESS_CODE_PAGE.md` - Vue.js access code entry page
+- `05_05_AUTH_STORE_COMPOSABLE.md` - Pinia auth store + useAuth composable
+- `05_06_ROUTE_GUARDS.md` - Navigation guards + API auth headers
+- `05_07_E2E_AUTH_TESTS.md` - Playwright E2E authentication tests
+
+**Supporting Files**:
+- `docs/implementation/PHASE5_00_ARCHITECTURE.md` - Phase 5 architecture overview
+- `docs/implementation/PHASE5_IMPLEMENTATION_TRACKER.md` - Phase 5 progress tracker
+
+---
 
 ### 2026-01-04 - GitHub Integration Release
 
