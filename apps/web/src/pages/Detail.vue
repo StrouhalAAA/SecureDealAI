@@ -74,8 +74,8 @@
 
         <!-- Step 3: Documents -->
         <DocumentUpload
-          v-else-if="nav.currentStep.value === 2"
-          :spz="data.opportunity.value?.spz"
+          v-else-if="nav.currentStep.value === 2 && data.opportunity.value?.spz"
+          :spz="data.opportunity.value.spz"
           :buying-opportunity-id="opportunityId"
           @back="nav.prevStep"
           @validated="onValidated"

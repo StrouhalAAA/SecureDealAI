@@ -224,7 +224,7 @@ describe('useDetailData', () => {
         eq: vi.fn(() => Promise.resolve({ error: null }))
       }))
 
-      mockSupabase.from.mockImplementation((table: string) => ({
+      mockSupabase.from.mockImplementation((_table: string) => ({
         ...createMockQuery(null),
         update: updateMock
       }))
@@ -240,7 +240,7 @@ describe('useDetailData', () => {
         eq: vi.fn(() => Promise.resolve({ error: null }))
       }))
 
-      mockSupabase.from.mockImplementation((table: string) => ({
+      mockSupabase.from.mockImplementation((_table: string) => ({
         ...createMockQuery(null),
         update: updateMock
       }))
