@@ -35,20 +35,6 @@ const corsHeaders = {
 // SUPABASE CLIENT
 // =============================================================================
 
-function createSupabaseClient(authHeader: string | null) {
-  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-  const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
-
-  return createClient(supabaseUrl, supabaseAnonKey, {
-    global: {
-      headers: authHeader ? { Authorization: authHeader } : {},
-    },
-    auth: {
-      persistSession: false,
-    },
-  });
-}
-
 function createServiceClient() {
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
   const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -313,9 +299,9 @@ async function handleValidationRequest(
       );
     }
 
-    // Create Supabase clients
-    const authHeader = request.headers.get('authorization');
-    const supabase = createSupabaseClient(authHeader);
+    // Create service client for data access
+    // Note: Validation is a backend service operation that needs to read all data
+    // regardless of the caller's auth context, so we use service role for all DB operations.
     const serviceClient = createServiceClient();
 
     // Find buying opportunity ID
@@ -323,7 +309,7 @@ async function handleValidationRequest(
 
     if (!buyingOpportunityId) {
       buyingOpportunityId = await findBuyingOpportunity(
-        supabase,
+        serviceClient,
         body.spz,
         body.vin
       );
@@ -332,7 +318,7 @@ async function handleValidationRequest(
     console.log(`[Handler] Processing validation for: ${buyingOpportunityId}`);
 
     // Load validation data
-    const inputData = await loadValidationData(supabase, buyingOpportunityId);
+    const inputData = await loadValidationData(serviceClient, buyingOpportunityId);
 
     // Execute validation
     const result = await validate(inputData);
