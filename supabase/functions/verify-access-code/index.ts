@@ -96,8 +96,10 @@ async function createJWT(secret: string, codeId: string): Promise<{ token: strin
     aud: "authenticated"
   };
 
-  const encodedHeader = base64url(new TextEncoder().encode(JSON.stringify(header)));
-  const encodedPayload = base64url(new TextEncoder().encode(JSON.stringify(payload)));
+  const headerBytes = new TextEncoder().encode(JSON.stringify(header));
+  const payloadBytes = new TextEncoder().encode(JSON.stringify(payload));
+  const encodedHeader = base64url(headerBytes.buffer.slice(headerBytes.byteOffset, headerBytes.byteOffset + headerBytes.byteLength));
+  const encodedPayload = base64url(payloadBytes.buffer.slice(payloadBytes.byteOffset, payloadBytes.byteOffset + payloadBytes.byteLength));
 
   const signatureInput = `${encodedHeader}.${encodedPayload}`;
   const key = await crypto.subtle.importKey(
@@ -114,7 +116,8 @@ async function createJWT(secret: string, codeId: string): Promise<{ token: strin
     new TextEncoder().encode(signatureInput)
   );
 
-  const encodedSignature = base64url(new Uint8Array(signature));
+  const signatureArray = new Uint8Array(signature);
+  const encodedSignature = base64url(signatureArray.buffer.slice(signatureArray.byteOffset, signatureArray.byteOffset + signatureArray.byteLength));
 
   return {
     token: `${encodedHeader}.${encodedPayload}.${encodedSignature}`,
@@ -125,8 +128,9 @@ async function createJWT(secret: string, codeId: string): Promise<{ token: strin
 /**
  * Check rate limit for IP address
  */
+// deno-lint-ignore no-explicit-any
 async function checkRateLimit(
-  supabase: ReturnType<typeof createClient>,
+  supabase: any,
   ipAddress: string
 ): Promise<RateLimitResult> {
   const cutoffTime = new Date(Date.now() - LOCKOUT_MINUTES * 60 * 1000).toISOString();
@@ -158,8 +162,9 @@ async function checkRateLimit(
 /**
  * Record an access attempt
  */
+// deno-lint-ignore no-explicit-any
 async function recordAttempt(
-  supabase: ReturnType<typeof createClient>,
+  supabase: any,
   ipAddress: string,
   success: boolean,
   codeId?: string
