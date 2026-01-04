@@ -28,7 +28,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { extractDocumentWithRetry, type ExtractionResult } from "./mistral-client.ts";
+import { extractDocumentFromBase64WithRetry, type ExtractionResult } from "./mistral-client.ts";
 import {
   transformExtractedData,
   calculateConfidence,
@@ -47,7 +47,7 @@ interface OcrExtractionRecord {
   id: string;
   spz: string;
   document_type: DocumentType;
-  document_file_url: string;
+  document_file_path: string;
   ocr_status: string;
   extracted_data: Record<string, unknown> | null;
   extraction_confidence: number | null;
@@ -210,6 +210,56 @@ async function updateOcrExtractionFailed(
 }
 
 // =============================================================================
+// FILE DOWNLOAD & BASE64 CONVERSION
+// =============================================================================
+
+const STORAGE_BUCKET = "documents";
+
+async function downloadAndConvertToBase64(
+  supabase: SupabaseClient,
+  filePath: string
+): Promise<{ success: boolean; base64?: string; mimeType?: string; error?: string }> {
+  try {
+    const { data, error } = await supabase.storage
+      .from(STORAGE_BUCKET)
+      .download(filePath);
+
+    if (error) {
+      console.error("[Storage] Download error:", error);
+      return { success: false, error: error.message };
+    }
+
+    if (!data) {
+      return { success: false, error: "No data returned from storage" };
+    }
+
+    // Get mime type from blob
+    const mimeType = data.type || "application/pdf";
+
+    // Convert Blob to base64
+    const arrayBuffer = await data.arrayBuffer();
+    const uint8Array = new Uint8Array(arrayBuffer);
+
+    // Convert to base64 string using chunks to avoid stack overflow
+    let binary = "";
+    const chunkSize = 8192;
+    for (let i = 0; i < uint8Array.length; i += chunkSize) {
+      const chunk = uint8Array.subarray(i, i + chunkSize);
+      binary += String.fromCharCode.apply(null, Array.from(chunk));
+    }
+    const base64 = btoa(binary);
+
+    console.log(`[Storage] Downloaded file: ${filePath} (${uint8Array.length} bytes, ${mimeType})`);
+
+    return { success: true, base64, mimeType };
+  } catch (error) {
+    console.error("[Storage] Unexpected download error:", error);
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return { success: false, error: message };
+  }
+}
+
+// =============================================================================
 // MAIN HANDLER
 // =============================================================================
 
@@ -285,14 +335,33 @@ async function handleOcrExtract(req: Request): Promise<Response> {
   await updateOcrExtractionStatus(supabase, ocr_extraction_id, "PROCESSING");
 
   console.log(
-    `[OCR] Starting extraction for ${ocrRecord.document_type}: ${ocrRecord.document_file_url}`
+    `[OCR] Starting extraction for ${ocrRecord.document_type}: ${ocrRecord.document_file_path}`
   );
 
-  // Call Mistral OCR API with retry
+  // Download file from storage and convert to base64
+  const downloadResult = await downloadAndConvertToBase64(
+    supabase,
+    ocrRecord.document_file_path
+  );
+
+  if (!downloadResult.success) {
+    const errorMessage = downloadResult.error || "Failed to download document";
+    console.error("[OCR] Download failed:", errorMessage);
+
+    await updateOcrExtractionFailed(supabase, ocr_extraction_id, errorMessage);
+
+    return errorResponse(
+      `Document download failed: ${errorMessage}`,
+      "DOWNLOAD_ERROR",
+      500
+    );
+  }
+
+  // Call Mistral OCR API with base64 data and retry
   let extractionResult: ExtractionResult;
   try {
-    extractionResult = await extractDocumentWithRetry(
-      ocrRecord.document_file_url,
+    extractionResult = await extractDocumentFromBase64WithRetry(
+      downloadResult.base64!,
       ocrRecord.document_type
     );
   } catch (error) {

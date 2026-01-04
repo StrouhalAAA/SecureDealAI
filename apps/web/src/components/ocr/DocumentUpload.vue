@@ -21,6 +21,9 @@
         :extraction="orvExtraction"
         @retry="retryOcrOrv"
       />
+      <div v-if="orvExtraction?.ocr_status === 'COMPLETED'" class="mt-3">
+        <DocumentPreview :spz="spz" document-type="ORV" />
+      </div>
     </div>
 
     <!-- VTP Upload (Optional) -->
@@ -46,6 +49,9 @@
         :extraction="vtpExtraction"
         @retry="retryOcrVtp"
       />
+      <div v-if="vtpExtraction?.ocr_status === 'COMPLETED'" class="mt-3">
+        <DocumentPreview :spz="spz" document-type="VTP" />
+      </div>
     </div>
 
     <!-- OP Upload (Required for FO) -->
@@ -67,6 +73,9 @@
         :extraction="opExtraction"
         @retry="retryOcrOp"
       />
+      <div v-if="opExtraction?.ocr_status === 'COMPLETED'" class="mt-3">
+        <DocumentPreview :spz="spz" document-type="OP" />
+      </div>
     </div>
 
     <p class="text-sm text-gray-500 mb-4">* povinne dokumenty</p>
@@ -101,6 +110,7 @@ import { ref, computed, onMounted } from 'vue';
 import { supabase } from '@/composables/useSupabase';
 import DropZone from './DropZone.vue';
 import OcrStatus from './OcrStatus.vue';
+import DocumentPreview from './DocumentPreview.vue';
 import type { OcrExtraction } from '@/types';
 
 const props = defineProps<{
