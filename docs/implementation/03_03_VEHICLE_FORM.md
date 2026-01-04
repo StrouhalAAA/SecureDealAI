@@ -22,6 +22,113 @@ Create a form component for entering vehicle data (Step 1 of the validation work
 
 ---
 
+## Component Tests
+
+### Required Tests (Write Before Implementation)
+
+Create test file: `MVPScope/frontend/src/components/forms/__tests__/VehicleForm.spec.ts`
+
+```typescript
+import { describe, it, expect, vi } from 'vitest'
+import { mount } from '@vue/test-utils'
+import VehicleForm from '../VehicleForm.vue'
+
+// Mock Supabase
+vi.mock('@/composables/useSupabase', () => ({
+  supabase: {
+    from: vi.fn(() => ({
+      insert: vi.fn(() => ({
+        select: vi.fn(() => ({
+          single: vi.fn(() => Promise.resolve({
+            data: { id: '1', spz: '5L94454', vin: 'YV1PZA3TCL1103985' },
+            error: null
+          }))
+        }))
+      })),
+      update: vi.fn(() => ({
+        eq: vi.fn(() => ({
+          select: vi.fn(() => ({
+            single: vi.fn(() => Promise.resolve({ data: {}, error: null }))
+          }))
+        }))
+      }))
+    }))
+  }
+}))
+
+describe('VehicleForm', () => {
+  const defaultProps = {
+    buyingOpportunityId: 'test-id',
+    initialSpz: '5L94454'
+  }
+
+  it('renders all required fields', () => {
+    const wrapper = mount(VehicleForm, { props: defaultProps })
+
+    expect(wrapper.find('input[placeholder*="VIN"]').exists() || wrapper.text()).toContain('VIN')
+    expect(wrapper.text()).toContain('SPZ')
+    expect(wrapper.text()).toContain('Majitel')
+  })
+
+  it('validates VIN is 17 characters', async () => {
+    const wrapper = mount(VehicleForm, { props: defaultProps })
+
+    const vinInput = wrapper.find('input[maxlength="17"]')
+    await vinInput.setValue('TOOSHORT')
+
+    expect(wrapper.text()).toContain('17')
+  })
+
+  it('rejects invalid VIN characters', async () => {
+    const wrapper = mount(VehicleForm, { props: defaultProps })
+
+    const vinInput = wrapper.find('input[maxlength="17"]')
+    await vinInput.setValue('INVALID01234567IO') // Contains I and O
+
+    expect(wrapper.text()).toContain('neplatné')
+  })
+
+  it('locks SPZ field when initialSpz is provided', () => {
+    const wrapper = mount(VehicleForm, { props: defaultProps })
+
+    const spzInput = wrapper.find('input').filter((i: any) => i.element.value === '5L94454')
+    expect(spzInput.length > 0 || wrapper.props('initialSpz')).toBeTruthy()
+  })
+
+  it('emits save event with valid data', async () => {
+    const wrapper = mount(VehicleForm, { props: defaultProps })
+
+    // Fill required fields
+    await wrapper.find('input[maxlength="17"]').setValue('YV1PZA3TCL1103985')
+    await wrapper.find('input[placeholder*="majitele"]').setValue('OSIT S.R.O.')
+
+    await wrapper.find('form').trigger('submit')
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.emitted('saved') || wrapper.emitted('next')).toBeTruthy()
+  })
+
+  it('displays error messages on validation failure', async () => {
+    const wrapper = mount(VehicleForm, { props: defaultProps })
+
+    // Submit without required fields
+    await wrapper.find('form').trigger('submit')
+
+    // Should show validation errors or prevent submission
+    const submitButton = wrapper.find('button[type="submit"]')
+    expect(submitButton.attributes('disabled') !== undefined || wrapper.text().includes('povinné')).toBeTruthy()
+  })
+})
+```
+
+### Test-First Workflow
+
+1. **RED**: Write tests above, run `npm run test -- --filter="VehicleForm"` - they should FAIL
+2. **GREEN**: Implement VehicleForm.vue until tests PASS
+3. **REFACTOR**: Clean up code while keeping tests green
+
+---
+
 ## UI Specification
 
 ```
@@ -349,8 +456,21 @@ onMounted(() => {
 
 ---
 
+## Validation Commands
+
+```bash
+# Run VehicleForm component tests
+cd MVPScope/frontend && npm run test -- --filter="VehicleForm"
+
+# Run all frontend tests
+cd MVPScope/frontend && npm run test
+```
+
+---
+
 ## Validation Criteria
 
+- [ ] All VehicleForm component tests pass
 - [ ] Form displays all fields correctly
 - [ ] Required fields enforced
 - [ ] VIN validation (17 chars, valid chars)

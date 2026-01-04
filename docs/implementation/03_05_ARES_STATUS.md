@@ -14,6 +14,98 @@ Create a visual component for displaying ARES lookup status with appropriate ico
 
 ---
 
+## Component Tests
+
+### Required Tests (Write Before Implementation)
+
+Create test file: `MVPScope/frontend/src/components/shared/__tests__/AresStatus.spec.ts`
+
+```typescript
+import { describe, it, expect } from 'vitest'
+import { mount } from '@vue/test-utils'
+import AresStatus from '../AresStatus.vue'
+
+describe('AresStatus', () => {
+  it('shows nothing when status is idle', () => {
+    const wrapper = mount(AresStatus, {
+      props: { status: 'idle' }
+    })
+
+    expect(wrapper.text()).toBe('')
+  })
+
+  it('displays loading spinner when status is loading', () => {
+    const wrapper = mount(AresStatus, {
+      props: { status: 'loading' }
+    })
+
+    expect(wrapper.text()).toContain('Ověřuji')
+    expect(wrapper.find('.animate-spin').exists()).toBe(true)
+  })
+
+  it('displays success message when status is verified', () => {
+    const wrapper = mount(AresStatus, {
+      props: { status: 'verified', message: 'Firma ověřena: OSIT S.R.O.' }
+    })
+
+    expect(wrapper.text()).toContain('✅')
+    expect(wrapper.text()).toContain('OSIT S.R.O.')
+  })
+
+  it('displays not found message when status is not_found', () => {
+    const wrapper = mount(AresStatus, {
+      props: { status: 'not_found', message: 'Firma nebyla nalezena' }
+    })
+
+    expect(wrapper.text()).toContain('❌')
+    expect(wrapper.text()).toContain('nebyla nalezena')
+  })
+
+  it('displays warning message when status is warning', () => {
+    const wrapper = mount(AresStatus, {
+      props: { status: 'warning', message: 'Neshoduje se název firmy' }
+    })
+
+    expect(wrapper.text()).toContain('⚠️')
+    expect(wrapper.text()).toContain('Neshoduje se')
+  })
+
+  it('displays error message when status is error', () => {
+    const wrapper = mount(AresStatus, {
+      props: { status: 'error', message: 'Chyba při ověřování' }
+    })
+
+    expect(wrapper.text()).toContain('❌')
+    expect(wrapper.text()).toContain('Chyba')
+  })
+
+  it('applies correct background colors for each status', () => {
+    const statuses = [
+      { status: 'loading', expectedClass: 'bg-blue-50' },
+      { status: 'verified', expectedClass: 'bg-green-50' },
+      { status: 'not_found', expectedClass: 'bg-red-50' },
+      { status: 'warning', expectedClass: 'bg-orange-50' },
+      { status: 'error', expectedClass: 'bg-red-50' },
+    ]
+
+    statuses.forEach(({ status, expectedClass }) => {
+      const wrapper = mount(AresStatus, {
+        props: { status: status as any }
+      })
+      expect(wrapper.classes()).toContain(expectedClass)
+    })
+  })
+})
+```
+
+### Test-First Workflow
+
+1. **RED**: Write tests above, run `npm run test -- --filter="AresStatus"` - they should FAIL
+2. **GREEN**: Implement AresStatus.vue until tests PASS
+3. **REFACTOR**: Clean up code while keeping tests green
+
+---
+
 ## UI States
 
 | Status | Icon | Color | Message Example |
@@ -137,8 +229,21 @@ async function lookupAres() {
 
 ---
 
+## Validation Commands
+
+```bash
+# Run AresStatus component tests
+cd MVPScope/frontend && npm run test -- --filter="AresStatus"
+
+# Run all frontend tests
+cd MVPScope/frontend && npm run test
+```
+
+---
+
 ## Validation Criteria
 
+- [ ] All AresStatus component tests pass
 - [ ] All 6 status states display correctly
 - [ ] Loading spinner animates
 - [ ] Colors match status severity

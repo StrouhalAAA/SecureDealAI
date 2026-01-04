@@ -1,7 +1,7 @@
 # Task 2.3: Vendor CRUD API
 
 > **Phase**: 2 - Backend API
-> **Status**: [x] Implemented
+> **Status**: [ ] Pending
 > **Priority**: High
 > **Depends On**: 1.1 Database Schema, 2.1 Buying Opportunity CRUD
 > **Estimated Effort**: Medium
@@ -16,8 +16,127 @@ Create a Supabase Edge Function for CRUD operations on the `vendors` table, supp
 
 ## Prerequisites
 
+- [ ] Task 1.0 completed (test infrastructure setup)
 - [ ] Task 1.1 completed (database schema applied)
 - [ ] Task 2.1 completed (buying opportunity exists to link to)
+
+---
+
+## Test-First Development
+
+### Required Tests (Write Before Implementation)
+
+Create test file: `MVPScope/supabase/functions/tests/vendor.test.ts`
+
+```typescript
+import { assertEquals, assertExists } from "@std/assert";
+import { getTestClient, cleanupTestData, generateTestSpz } from "./test-utils.ts";
+
+const BASE_URL = "http://localhost:54321/functions/v1/vendor";
+const BO_URL = "http://localhost:54321/functions/v1/buying-opportunity";
+
+async function createTestOpportunity() {
+  const spz = generateTestSpz();
+  const res = await fetch(BO_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ spz })
+  });
+  const { id } = await res.json();
+  return { id, spz };
+}
+
+Deno.test("POST creates FO vendor with valid data", async () => {
+  const { id: boId, spz } = await createTestOpportunity();
+
+  const res = await fetch(BASE_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      buying_opportunity_id: boId,
+      vendor_type: "PHYSICAL_PERSON",
+      name: "JAN NOVAK",
+      personal_id: "800101/1234"
+    })
+  });
+
+  assertEquals(res.status, 201);
+  const json = await res.json();
+  assertExists(json.id);
+  assertEquals(json.vendor_type, "PHYSICAL_PERSON");
+
+  await cleanupTestData(spz);
+});
+
+Deno.test("POST creates PO vendor with valid IČO", async () => {
+  const { id: boId, spz } = await createTestOpportunity();
+
+  const res = await fetch(BASE_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      buying_opportunity_id: boId,
+      vendor_type: "COMPANY",
+      name: "OSIT S.R.O.",
+      company_id: "27074358",
+      vat_id: "CZ27074358"
+    })
+  });
+
+  assertEquals(res.status, 201);
+  const json = await res.json();
+  assertEquals(json.company_id, "27074358");
+
+  await cleanupTestData(spz);
+});
+
+Deno.test("POST rejects invalid IČO format", async () => {
+  const { id: boId, spz } = await createTestOpportunity();
+
+  const res = await fetch(BASE_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      buying_opportunity_id: boId,
+      vendor_type: "COMPANY",
+      name: "TEST COMPANY",
+      company_id: "123" // Invalid: not 8 digits
+    })
+  });
+
+  assertEquals(res.status, 400);
+  await cleanupTestData(spz);
+});
+
+Deno.test("POST rejects FO without personal_id", async () => {
+  const { id: boId, spz } = await createTestOpportunity();
+
+  const res = await fetch(BASE_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      buying_opportunity_id: boId,
+      vendor_type: "PHYSICAL_PERSON",
+      name: "JAN NOVAK"
+      // Missing personal_id
+    })
+  });
+
+  assertEquals(res.status, 400);
+  await cleanupTestData(spz);
+});
+```
+
+### Test-First Workflow
+
+1. **RED**: Write tests above, run them - they should FAIL
+2. **GREEN**: Implement the function until tests PASS
+3. **REFACTOR**: Clean up code while keeping tests green
+
+```bash
+# Run tests (should fail before implementation)
+cd MVPScope/supabase && deno task test -- --filter="vendor"
+```
 
 ---
 

@@ -21,6 +21,202 @@ Create a document upload component for ORV (malý technický průkaz), OP (obča
 
 ---
 
+## Component Tests
+
+### Required Tests (Write Before Implementation)
+
+Create test file: `MVPScope/frontend/src/components/ocr/__tests__/DocumentUpload.spec.ts`
+
+```typescript
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { mount, flushPromises } from '@vue/test-utils'
+import DocumentUpload from '../DocumentUpload.vue'
+
+// Mock Supabase
+vi.mock('@/composables/useSupabase', () => ({
+  supabase: {
+    from: vi.fn(() => ({
+      select: vi.fn(() => ({
+        eq: vi.fn(() => Promise.resolve({ data: [], error: null }))
+      }))
+    }))
+  }
+}))
+
+// Mock fetch
+global.fetch = vi.fn(() =>
+  Promise.resolve({
+    ok: true,
+    json: () => Promise.resolve({ id: '1', ocr_status: 'COMPLETED' })
+  })
+) as any
+
+describe('DocumentUpload', () => {
+  const defaultProps = {
+    spz: '5L94454',
+    buyingOpportunityId: 'test-id'
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('renders all document upload zones (ORV, VTP, OP)', () => {
+    const wrapper = mount(DocumentUpload, { props: defaultProps })
+
+    expect(wrapper.text()).toContain('ORV')
+    expect(wrapper.text()).toContain('VTP')
+    expect(wrapper.text()).toContain('OP')
+  })
+
+  it('marks VTP as optional', () => {
+    const wrapper = mount(DocumentUpload, { props: defaultProps })
+
+    expect(wrapper.text()).toContain('nepovinné')
+  })
+
+  it('marks ORV and OP as required', () => {
+    const wrapper = mount(DocumentUpload, { props: defaultProps })
+
+    const requiredMarkers = wrapper.findAll('.text-red-500')
+    expect(requiredMarkers.length).toBeGreaterThanOrEqual(2)
+  })
+
+  it('shows drop zone for file selection', () => {
+    const wrapper = mount(DocumentUpload, { props: defaultProps })
+
+    expect(wrapper.text()).toContain('Přetáhněte soubor')
+    expect(wrapper.text()).toContain('klikněte')
+  })
+
+  it('validates file type on upload', async () => {
+    const wrapper = mount(DocumentUpload, { props: defaultProps })
+
+    // Create invalid file
+    const invalidFile = new File(['content'], 'test.txt', { type: 'text/plain' })
+    const dropZone = wrapper.findComponent({ name: 'DropZone' })
+
+    // Emit file-selected with invalid type
+    await dropZone.vm.$emit('file-selected', invalidFile)
+
+    // Should not call fetch for invalid file type
+    expect(global.fetch).not.toHaveBeenCalled()
+  })
+
+  it('validates file size limit (10MB)', async () => {
+    const wrapper = mount(DocumentUpload, { props: defaultProps })
+
+    // Create oversized file (mock)
+    const largeFile = new File(['x'.repeat(11 * 1024 * 1024)], 'large.pdf', { type: 'application/pdf' })
+    Object.defineProperty(largeFile, 'size', { value: 11 * 1024 * 1024 })
+
+    // File should be rejected
+    expect(wrapper.text()).toContain('10 MB')
+  })
+
+  it('shows upload progress indicator', async () => {
+    const wrapper = mount(DocumentUpload, { props: defaultProps })
+
+    // Trigger upload
+    const validFile = new File(['content'], 'test.pdf', { type: 'application/pdf' })
+    const dropZone = wrapper.findComponent({ name: 'DropZone' })
+    await dropZone.vm.$emit('file-selected', validFile)
+
+    // Should show loading state
+    expect(wrapper.html()).toContain('Nahrávám') || expect(global.fetch).toHaveBeenCalled()
+  })
+
+  it('enables validation button when required documents uploaded', async () => {
+    const wrapper = mount(DocumentUpload, { props: defaultProps })
+    await flushPromises()
+
+    const validateButton = wrapper.find('button:last-child')
+    expect(validateButton.attributes('disabled')).toBeDefined()
+  })
+})
+```
+
+Create test file for DropZone: `MVPScope/frontend/src/components/ocr/__tests__/DropZone.spec.ts`
+
+```typescript
+import { describe, it, expect, vi } from 'vitest'
+import { mount } from '@vue/test-utils'
+import DropZone from '../DropZone.vue'
+
+describe('DropZone', () => {
+  const defaultProps = {
+    file: null,
+    uploading: false,
+    uploaded: false,
+    error: null,
+    accept: '.pdf,.jpg,.jpeg,.png'
+  }
+
+  it('shows empty state instructions', () => {
+    const wrapper = mount(DropZone, { props: defaultProps })
+
+    expect(wrapper.text()).toContain('Přetáhněte soubor')
+    expect(wrapper.text()).toContain('PDF, JPEG, PNG')
+  })
+
+  it('shows uploading state with spinner', () => {
+    const wrapper = mount(DropZone, {
+      props: { ...defaultProps, uploading: true }
+    })
+
+    expect(wrapper.text()).toContain('Nahrávám')
+    expect(wrapper.find('.animate-spin').exists()).toBe(true)
+  })
+
+  it('shows uploaded state with file info', () => {
+    const testFile = new File(['content'], 'test.pdf', { type: 'application/pdf' })
+    const wrapper = mount(DropZone, {
+      props: { ...defaultProps, file: testFile, uploaded: true }
+    })
+
+    expect(wrapper.text()).toContain('✅')
+    expect(wrapper.text()).toContain('test.pdf')
+  })
+
+  it('shows error state with message', () => {
+    const wrapper = mount(DropZone, {
+      props: { ...defaultProps, error: 'Upload failed' }
+    })
+
+    expect(wrapper.text()).toContain('❌')
+    expect(wrapper.text()).toContain('Upload failed')
+  })
+
+  it('emits file-selected on click upload', async () => {
+    const wrapper = mount(DropZone, { props: defaultProps })
+
+    // Simulate file input change
+    const fileInput = wrapper.find('input[type="file"]')
+    expect(fileInput.exists()).toBe(true)
+  })
+
+  it('emits remove event when delete button clicked', async () => {
+    const testFile = new File(['content'], 'test.pdf', { type: 'application/pdf' })
+    const wrapper = mount(DropZone, {
+      props: { ...defaultProps, file: testFile, uploaded: true }
+    })
+
+    const removeButton = wrapper.find('button')
+    await removeButton.trigger('click')
+
+    expect(wrapper.emitted('remove')).toBeTruthy()
+  })
+})
+```
+
+### Test-First Workflow
+
+1. **RED**: Write tests above, run `npm run test -- --filter="DocumentUpload"` - they should FAIL
+2. **GREEN**: Implement DocumentUpload.vue and DropZone.vue until tests PASS
+3. **REFACTOR**: Clean up code while keeping tests green
+
+---
+
 ## UI Specification
 
 ```
@@ -500,8 +696,24 @@ function formatSize(bytes: number): string {
 
 ---
 
+## Validation Commands
+
+```bash
+# Run DocumentUpload component tests
+cd MVPScope/frontend && npm run test -- --filter="DocumentUpload"
+
+# Run DropZone component tests
+cd MVPScope/frontend && npm run test -- --filter="DropZone"
+
+# Run all frontend tests
+cd MVPScope/frontend && npm run test
+```
+
+---
+
 ## Validation Criteria
 
+- [ ] All DocumentUpload and DropZone component tests pass
 - [ ] Drag-and-drop upload works for all document types (ORV, VTP, OP)
 - [ ] Click to select file works
 - [ ] File size validation (10 MB max)

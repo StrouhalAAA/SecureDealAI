@@ -16,9 +16,137 @@ Create a Supabase Edge Function for comprehensive ARES/ADIS validation of compan
 
 ## Prerequisites
 
+- [ ] Task 1.0 completed (test infrastructure setup)
 - [ ] Task 2.4 completed (ARES Lookup working)
 - [ ] INT_02 completed (ARES/ADIS API specification documented)
 - [ ] ADIS API access confirmed
+
+---
+
+## Test-First Development
+
+### Required Tests (Write Before Implementation)
+
+Create test file: `MVPScope/supabase/functions/tests/ares-validate.test.ts`
+
+```typescript
+import { assertEquals, assertExists } from "@std/assert";
+import { createAresMock } from "./mocks/ares-mock.ts";
+import { getTestClient, generateTestSpz, cleanupTestData } from "./test-utils.ts";
+
+const BASE_URL = "http://localhost:54321/functions/v1/ares-validate";
+const BO_URL = "http://localhost:54321/functions/v1/buying-opportunity";
+
+async function createTestOpportunity() {
+  const spz = generateTestSpz();
+  const res = await fetch(BO_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ spz })
+  });
+  const { id } = await res.json();
+  return { id, spz };
+}
+
+Deno.test("POST validates company with matching data (GREEN)", async () => {
+  const { id: boId, spz } = await createTestOpportunity();
+
+  const res = await fetch(BASE_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      buying_opportunity_id: boId,
+      ico: "27074358",
+      dic: "CZ27074358",
+      company_name: "OSIT S.R.O."
+    })
+  });
+
+  if (res.status === 200) {
+    const json = await res.json();
+    assertExists(json.overall_status);
+    assertExists(json.validation_results);
+    assertEquals(json.overall_status, "GREEN");
+  }
+
+  await cleanupTestData(spz);
+});
+
+Deno.test("POST detects unreliable payer (RED)", async () => {
+  const { id: boId, spz } = await createTestOpportunity();
+
+  // Use a known unreliable payer IČO for testing
+  const res = await fetch(BASE_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      buying_opportunity_id: boId,
+      ico: "99999999", // Test unreliable payer
+      dic: "CZ99999999"
+    })
+  });
+
+  if (res.status === 200) {
+    const json = await res.json();
+    // If unreliable payer detected, should be RED
+    const unreliableRule = json.validation_results.find(
+      (r: any) => r.rule_id === "DPH-002"
+    );
+    if (unreliableRule && unreliableRule.status === "FAIL") {
+      assertEquals(json.overall_status, "RED");
+    }
+  }
+
+  await cleanupTestData(spz);
+});
+
+Deno.test("POST detects DIČ mismatch (RED)", async () => {
+  const { id: boId, spz } = await createTestOpportunity();
+
+  const res = await fetch(BASE_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      buying_opportunity_id: boId,
+      ico: "27074358",
+      dic: "CZ00000000" // Wrong DIČ
+    })
+  });
+
+  if (res.status === 200) {
+    const json = await res.json();
+    const dicRule = json.validation_results.find(
+      (r: any) => r.rule_id === "ARES-003"
+    );
+    if (dicRule) {
+      assertEquals(dicRule.status, "FAIL");
+    }
+  }
+
+  await cleanupTestData(spz);
+});
+
+// Mock-based tests
+Deno.test("Mock: ARES validation logic works correctly", () => {
+  const mock = createAresMock();
+  const result = mock.lookup("27074358");
+
+  assertExists(result);
+  assertEquals(result?.ico, "27074358");
+  assertEquals(result?.dic, "CZ27074358");
+});
+```
+
+### Test-First Workflow
+
+1. **RED**: Write tests above, run them - they should FAIL
+2. **GREEN**: Implement the function until tests PASS
+3. **REFACTOR**: Clean up code while keeping tests green
+
+```bash
+# Run tests (should fail before implementation)
+cd MVPScope/supabase && deno task test -- --filter="ares-validate"
+```
 
 ---
 

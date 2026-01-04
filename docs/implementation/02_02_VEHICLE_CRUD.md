@@ -17,8 +17,118 @@ Create a Supabase Edge Function for CRUD operations on the `vehicles` table.
 
 ## Prerequisites
 
+- [ ] Task 1.0 completed (test infrastructure setup)
 - [ ] Task 1.1 completed (database schema applied)
 - [ ] Task 2.1 completed (buying opportunity exists to link to)
+
+---
+
+## Test-First Development
+
+### Required Tests (Write Before Implementation)
+
+Create test file: `MVPScope/supabase/functions/tests/vehicle.test.ts`
+
+```typescript
+import { assertEquals, assertExists } from "@std/assert";
+import { getTestClient, cleanupTestData, generateTestSpz } from "./test-utils.ts";
+
+const BASE_URL = "http://localhost:54321/functions/v1/vehicle";
+const BO_URL = "http://localhost:54321/functions/v1/buying-opportunity";
+
+async function createTestOpportunity() {
+  const spz = generateTestSpz();
+  const res = await fetch(BO_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ spz })
+  });
+  const { id } = await res.json();
+  return { id, spz };
+}
+
+Deno.test("POST creates vehicle with valid data", async () => {
+  const { id: boId, spz } = await createTestOpportunity();
+
+  const res = await fetch(BASE_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      buying_opportunity_id: boId,
+      spz,
+      vin: "YV1PZA3TCL1103985",
+      znacka: "VOLVO",
+      model: "V90 CROSS COUNTRY"
+    })
+  });
+
+  assertEquals(res.status, 201);
+  const json = await res.json();
+  assertExists(json.id);
+  assertEquals(json.vin, "YV1PZA3TCL1103985");
+
+  await cleanupTestData(spz);
+});
+
+Deno.test("POST rejects invalid VIN (not 17 chars)", async () => {
+  const { id: boId, spz } = await createTestOpportunity();
+
+  const res = await fetch(BASE_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      buying_opportunity_id: boId,
+      spz,
+      vin: "TOOSHORT"
+    })
+  });
+
+  assertEquals(res.status, 400);
+  await cleanupTestData(spz);
+});
+
+Deno.test("POST rejects invalid buying_opportunity_id (FK constraint)", async () => {
+  const res = await fetch(BASE_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      buying_opportunity_id: "00000000-0000-0000-0000-000000000000",
+      spz: "TESTFK",
+      vin: "YV1PZA3TCL1103985"
+    })
+  });
+
+  assertEquals(res.status, 400);
+});
+
+Deno.test("GET retrieves vehicle by buying_opportunity_id", async () => {
+  const { id: boId, spz } = await createTestOpportunity();
+
+  await fetch(BASE_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ buying_opportunity_id: boId, spz })
+  });
+
+  const res = await fetch(`${BASE_URL}?buying_opportunity_id=${boId}`);
+  assertEquals(res.status, 200);
+  const json = await res.json();
+  assertEquals(json.spz, spz);
+
+  await cleanupTestData(spz);
+});
+```
+
+### Test-First Workflow
+
+1. **RED**: Write tests above, run them - they should FAIL
+2. **GREEN**: Implement the function until tests PASS
+3. **REFACTOR**: Clean up code while keeping tests green
+
+```bash
+# Run tests (should fail before implementation)
+cd MVPScope/supabase && deno task test -- --filter="vehicle"
+```
 
 ---
 

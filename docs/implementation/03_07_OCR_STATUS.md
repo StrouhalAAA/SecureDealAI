@@ -14,6 +14,170 @@ Create a component to display OCR extraction status and results preview.
 
 ---
 
+## Component Tests
+
+### Required Tests (Write Before Implementation)
+
+Create test file: `MVPScope/frontend/src/components/ocr/__tests__/OcrStatus.spec.ts`
+
+```typescript
+import { describe, it, expect } from 'vitest'
+import { mount } from '@vue/test-utils'
+import OcrStatus from '../OcrStatus.vue'
+
+describe('OcrStatus', () => {
+  it('shows pending state', () => {
+    const wrapper = mount(OcrStatus, {
+      props: {
+        extraction: {
+          ocr_status: 'PENDING',
+          document_type: 'ORV'
+        }
+      }
+    })
+
+    expect(wrapper.text()).toContain('Čeká')
+    expect(wrapper.text()).toContain('⏳')
+  })
+
+  it('shows processing state with spinner', () => {
+    const wrapper = mount(OcrStatus, {
+      props: {
+        extraction: {
+          ocr_status: 'PROCESSING',
+          document_type: 'ORV'
+        }
+      }
+    })
+
+    expect(wrapper.text()).toContain('Probíhá')
+    expect(wrapper.find('.animate-spin').exists()).toBe(true)
+  })
+
+  it('shows completed state with confidence', () => {
+    const wrapper = mount(OcrStatus, {
+      props: {
+        extraction: {
+          ocr_status: 'COMPLETED',
+          document_type: 'ORV',
+          extraction_confidence: 95,
+          extracted_data: {
+            registrationPlateNumber: '5L94454',
+            vin: 'YV1PZA3TCL1103985'
+          }
+        }
+      }
+    })
+
+    expect(wrapper.text()).toContain('✅')
+    expect(wrapper.text()).toContain('dokončena')
+    expect(wrapper.text()).toContain('95%')
+  })
+
+  it('shows data preview toggle when completed', async () => {
+    const wrapper = mount(OcrStatus, {
+      props: {
+        extraction: {
+          ocr_status: 'COMPLETED',
+          document_type: 'ORV',
+          extraction_confidence: 95,
+          extracted_data: {
+            registrationPlateNumber: '5L94454',
+            vin: 'YV1PZA3TCL1103985'
+          }
+        }
+      }
+    })
+
+    const toggleButton = wrapper.find('button')
+    expect(toggleButton.text()).toContain('náhled')
+
+    await toggleButton.trigger('click')
+    expect(wrapper.text()).toContain('SPZ')
+    expect(wrapper.text()).toContain('VIN')
+  })
+
+  it('shows failed state with error message', () => {
+    const wrapper = mount(OcrStatus, {
+      props: {
+        extraction: {
+          ocr_status: 'FAILED',
+          document_type: 'ORV',
+          errors: { message: 'OCR extraction timed out' }
+        }
+      }
+    })
+
+    expect(wrapper.text()).toContain('❌')
+    expect(wrapper.text()).toContain('Chyba')
+  })
+
+  it('shows retry button when failed', () => {
+    const wrapper = mount(OcrStatus, {
+      props: {
+        extraction: {
+          ocr_status: 'FAILED',
+          document_type: 'ORV',
+          errors: { message: 'Failed' }
+        }
+      }
+    })
+
+    const retryButton = wrapper.find('button')
+    expect(retryButton.text()).toContain('Opakovat')
+  })
+
+  it('emits retry event when retry button clicked', async () => {
+    const wrapper = mount(OcrStatus, {
+      props: {
+        extraction: {
+          ocr_status: 'FAILED',
+          document_type: 'ORV',
+          errors: { message: 'Failed' }
+        }
+      }
+    })
+
+    const retryButton = wrapper.find('button')
+    await retryButton.trigger('click')
+
+    expect(wrapper.emitted('retry')).toBeTruthy()
+  })
+
+  it('formats ORV field names correctly', async () => {
+    const wrapper = mount(OcrStatus, {
+      props: {
+        extraction: {
+          ocr_status: 'COMPLETED',
+          document_type: 'ORV',
+          extraction_confidence: 90,
+          extracted_data: {
+            registrationPlateNumber: '5L94454',
+            vin: 'YV1PZA3TCL1103985',
+            keeperName: 'OSIT S.R.O.'
+          }
+        }
+      }
+    })
+
+    // Expand preview
+    await wrapper.find('button').trigger('click')
+
+    expect(wrapper.text()).toContain('SPZ')
+    expect(wrapper.text()).toContain('VIN')
+    expect(wrapper.text()).toContain('Majitel')
+  })
+})
+```
+
+### Test-First Workflow
+
+1. **RED**: Write tests above, run `npm run test -- --filter="OcrStatus"` - they should FAIL
+2. **GREEN**: Implement OcrStatus.vue until tests PASS
+3. **REFACTOR**: Clean up code while keeping tests green
+
+---
+
 ## UI States
 
 | Status | Display |
@@ -188,8 +352,21 @@ function formatFieldName(key: string): string {
 
 ---
 
+## Validation Commands
+
+```bash
+# Run OcrStatus component tests
+cd MVPScope/frontend && npm run test -- --filter="OcrStatus"
+
+# Run all frontend tests
+cd MVPScope/frontend && npm run test
+```
+
+---
+
 ## Validation Criteria
 
+- [ ] All OcrStatus component tests pass
 - [ ] All 4 status states display correctly
 - [ ] Processing shows animated spinner
 - [ ] Completed shows confidence percentage

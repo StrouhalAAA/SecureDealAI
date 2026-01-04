@@ -1,10 +1,24 @@
 # Task 2.8: Validation Run (Deploy)
 
 > **Phase**: 2 - Backend API
-> **Status**: [x] Implemented (code exists, needs deployment)
+> **Status**: Pending
 > **Priority**: High
 > **Depends On**: 1.1 Database Schema, 1.2 Seed Validation Rules
 > **Estimated Effort**: Low
+
+---
+
+## What Agent Needs To Do
+
+**Code already exists locally - DO NOT rewrite it.** Your task is to:
+
+1. **Write tests** in `MVPScope/supabase/functions/tests/validation-run.test.ts`
+2. **Start local Supabase** and serve the function
+3. **Run tests** to verify the implementation works
+4. **Deploy** to production Supabase
+5. **Verify** production deployment works
+
+The code is pre-written (2,326 lines). You are deploying and testing, not implementing.
 
 ---
 
@@ -14,9 +28,9 @@ Deploy the existing validation-run Edge Function to Supabase and verify it works
 
 ---
 
-## Current Implementation Status
+## Pre-Written Code (DO NOT MODIFY unless tests fail)
 
-The validation engine is **fully implemented** in:
+The validation engine is **already implemented** in:
 ```
 MVPScope/supabase/functions/validation-run/
 ├── index.ts          # HTTP handler (416 lines)
@@ -34,9 +48,148 @@ MVPScope/supabase/functions/validation-run/
 
 ## Prerequisites
 
+- [ ] Task 1.0 completed (test infrastructure setup)
 - [ ] Task 1.1 completed (database schema applied)
 - [ ] Task 1.2 completed (validation rules seeded)
 - [ ] Task 1.4 completed (environment configured)
+
+---
+
+## Test-First Development
+
+### Required Tests (Write Before Deployment)
+
+Create test file: `MVPScope/supabase/functions/tests/validation-run.test.ts`
+
+```typescript
+import { assertEquals, assertExists } from "@std/assert";
+import { getTestClient, generateTestSpz, cleanupTestData } from "./test-utils.ts";
+
+const BASE_URL = "http://localhost:54321/functions/v1/validation-run";
+const BO_URL = "http://localhost:54321/functions/v1/buying-opportunity";
+
+async function createTestScenario(scenarioType: 'green' | 'orange' | 'red') {
+  const spz = generateTestSpz();
+  const client = getTestClient();
+
+  // Create buying opportunity
+  const { data: bo } = await client
+    .from("buying_opportunities")
+    .insert({ spz, status: "DRAFT" })
+    .select()
+    .single();
+
+  // Create vehicle with data based on scenario
+  const vehicleData = {
+    buying_opportunity_id: bo?.id,
+    spz,
+    vin: "YV1PZA3TCL1103985",
+    znacka: "VOLVO",
+    model: scenarioType === 'orange' ? "V90" : "V90 CROSS COUNTRY"
+  };
+  await client.from("vehicles").insert(vehicleData);
+
+  // Create OCR extraction with matching/mismatching data
+  const ocrData = {
+    spz,
+    document_type: "ORV",
+    ocr_status: "COMPLETED",
+    extracted_data: {
+      vin: scenarioType === 'red' ? "DIFFERENTVIN123456" : "YV1PZA3TCL1103985",
+      model: "V90 CROSS COUNTRY"
+    }
+  };
+  await client.from("ocr_extractions").insert(ocrData);
+
+  return { id: bo?.id, spz };
+}
+
+Deno.test("POST returns GREEN for matching data", async () => {
+  const { id, spz } = await createTestScenario('green');
+
+  const res = await fetch(BASE_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ buying_opportunity_id: id })
+  });
+
+  assertEquals(res.status, 200);
+  const json = await res.json();
+  assertEquals(json.overall_status, "GREEN");
+  assertExists(json.field_validations);
+
+  await cleanupTestData(spz);
+});
+
+Deno.test("POST returns ORANGE for warning-level mismatch", async () => {
+  const { id, spz } = await createTestScenario('orange');
+
+  const res = await fetch(BASE_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ buying_opportunity_id: id })
+  });
+
+  assertEquals(res.status, 200);
+  const json = await res.json();
+  assertEquals(json.overall_status, "ORANGE");
+
+  await cleanupTestData(spz);
+});
+
+Deno.test("POST returns RED for critical mismatch", async () => {
+  const { id, spz } = await createTestScenario('red');
+
+  const res = await fetch(BASE_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ buying_opportunity_id: id })
+  });
+
+  assertEquals(res.status, 200);
+  const json = await res.json();
+  assertEquals(json.overall_status, "RED");
+  // Should have issues
+  assertExists(json.issues);
+  assertEquals(json.issues.length > 0, true);
+
+  await cleanupTestData(spz);
+});
+
+Deno.test("POST loads rules from database", async () => {
+  const client = getTestClient();
+
+  // Verify rules exist
+  const { data: rules, error } = await client
+    .from("validation_rules")
+    .select("id")
+    .eq("enabled", true);
+
+  assertEquals(error, null);
+  assertEquals((rules?.length ?? 0) > 0, true);
+});
+
+Deno.test("POST returns 400 for missing identifier", async () => {
+  const res = await fetch(BASE_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({})
+  });
+
+  assertEquals(res.status, 400);
+});
+```
+
+### Test-First Workflow
+
+1. **RED**: Write tests above, run them - they should FAIL initially
+2. **GREEN**: Verify the existing implementation passes all tests
+3. **REFACTOR**: Fix any issues discovered during testing
+
+```bash
+# Run tests
+cd MVPScope/supabase && deno task test -- --filter="validation-run"
+```
 
 ---
 

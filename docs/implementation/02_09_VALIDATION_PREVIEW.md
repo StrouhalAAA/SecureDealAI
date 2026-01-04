@@ -31,8 +31,152 @@ For the real-time sidebar (Task 3.10), we need:
 
 ## Prerequisites
 
+- [ ] Task 1.0 completed (test infrastructure setup)
 - [ ] Task 2.8 completed (validation-run deployed)
 - [ ] Task 1.1 completed (database schema applied)
+
+---
+
+## Test-First Development
+
+### Required Tests (Write Before Implementation)
+
+Create test file: `MVPScope/supabase/functions/tests/validation-preview.test.ts`
+
+```typescript
+import { assertEquals, assertExists } from "@std/assert";
+import { getTestClient, generateTestSpz, cleanupTestData } from "./test-utils.ts";
+
+const BASE_URL = "http://localhost:54321/functions/v1/validation-preview";
+
+async function createTestOpportunity(withData: 'none' | 'partial' | 'full') {
+  const spz = generateTestSpz();
+  const client = getTestClient();
+
+  // Create buying opportunity
+  const { data: bo } = await client
+    .from("buying_opportunities")
+    .insert({ spz, status: "DRAFT" })
+    .select()
+    .single();
+
+  if (withData === 'partial' || withData === 'full') {
+    // Add vehicle data
+    await client.from("vehicles").insert({
+      buying_opportunity_id: bo?.id,
+      spz,
+      vin: "YV1PZA3TCL1103985"
+    });
+  }
+
+  if (withData === 'full') {
+    // Add vendor data
+    await client.from("vendors").insert({
+      buying_opportunity_id: bo?.id,
+      vendor_type: "PHYSICAL_PERSON",
+      name: "JAN NOVAK",
+      personal_id: "800101/1234"
+    });
+
+    // Add OCR extraction
+    await client.from("ocr_extractions").insert({
+      spz,
+      document_type: "ORV",
+      ocr_status: "COMPLETED",
+      extracted_data: { vin: "YV1PZA3TCL1103985" }
+    });
+  }
+
+  return { id: bo?.id, spz };
+}
+
+Deno.test("POST returns INCOMPLETE for new opportunity with no data", async () => {
+  const { id, spz } = await createTestOpportunity('none');
+
+  const res = await fetch(BASE_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ buying_opportunity_id: id })
+  });
+
+  assertEquals(res.status, 200);
+  const json = await res.json();
+  assertEquals(json.preview_status, "INCOMPLETE");
+  assertEquals(json.is_preview, true);
+  assertExists(json.documents);
+  assertEquals(json.documents.uploaded, 0);
+
+  await cleanupTestData(spz);
+});
+
+Deno.test("POST returns partial data status", async () => {
+  const { id, spz } = await createTestOpportunity('partial');
+
+  const res = await fetch(BASE_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ buying_opportunity_id: id })
+  });
+
+  assertEquals(res.status, 200);
+  const json = await res.json();
+  assertEquals(json.is_preview, true);
+  assertExists(json.categories);
+  // Vehicle category should exist since we added vehicle data
+  assertExists(json.categories.vehicle);
+
+  await cleanupTestData(spz);
+});
+
+Deno.test("POST does NOT write to database", async () => {
+  const { id, spz } = await createTestOpportunity('full');
+  const client = getTestClient();
+
+  // Get current validation_results count
+  const { count: beforeCount } = await client
+    .from("validation_results")
+    .select("*", { count: "exact", head: true })
+    .eq("buying_opportunity_id", id);
+
+  // Call preview endpoint
+  await fetch(BASE_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ buying_opportunity_id: id })
+  });
+
+  // Verify no new records created
+  const { count: afterCount } = await client
+    .from("validation_results")
+    .select("*", { count: "exact", head: true })
+    .eq("buying_opportunity_id", id);
+
+  assertEquals(beforeCount, afterCount);
+
+  await cleanupTestData(spz);
+});
+
+Deno.test("POST returns 400 for missing buying_opportunity_id", async () => {
+  const res = await fetch(BASE_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({})
+  });
+
+  assertEquals(res.status, 400);
+});
+```
+
+### Test-First Workflow
+
+1. **RED**: Write tests above, run them - they should FAIL
+2. **GREEN**: Implement the function until tests PASS
+3. **REFACTOR**: Clean up code while keeping tests green
+
+```bash
+# Run tests (should fail before implementation)
+cd MVPScope/supabase && deno task test -- --filter="validation-preview"
+```
 
 ---
 

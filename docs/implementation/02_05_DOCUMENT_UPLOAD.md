@@ -23,8 +23,116 @@ Create a Supabase Edge Function for uploading documents (ORV, VTP, OP) to Supaba
 
 ## Prerequisites
 
+- [ ] Task 1.0 completed (test infrastructure setup)
 - [ ] Task 1.1 completed (database schema applied)
 - [ ] Task 1.3 completed (storage bucket created)
+
+---
+
+## Test-First Development
+
+### Required Tests (Write Before Implementation)
+
+Create test file: `MVPScope/supabase/functions/tests/document-upload.test.ts`
+
+```typescript
+import { assertEquals, assertExists } from "@std/assert";
+import { getTestClient, generateTestSpz, cleanupTestData } from "./test-utils.ts";
+
+const BASE_URL = "http://localhost:54321/functions/v1/document-upload";
+
+// Helper to create FormData with test file
+function createTestFormData(spz: string, documentType: string, fileContent: Uint8Array, mimeType: string) {
+  const formData = new FormData();
+  const blob = new Blob([fileContent], { type: mimeType });
+  formData.append("file", blob, "test.pdf");
+  formData.append("spz", spz);
+  formData.append("document_type", documentType);
+  return formData;
+}
+
+Deno.test("POST uploads PDF document successfully", async () => {
+  const spz = generateTestSpz();
+  const testPdf = new Uint8Array([0x25, 0x50, 0x44, 0x46]); // PDF magic bytes
+
+  const res = await fetch(BASE_URL, {
+    method: "POST",
+    body: createTestFormData(spz, "ORV", testPdf, "application/pdf")
+  });
+
+  assertEquals(res.status, 201);
+  const json = await res.json();
+  assertExists(json.id);
+  assertEquals(json.ocr_status, "PENDING");
+  assertEquals(json.document_type, "ORV");
+
+  await cleanupTestData(spz);
+});
+
+Deno.test("POST uploads JPEG document successfully", async () => {
+  const spz = generateTestSpz();
+  const testJpeg = new Uint8Array([0xFF, 0xD8, 0xFF]); // JPEG magic bytes
+
+  const res = await fetch(BASE_URL, {
+    method: "POST",
+    body: createTestFormData(spz, "OP", testJpeg, "image/jpeg")
+  });
+
+  assertEquals(res.status, 201);
+  await cleanupTestData(spz);
+});
+
+Deno.test("POST rejects file exceeding size limit", async () => {
+  const spz = generateTestSpz();
+  const largeFile = new Uint8Array(11 * 1024 * 1024); // 11 MB (exceeds 10 MB limit)
+
+  const res = await fetch(BASE_URL, {
+    method: "POST",
+    body: createTestFormData(spz, "ORV", largeFile, "application/pdf")
+  });
+
+  assertEquals(res.status, 400);
+  const json = await res.json();
+  assertEquals(json.errors.some((e: string) => e.includes("too large")), true);
+});
+
+Deno.test("POST rejects invalid file type", async () => {
+  const spz = generateTestSpz();
+  const textFile = new TextEncoder().encode("not a valid document");
+
+  const formData = new FormData();
+  formData.append("file", new Blob([textFile], { type: "text/plain" }), "test.txt");
+  formData.append("spz", spz);
+  formData.append("document_type", "ORV");
+
+  const res = await fetch(BASE_URL, { method: "POST", body: formData });
+
+  assertEquals(res.status, 400);
+});
+
+Deno.test("POST rejects invalid document_type", async () => {
+  const spz = generateTestSpz();
+  const testPdf = new Uint8Array([0x25, 0x50, 0x44, 0x46]);
+
+  const res = await fetch(BASE_URL, {
+    method: "POST",
+    body: createTestFormData(spz, "INVALID", testPdf, "application/pdf")
+  });
+
+  assertEquals(res.status, 400);
+});
+```
+
+### Test-First Workflow
+
+1. **RED**: Write tests above, run them - they should FAIL
+2. **GREEN**: Implement the function until tests PASS
+3. **REFACTOR**: Clean up code while keeping tests green
+
+```bash
+# Run tests (should fail before implementation)
+cd MVPScope/supabase && deno task test -- --filter="document-upload"
+```
 
 ---
 
