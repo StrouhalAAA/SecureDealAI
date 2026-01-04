@@ -1,7 +1,7 @@
 # Task 3.2: Dashboard Page
 
 > **Phase**: 3 - Frontend
-> **Status**: [x] Implemented
+> **Status**: [ ] Pending
 > **Priority**: High
 > **Depends On**: 3.1 Vue.js Project Setup, 2.1 Buying Opportunity CRUD
 > **Estimated Effort**: Medium
@@ -18,6 +18,109 @@ Create the main dashboard page displaying a list of buying opportunities with st
 
 - [ ] Task 3.1 completed (Vue.js project setup)
 - [ ] Task 2.1 completed (Buying Opportunity CRUD API)
+
+---
+
+## Component Tests
+
+### Required Tests (Write Before Implementation)
+
+Create test file: `MVPScope/frontend/src/pages/__tests__/Dashboard.spec.ts`
+
+```typescript
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { mount, flushPromises } from '@vue/test-utils'
+import { createRouter, createMemoryHistory } from 'vue-router'
+import Dashboard from '../Dashboard.vue'
+
+// Mock Supabase
+vi.mock('@/composables/useSupabase', () => ({
+  supabase: {
+    from: vi.fn(() => ({
+      select: vi.fn(() => ({
+        order: vi.fn(() => ({
+          range: vi.fn(() => Promise.resolve({
+            data: [
+              { id: '1', spz: '5L94454', status: 'DRAFT', created_at: '2026-01-01' },
+              { id: '2', spz: '1AB2345', status: 'VALIDATED', created_at: '2026-01-01' },
+            ],
+            count: 2,
+            error: null
+          }))
+        }))
+      }))
+    }))
+  }
+}))
+
+describe('Dashboard', () => {
+  let router: any
+
+  beforeEach(() => {
+    router = createRouter({
+      history: createMemoryHistory(),
+      routes: [
+        { path: '/', component: Dashboard },
+        { path: '/opportunity/:id', component: { template: '<div>Detail</div>' } }
+      ]
+    })
+  })
+
+  it('renders list of opportunities', async () => {
+    const wrapper = mount(Dashboard, {
+      global: { plugins: [router] }
+    })
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('5L94454')
+    expect(wrapper.text()).toContain('1AB2345')
+  })
+
+  it('displays create button', () => {
+    const wrapper = mount(Dashboard, {
+      global: { plugins: [router] }
+    })
+
+    expect(wrapper.find('button').text()).toContain('Nová příležitost')
+  })
+
+  it('has search input', () => {
+    const wrapper = mount(Dashboard, {
+      global: { plugins: [router] }
+    })
+
+    expect(wrapper.find('input[type="text"]').exists()).toBe(true)
+  })
+
+  it('shows pagination controls', async () => {
+    const wrapper = mount(Dashboard, {
+      global: { plugins: [router] }
+    })
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Předchozí')
+    expect(wrapper.text()).toContain('Další')
+  })
+
+  it('navigates to detail on row click', async () => {
+    const wrapper = mount(Dashboard, {
+      global: { plugins: [router] }
+    })
+    await flushPromises()
+
+    const openButton = wrapper.findAll('button').find(b => b.text().includes('Otevřít'))
+    await openButton?.trigger('click')
+
+    expect(router.currentRoute.value.path).toContain('/opportunity/')
+  })
+})
+```
+
+### Test-First Workflow
+
+1. **RED**: Write tests above, run `npm run test -- --filter="Dashboard"` - they should FAIL
+2. **GREEN**: Implement Dashboard.vue until tests PASS
+3. **REFACTOR**: Clean up code while keeping tests green
 
 ---
 
@@ -423,8 +526,21 @@ async function create() {
 
 ---
 
+## Validation Commands
+
+```bash
+# Run Dashboard component tests
+cd MVPScope/frontend && npm run test -- --filter="Dashboard"
+
+# Run all frontend tests
+cd MVPScope/frontend && npm run test
+```
+
+---
+
 ## Validation Criteria
 
+- [ ] All Dashboard component tests pass
 - [ ] List of opportunities displays correctly
 - [ ] Status badges show correct colors
 - [ ] Search by SPZ works

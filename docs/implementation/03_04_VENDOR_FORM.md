@@ -1,7 +1,7 @@
 # Task 3.4: Vendor Form Component
 
 > **Phase**: 3 - Frontend
-> **Status**: [x] Implemented
+> **Status**: [ ] Pending
 > **Priority**: High
 > **Depends On**: 3.1 Vue.js Setup, 2.3 Vendor CRUD, 2.4 ARES Lookup
 > **Estimated Effort**: High
@@ -19,6 +19,134 @@ Create a form component for entering vendor data (Step 2) with automatic ARES lo
 - [ ] Task 3.1 completed (Vue.js project setup)
 - [ ] Task 2.3 completed (Vendor CRUD API)
 - [ ] Task 2.4 completed (ARES Lookup API)
+
+---
+
+## Component Tests
+
+### Required Tests (Write Before Implementation)
+
+Create test file: `MVPScope/frontend/src/components/forms/__tests__/VendorForm.spec.ts`
+
+```typescript
+import { describe, it, expect, vi } from 'vitest'
+import { mount, flushPromises } from '@vue/test-utils'
+import VendorForm from '../VendorForm.vue'
+
+// Mock Supabase and fetch
+vi.mock('@/composables/useSupabase', () => ({
+  supabase: {
+    from: vi.fn(() => ({
+      insert: vi.fn(() => ({
+        select: vi.fn(() => ({
+          single: vi.fn(() => Promise.resolve({ data: { id: '1' }, error: null }))
+        }))
+      }))
+    }))
+  }
+}))
+
+global.fetch = vi.fn(() =>
+  Promise.resolve({
+    ok: true,
+    json: () => Promise.resolve({
+      found: true,
+      data: {
+        name: 'OSIT S.R.O.',
+        dic: 'CZ27074358',
+        address: { street: 'Mrštíkova 399/2A', city: 'Liberec', postal_code: '46007' }
+      }
+    })
+  })
+) as any
+
+describe('VendorForm', () => {
+  const defaultProps = {
+    buyingOpportunityId: 'test-id'
+  }
+
+  it('renders vendor type toggle (FO/PO)', () => {
+    const wrapper = mount(VendorForm, { props: defaultProps })
+
+    expect(wrapper.text()).toContain('Fyzická osoba')
+    expect(wrapper.text()).toContain('Právnická osoba')
+  })
+
+  it('shows company fields when PO is selected', async () => {
+    const wrapper = mount(VendorForm, { props: defaultProps })
+
+    const poRadio = wrapper.find('input[value="COMPANY"]')
+    await poRadio.setValue(true)
+
+    expect(wrapper.text()).toContain('IČO')
+    expect(wrapper.text()).toContain('Název firmy')
+    expect(wrapper.text()).toContain('DIČ')
+  })
+
+  it('shows personal fields when FO is selected', async () => {
+    const wrapper = mount(VendorForm, { props: defaultProps })
+
+    const foRadio = wrapper.find('input[value="PHYSICAL_PERSON"]')
+    await foRadio.setValue(true)
+
+    expect(wrapper.text()).toContain('Rodné číslo')
+    expect(wrapper.text()).toContain('Jméno')
+  })
+
+  it('triggers ARES lookup when IČO is 8 digits', async () => {
+    const wrapper = mount(VendorForm, { props: defaultProps })
+
+    // Select company type
+    const poRadio = wrapper.find('input[value="COMPANY"]')
+    await poRadio.setValue(true)
+
+    // Enter valid IČO
+    const icoInput = wrapper.find('input[maxlength="8"]')
+    await icoInput.setValue('27074358')
+    await flushPromises()
+
+    // ARES lookup should have been triggered
+    expect(global.fetch).toHaveBeenCalled()
+  })
+
+  it('auto-fills company data from ARES response', async () => {
+    const wrapper = mount(VendorForm, { props: defaultProps })
+
+    // Select company and trigger ARES
+    const poRadio = wrapper.find('input[value="COMPANY"]')
+    await poRadio.setValue(true)
+
+    const icoInput = wrapper.find('input[maxlength="8"]')
+    await icoInput.setValue('27074358')
+
+    // Click lookup button
+    const lookupButton = wrapper.findAll('button').find(b => b.text().includes('🔍'))
+    await lookupButton?.trigger('click')
+    await flushPromises()
+
+    // Check auto-filled values
+    expect(wrapper.text()).toContain('OSIT S.R.O.')
+  })
+
+  it('validates rodné číslo format for FO', async () => {
+    const wrapper = mount(VendorForm, { props: defaultProps })
+
+    const foRadio = wrapper.find('input[value="PHYSICAL_PERSON"]')
+    await foRadio.setValue(true)
+
+    const rcInput = wrapper.find('input[placeholder*="####"]')
+    await rcInput.setValue('invalid')
+
+    expect(wrapper.text()).toContain('číslo') // Should show validation message
+  })
+})
+```
+
+### Test-First Workflow
+
+1. **RED**: Write tests above, run `npm run test -- --filter="VendorForm"` - they should FAIL
+2. **GREEN**: Implement VendorForm.vue until tests PASS
+3. **REFACTOR**: Clean up code while keeping tests green
 
 ---
 
@@ -427,26 +555,39 @@ const lookupAres = useDebounceFn(async () => {
 
 ---
 
+## Validation Commands
+
+```bash
+# Run VendorForm component tests
+cd MVPScope/frontend && npm run test -- --filter="VendorForm"
+
+# Run all frontend tests
+cd MVPScope/frontend && npm run test
+```
+
+---
+
 ## Validation Criteria
 
-- [x] Vendor type toggle works
-- [x] Company: IČO validation (8 digits)
-- [x] Company: ARES auto-lookup on IČO
-- [x] Company: Auto-fill from ARES data
-- [x] Company: ARES status indicator
-- [x] FO: Rodné číslo validation
-- [x] FO: Format with slash (######/####)
-- [x] Common fields work for both types
-- [x] Saves to database correctly
-- [x] Edit mode loads existing data
+- [ ] All VendorForm component tests pass
+- [ ] Vendor type toggle works
+- [ ] Company: IČO validation (8 digits)
+- [ ] Company: ARES auto-lookup on IČO
+- [ ] Company: Auto-fill from ARES data
+- [ ] Company: ARES status indicator
+- [ ] FO: Rodné číslo validation
+- [ ] FO: Format with slash (######/####)
+- [ ] Common fields work for both types
+- [ ] Saves to database correctly
+- [ ] Edit mode loads existing data
 
 ---
 
 ## Completion Checklist
 
-- [x] VendorForm.vue created
-- [x] ARES integration working
-- [x] All validations working
-- [x] Auto-fill highlighting
-- [x] Edit mode working
-- [x] Update tracker: `00_IMPLEMENTATION_TRACKER.md`
+- [ ] VendorForm.vue created
+- [ ] ARES integration working
+- [ ] All validations working
+- [ ] Auto-fill highlighting
+- [ ] Edit mode working
+- [ ] Update tracker: `00_IMPLEMENTATION_TRACKER.md`

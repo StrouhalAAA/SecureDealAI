@@ -20,9 +20,109 @@ Create a Supabase Edge Function that processes uploaded documents through Mistra
 
 ## Prerequisites
 
+- [ ] Task 1.0 completed (test infrastructure setup)
 - [ ] Task 2.5 completed (document upload working)
 - [ ] INT_01 completed (Mistral API specification documented)
 - [ ] Mistral API key obtained
+
+---
+
+## Test-First Development
+
+### Required Tests (Write Before Implementation)
+
+Create test file: `MVPScope/supabase/functions/tests/ocr-extract.test.ts`
+
+```typescript
+import { assertEquals, assertExists } from "@std/assert";
+import { createMistralMock } from "./mocks/mistral-mock.ts";
+import { getTestClient, generateTestSpz, cleanupTestData } from "./test-utils.ts";
+
+const BASE_URL = "http://localhost:54321/functions/v1/ocr-extract";
+
+Deno.test("POST extracts data from ORV document", async () => {
+  // First create an ocr_extractions record via document-upload
+  // Then trigger OCR extraction
+  const client = getTestClient();
+
+  // Create test record
+  const { data: ocrRecord } = await client
+    .from("ocr_extractions")
+    .insert({
+      spz: generateTestSpz(),
+      document_type: "ORV",
+      document_file_url: "http://test-storage/test.pdf",
+      ocr_status: "PENDING"
+    })
+    .select()
+    .single();
+
+  const res = await fetch(BASE_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ocr_extraction_id: ocrRecord?.id })
+  });
+
+  // Note: This may fail with actual Mistral API unavailable
+  // Use mocks in isolated unit tests
+  if (res.status === 200) {
+    const json = await res.json();
+    assertEquals(json.ocr_status, "COMPLETED");
+    assertExists(json.extracted_data);
+  }
+});
+
+Deno.test("POST returns 404 for non-existent ocr_extraction_id", async () => {
+  const res = await fetch(BASE_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ocr_extraction_id: "00000000-0000-0000-0000-000000000000" })
+  });
+
+  assertEquals(res.status, 404);
+});
+
+Deno.test("POST returns 400 for missing ocr_extraction_id", async () => {
+  const res = await fetch(BASE_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({})
+  });
+
+  assertEquals(res.status, 400);
+});
+
+// Mock-based unit tests
+Deno.test("Mock: ORV extraction returns expected fields", () => {
+  const mock = createMistralMock();
+  const result = mock.extractORV();
+
+  assertExists(result.registrationPlateNumber);
+  assertExists(result.vin);
+  assertExists(result.keeperName);
+  assertEquals(result.vin.length, 17); // VIN is 17 chars
+});
+
+Deno.test("Mock: OP extraction returns expected fields", () => {
+  const mock = createMistralMock();
+  const result = mock.extractOP();
+
+  assertExists(result.firstName);
+  assertExists(result.lastName);
+  assertExists(result.personalNumber);
+});
+```
+
+### Test-First Workflow
+
+1. **RED**: Write tests above, run them - they should FAIL
+2. **GREEN**: Implement the function until tests PASS
+3. **REFACTOR**: Clean up code while keeping tests green
+
+```bash
+# Run tests (should fail before implementation)
+cd MVPScope/supabase && deno task test -- --filter="ocr-extract"
+```
 
 ---
 

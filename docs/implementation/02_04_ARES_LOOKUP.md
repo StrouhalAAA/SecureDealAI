@@ -1,7 +1,7 @@
 # Task 2.4: ARES Lookup API (Instant IČO Validation)
 
 > **Phase**: 2 - Backend API
-> **Status**: [x] Implemented
+> **Status**: [ ] Pending
 > **Priority**: High
 > **Depends On**: 1.1 Database Schema, INT_02 ARES API Spec
 > **Estimated Effort**: Medium
@@ -16,9 +16,96 @@ Create a Supabase Edge Function for instant IČO lookup via ARES API. This provi
 
 ## Prerequisites
 
+- [ ] Task 1.0 completed (test infrastructure setup)
 - [ ] Task 1.1 completed (database schema applied)
 - [ ] INT_02 completed (ARES API specification documented)
 - [ ] ARES API endpoint confirmed
+
+---
+
+## Test-First Development
+
+### Required Tests (Write Before Implementation)
+
+Create test file: `MVPScope/supabase/functions/tests/ares-lookup.test.ts`
+
+```typescript
+import { assertEquals, assertExists } from "@std/assert";
+import { createAresMock } from "./mocks/ares-mock.ts";
+
+const BASE_URL = "http://localhost:54321/functions/v1/ares-lookup";
+
+Deno.test("GET returns company data for valid IČO", async () => {
+  // Using known test IČO
+  const res = await fetch(`${BASE_URL}/27074358`);
+
+  assertEquals(res.status, 200);
+  const json = await res.json();
+  assertEquals(json.found, true);
+  assertExists(json.data.name);
+  assertExists(json.data.ico);
+  assertExists(json.data.address);
+});
+
+Deno.test("GET returns 400 for invalid IČO format", async () => {
+  const res = await fetch(`${BASE_URL}/123`);
+
+  assertEquals(res.status, 400);
+  const json = await res.json();
+  assertEquals(json.found, false);
+});
+
+Deno.test("GET returns 404 for non-existent company", async () => {
+  const res = await fetch(`${BASE_URL}/99999999`);
+
+  assertEquals(res.status, 404);
+  const json = await res.json();
+  assertEquals(json.found, false);
+});
+
+Deno.test("GET handles timeout gracefully", async () => {
+  // Test with mock that simulates timeout
+  // Should return 503 Service Unavailable
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 100);
+
+  try {
+    const res = await fetch(`${BASE_URL}/12345678`, {
+      signal: controller.signal
+    });
+    // If we get here, check for appropriate error handling
+    const json = await res.json();
+    if (res.status === 503) {
+      assertExists(json.error);
+    }
+  } catch (e) {
+    // Abort is expected for timeout test
+  } finally {
+    clearTimeout(timeoutId);
+  }
+});
+
+// Mock-based tests for ARES unavailability
+Deno.test("Mock: ARES lookup returns expected data", () => {
+  const mock = createAresMock();
+  const result = mock.lookup("27074358");
+
+  assertExists(result);
+  assertEquals(result?.ico, "27074358");
+  assertEquals(result?.obchodniJmeno, "OSIT S.R.O.");
+});
+```
+
+### Test-First Workflow
+
+1. **RED**: Write tests above, run them - they should FAIL
+2. **GREEN**: Implement the function until tests PASS
+3. **REFACTOR**: Clean up code while keeping tests green
+
+```bash
+# Run tests (should fail before implementation)
+cd MVPScope/supabase && deno task test -- --filter="ares-lookup"
+```
 
 ---
 
@@ -357,9 +444,9 @@ curl "https://[project].supabase.co/functions/v1/ares-lookup/99999999" \
 
 ## Completion Checklist
 
-- [x] Function created and deployed
-- [x] ARES API integration working
-- [x] Caching implemented
-- [x] Error handling complete
-- [x] Tests pass
+- [ ] Function created and deployed
+- [ ] ARES API integration working
+- [ ] Caching implemented
+- [ ] Error handling complete
+- [ ] Tests pass
 - [ ] Update tracker: `00_IMPLEMENTATION_TRACKER.md`

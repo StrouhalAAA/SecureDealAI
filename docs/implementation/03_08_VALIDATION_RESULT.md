@@ -14,6 +14,172 @@ Create a component to display validation results with overall status, field-leve
 
 ---
 
+## Component Tests
+
+### Required Tests (Write Before Implementation)
+
+Create test file: `MVPScope/frontend/src/components/validation/__tests__/ValidationResult.spec.ts`
+
+```typescript
+import { describe, it, expect } from 'vitest'
+import { mount } from '@vue/test-utils'
+import ValidationResult from '../ValidationResult.vue'
+
+describe('ValidationResult', () => {
+  const greenResult = {
+    overall_status: 'GREEN',
+    attempt_number: 1,
+    completed_at: '2026-01-01T12:00:00Z',
+    duration_ms: 150,
+    field_validations: [
+      { field: 'vin', result: 'MATCH', manual: 'YV1PZA3TCL1103985', ocr: 'YV1PZA3TCL1103985' },
+      { field: 'spz', result: 'MATCH', manual: '5L94454', ocr: '5L94454' },
+    ],
+    issues: []
+  }
+
+  const orangeResult = {
+    overall_status: 'ORANGE',
+    attempt_number: 1,
+    completed_at: '2026-01-01T12:00:00Z',
+    duration_ms: 200,
+    field_validations: [
+      { field: 'vin', result: 'MATCH', manual: 'YV1PZA3TCL1103985', ocr: 'YV1PZA3TCL1103985' },
+      { field: 'model', result: 'MISMATCH', status: 'ORANGE', similarity: 0.85 },
+    ],
+    issues: [
+      { field: 'model', severity: 'WARNING', message: 'Částečná shoda (85%)' }
+    ]
+  }
+
+  const redResult = {
+    overall_status: 'RED',
+    attempt_number: 2,
+    completed_at: '2026-01-01T12:00:00Z',
+    duration_ms: 180,
+    field_validations: [
+      { field: 'vin', result: 'MISMATCH', status: 'RED' },
+    ],
+    issues: [
+      { field: 'vin', severity: 'CRITICAL', message: 'VIN neodpovídá' }
+    ]
+  }
+
+  it('displays GREEN status correctly', () => {
+    const wrapper = mount(ValidationResult, {
+      props: { result: greenResult }
+    })
+
+    expect(wrapper.text()).toContain('🟢')
+    expect(wrapper.text()).toContain('GREEN')
+    expect(wrapper.text()).toContain('Schváleno')
+  })
+
+  it('displays ORANGE status correctly', () => {
+    const wrapper = mount(ValidationResult, {
+      props: { result: orangeResult }
+    })
+
+    expect(wrapper.text()).toContain('🟠')
+    expect(wrapper.text()).toContain('ORANGE')
+    expect(wrapper.text()).toContain('přezkoumání')
+  })
+
+  it('displays RED status correctly', () => {
+    const wrapper = mount(ValidationResult, {
+      props: { result: redResult }
+    })
+
+    expect(wrapper.text()).toContain('🔴')
+    expect(wrapper.text()).toContain('RED')
+    expect(wrapper.text()).toContain('Zablokováno')
+  })
+
+  it('shows field comparison table', () => {
+    const wrapper = mount(ValidationResult, {
+      props: { result: greenResult }
+    })
+
+    expect(wrapper.find('table').exists()).toBe(true)
+    expect(wrapper.text()).toContain('VIN')
+    expect(wrapper.text()).toContain('SPZ')
+  })
+
+  it('shows MATCH status for matching fields', () => {
+    const wrapper = mount(ValidationResult, {
+      props: { result: greenResult }
+    })
+
+    expect(wrapper.text()).toContain('MATCH')
+    expect(wrapper.text()).toContain('🟢')
+  })
+
+  it('shows percentage for fuzzy matches', () => {
+    const wrapper = mount(ValidationResult, {
+      props: { result: orangeResult }
+    })
+
+    expect(wrapper.text()).toContain('85%')
+  })
+
+  it('displays issues list when present', () => {
+    const wrapper = mount(ValidationResult, {
+      props: { result: orangeResult }
+    })
+
+    expect(wrapper.text()).toContain('Upozornění')
+    expect(wrapper.text()).toContain('Částečná shoda')
+  })
+
+  it('shows critical issues with red styling', () => {
+    const wrapper = mount(ValidationResult, {
+      props: { result: redResult }
+    })
+
+    expect(wrapper.text()).toContain('VIN neodpovídá')
+  })
+
+  it('emits retry event when retry button clicked', async () => {
+    const wrapper = mount(ValidationResult, {
+      props: { result: greenResult }
+    })
+
+    const retryButton = wrapper.findAll('button').find(b => b.text().includes('Opakovat'))
+    await retryButton?.trigger('click')
+
+    expect(wrapper.emitted('retry')).toBeTruthy()
+  })
+
+  it('emits close event when dashboard button clicked', async () => {
+    const wrapper = mount(ValidationResult, {
+      props: { result: greenResult }
+    })
+
+    const closeButton = wrapper.findAll('button').find(b => b.text().includes('dashboard'))
+    await closeButton?.trigger('click')
+
+    expect(wrapper.emitted('close')).toBeTruthy()
+  })
+
+  it('shows attempt number and timing info', () => {
+    const wrapper = mount(ValidationResult, {
+      props: { result: orangeResult }
+    })
+
+    expect(wrapper.text()).toContain('#1')
+    expect(wrapper.text()).toContain('200ms')
+  })
+})
+```
+
+### Test-First Workflow
+
+1. **RED**: Write tests above, run `npm run test -- --filter="ValidationResult"` - they should FAIL
+2. **GREEN**: Implement ValidationResult.vue until tests PASS
+3. **REFACTOR**: Clean up code while keeping tests green
+
+---
+
 ## UI Specification
 
 ```
@@ -321,8 +487,21 @@ const statusClass = computed(() => config.value.class);
 
 ---
 
+## Validation Commands
+
+```bash
+# Run ValidationResult component tests
+cd MVPScope/frontend && npm run test -- --filter="ValidationResult"
+
+# Run all frontend tests
+cd MVPScope/frontend && npm run test
+```
+
+---
+
 ## Validation Criteria
 
+- [ ] All ValidationResult component tests pass
 - [ ] Overall status banner displays correctly (GREEN/ORANGE/RED)
 - [ ] Field comparison table shows all fields
 - [ ] Status column shows MATCH/MISMATCH/MISSING

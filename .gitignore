@@ -3,11 +3,6 @@
 .env.local
 .env.*.local
 
-# Supabase environment files
-supabase/.env
-supabase/.env.local
-supabase/.temp/
-
 # Dependencies
 node_modules/
 
@@ -15,7 +10,6 @@ node_modules/
 dist/
 build/
 .next/
-apps/web/dist/
 
 # IDE
 .idea/
@@ -31,6 +25,22 @@ Thumbs.db
 *.log
 npm-debug.log*
 
-# Agent outputs with secrets
-agents/
+# Test data (real documents - keep out of git)
+test_data/*.pdf
+test_data/*.jpg
+test_data/*.jpeg
+test_data/*.png
+!test_data/README.md
+!test_data/.gitkeep
+
+# Python virtual environments
+.venv/
+ADWS/.venv/
+__pycache__/
+*.pyc
+
+# AgenticCoding reference (separate git repo)
 AgenticCoding/
+
+# Supabase temp files
+supabase/.temp/
