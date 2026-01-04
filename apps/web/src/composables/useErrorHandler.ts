@@ -1,7 +1,10 @@
+import { useAuth } from '@/composables/useAuth'
+
 /**
  * Global error handler composable for consistent error handling across the application
  */
 export function useErrorHandler() {
+  const { handleUnauthorized } = useAuth()
   /**
    * Translates various error types into user-friendly Czech messages
    */
@@ -122,13 +125,36 @@ export function useErrorHandler() {
   function shouldRedirect(error: unknown): { redirect: boolean; path?: string } {
     if (error instanceof Response) {
       if (error.status === 401 || error.status === 403) {
-        return { redirect: true, path: '/login' };
+        return { redirect: true, path: '/access-code' };
       }
       if (error.status === 404) {
         return { redirect: true, path: '/' };
       }
     }
     return { redirect: false };
+  }
+
+  /**
+   * Handle API errors with automatic 401 handling
+   */
+  function handleApiError(error: unknown, context?: string): void {
+    // Check for 401 response
+    if (error instanceof Response && error.status === 401) {
+      handleUnauthorized()
+      return
+    }
+
+    // Check for error object with status
+    if (typeof error === 'object' && error !== null && 'status' in error) {
+      const statusError = error as { status: number }
+      if (statusError.status === 401) {
+        handleUnauthorized()
+        return
+      }
+    }
+
+    // Handle other errors
+    console.error(`Error in ${context || 'unknown context'}:`, error)
   }
 
   /**
@@ -160,6 +186,7 @@ export function useErrorHandler() {
 
   return {
     handleError,
+    handleApiError,
     shouldRedirect,
     isRetryable,
   };

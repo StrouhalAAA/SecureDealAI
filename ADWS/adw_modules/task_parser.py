@@ -195,21 +195,42 @@ def check_dependencies(task_id: str, completed_tasks: List[str] = None) -> Dict[
 
 
 def get_completed_tasks_from_tracker() -> List[str]:
-    """Read the implementation tracker and return list of completed task IDs."""
+    """Read all implementation trackers and return list of completed task IDs.
+
+    Reads from:
+    - 00_IMPLEMENTATION_TRACKER.md (main tracker for Phases 1-4)
+    - PHASE5_IMPLEMENTATION_TRACKER.md (Phase 5 tracker)
+
+    Supports both "[x] Implemented" and "[x] Complete" status markers.
+    """
     project_root = get_project_root()
-    tracker_path = os.path.join(project_root, "docs", "implementation", "00_IMPLEMENTATION_TRACKER.md")
+    impl_dir = os.path.join(project_root, "docs", "implementation")
+
+    # List of tracker files to check
+    tracker_files = [
+        os.path.join(impl_dir, "00_IMPLEMENTATION_TRACKER.md"),
+        os.path.join(impl_dir, "PHASE5_IMPLEMENTATION_TRACKER.md"),
+    ]
 
     completed = []
-    if not os.path.exists(tracker_path):
-        return completed
 
-    with open(tracker_path, "r", encoding="utf-8") as f:
-        content = f.read()
+    for tracker_path in tracker_files:
+        if not os.path.exists(tracker_path):
+            continue
 
-    # Find all completed tasks: | X.X | Task Name | [Doc] | [x] Implemented |
-    matches = re.findall(r"\|\s*(\d+)\.(\d+)\s*\|[^|]+\|[^|]+\|\s*\[x\]\s*Implemented", content)
-    for phase, task in matches:
-        completed.append(f"{phase.zfill(2)}_{task.zfill(2)}")
+        with open(tracker_path, "r", encoding="utf-8") as f:
+            content = f.read()
+
+        # Find all completed tasks - support both "Implemented" and "Complete" markers
+        # Pattern: | X.X | Task Name | [Doc] | [x] Implemented/Complete |
+        matches = re.findall(
+            r"\|\s*(\d+)\.(\d+)\s*\|[^|]+\|[^|]+\|\s*\[x\]\s*(?:Implemented|Complete)",
+            content
+        )
+        for phase, task in matches:
+            task_id = f"{phase.zfill(2)}_{task.zfill(2)}"
+            if task_id not in completed:
+                completed.append(task_id)
 
     return completed
 

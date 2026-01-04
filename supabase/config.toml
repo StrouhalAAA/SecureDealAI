@@ -1,36 +1,59 @@
 # Supabase Edge Functions Configuration
 # Documentation: https://supabase.com/docs/guides/functions/function-configuration
 
-# Disable JWT verification for all Edge Functions
-# These functions handle public requests and use service role keys internally
-# for database operations.
+# =============================================================================
+# Edge Functions JWT Configuration
+# =============================================================================
+#
+# Authentication Strategy:
+# - verify-access-code: MUST remain open (verify_jwt = false) - this is the
+#   authentication entry point where users exchange their access code for a JWT
+# - All other functions: require valid JWT (verify_jwt = true)
+#
+# JWT tokens are issued by verify-access-code and validated by Supabase using
+# the project's JWT secret. This ensures only authenticated users can access
+# protected endpoints.
+# =============================================================================
 
-[functions.document-upload]
+# Authentication endpoint - MUST remain open (no JWT required)
+# This is where users exchange their access code for a JWT token
+[functions.verify-access-code]
 verify_jwt = false
 
-[functions.get-document-url]
-verify_jwt = false
+# =============================================================================
+# Protected Endpoints - All require valid JWT
+# =============================================================================
 
-[functions.ocr-extract]
-verify_jwt = false
-
-[functions.validation-run]
-verify_jwt = false
-
-[functions.ares-lookup]
-verify_jwt = false
-
-[functions.ares-validate]
-verify_jwt = false
-
+# Core business logic endpoints
 [functions.buying-opportunity]
-verify_jwt = false
+verify_jwt = true
 
 [functions.vehicle]
-verify_jwt = false
+verify_jwt = true
 
 [functions.vendor]
-verify_jwt = false
+verify_jwt = true
+
+# Document management endpoints
+[functions.document-upload]
+verify_jwt = true
+
+[functions.get-document-url]
+verify_jwt = true
+
+[functions.ocr-extract]
+verify_jwt = true
+
+# Validation endpoints
+[functions.validation-run]
+verify_jwt = true
 
 [functions.validation-preview]
-verify_jwt = false
+verify_jwt = true
+
+# External registry lookup endpoints
+[functions.ares-lookup]
+verify_jwt = true
+
+[functions.ares-validate]
+verify_jwt = true

@@ -2,7 +2,10 @@
  * SecureDealAI MVP - Get Document URL Edge Function
  *
  * Generates time-limited signed URLs for document preview.
- * Includes authorization check to ensure user can only access their own documents.
+ * Authorization: SPZ-based access (verifies buying opportunity exists).
+ *
+ * Note: User authentication (auth.getUser) removed for MVP.
+ * Will be re-enabled when Phase 5 (Access Code Auth) is complete.
  *
  * Endpoint:
  * - POST /get-document-url
@@ -84,25 +87,6 @@ function createSupabaseServiceClient(): SupabaseClient {
   });
 }
 
-function createSupabaseUserClient(req: Request): SupabaseClient {
-  const supabaseUrl = Deno.env.get("SUPABASE_URL");
-  const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
-
-  if (!supabaseUrl || !supabaseAnonKey) {
-    throw new Error("Missing required environment variables");
-  }
-
-  // Get the authorization header from the request
-  const authHeader = req.headers.get("Authorization");
-
-  return createClient(supabaseUrl, supabaseAnonKey, {
-    auth: { persistSession: false },
-    global: {
-      headers: authHeader ? { Authorization: authHeader } : {},
-    },
-  });
-}
-
 // =============================================================================
 // RESPONSE HELPERS
 // =============================================================================
@@ -127,27 +111,17 @@ function errorResponse(
 }
 
 // =============================================================================
-// AUTHORIZATION
+// AUTHORIZATION (SPZ-based for MVP)
 // =============================================================================
 
-async function verifyUserAccess(
-  userClient: SupabaseClient,
+async function verifySpzAccess(
+  supabase: SupabaseClient,
   spz: string
 ): Promise<{ authorized: boolean; error?: string }> {
   try {
-    // Check if user is authenticated
-    const {
-      data: { user },
-      error: authError,
-    } = await userClient.auth.getUser();
-
-    if (authError || !user) {
-      return { authorized: false, error: "User not authenticated" };
-    }
-
-    // Check if user has access to this buying opportunity
-    // This query will respect RLS policies
-    const { data, error } = await userClient
+    // Check if buying opportunity with this SPZ exists
+    // Using service client - no user auth required for MVP
+    const { data, error } = await supabase
       .from("buying_opportunities")
       .select("id")
       .eq("spz", spz)
@@ -161,7 +135,7 @@ async function verifyUserAccess(
     if (!data) {
       return {
         authorized: false,
-        error: "Buying opportunity not found or access denied",
+        error: "Buying opportunity not found",
       };
     }
 
@@ -246,25 +220,23 @@ async function handleGetDocumentUrl(req: Request): Promise<Response> {
   // Normalize SPZ
   const normalizedSpz = spz.toUpperCase().replace(/\s/g, "");
 
-  // Create clients
+  // Create service client
   let serviceClient: SupabaseClient;
-  let userClient: SupabaseClient;
   try {
     serviceClient = createSupabaseServiceClient();
-    userClient = createSupabaseUserClient(req);
   } catch (error) {
     console.error("[Init] Client error:", error);
     return errorResponse("Server configuration error", "CONFIG_ERROR", 500);
   }
 
-  // Verify user has access to this buying opportunity
-  const authResult = await verifyUserAccess(userClient, normalizedSpz);
+  // Verify SPZ exists (MVP authorization - no user auth required)
+  const authResult = await verifySpzAccess(serviceClient, normalizedSpz);
 
   if (!authResult.authorized) {
     return errorResponse(
       authResult.error || "Access denied",
-      "UNAUTHORIZED",
-      403
+      "NOT_FOUND",
+      404
     );
   }
 
