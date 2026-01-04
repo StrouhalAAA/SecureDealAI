@@ -1,32 +1,28 @@
 <template>
-  <div class="min-h-screen bg-gray-50">
-    <!-- Header -->
-    <header class="bg-white shadow">
-      <div class="max-w-4xl mx-auto px-4 py-4 flex justify-between items-center">
-        <div class="flex items-center gap-4">
-          <button
-            data-testid="back-to-dashboard"
-            @click="goToDashboard"
-            class="text-gray-500 hover:text-gray-700"
-          >
-            ← Dashboard
-          </button>
-          <h1 class="text-xl font-bold">SecureDealAI</h1>
-        </div>
-        <div v-if="data.opportunity.value" class="text-lg font-mono font-bold">
-          SPZ: {{ data.opportunity.value.spz }}
-        </div>
+  <div>
+    <!-- Sub-header with navigation and SPZ -->
+    <div class="flex justify-between items-center mb-6">
+      <button
+        data-testid="back-to-dashboard"
+        @click="goToDashboard"
+        class="text-gray-500 hover:text-gray-700 flex items-center gap-1"
+        aria-label="Zpět na přehled příležitostí"
+      >
+        ← Zpět na přehled
+      </button>
+      <div v-if="data.opportunity.value" class="text-lg font-mono font-bold">
+        SPZ: {{ data.opportunity.value.spz }}
       </div>
-    </header>
+    </div>
 
     <!-- Loading -->
-    <div v-if="data.loading.value" class="max-w-4xl mx-auto px-4 py-12 text-center">
+    <div v-if="data.loading.value" class="py-12 text-center">
       <div class="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full mx-auto"></div>
-      <p class="mt-4 text-gray-600">Nacitani...</p>
+      <p class="mt-4 text-gray-600">Načítání...</p>
     </div>
 
     <!-- Error -->
-    <div v-else-if="data.error.value" class="max-w-4xl mx-auto px-4 py-12">
+    <div v-else-if="data.error.value" class="py-12">
       <div class="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
         <p class="text-red-700">{{ data.error.value }}</p>
         <button
@@ -39,7 +35,7 @@
     </div>
 
     <!-- Content -->
-    <main v-else class="max-w-4xl mx-auto px-4 py-8">
+    <div v-else>
       <!-- Progress Steps -->
       <div class="mb-8">
         <StepProgress
@@ -89,7 +85,7 @@
           @close="goToDashboard"
         />
       </transition>
-    </main>
+    </div>
   </div>
 </template>
 

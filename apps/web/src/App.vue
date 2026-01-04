@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { RouterView } from 'vue-router';
+import { RouterView, RouterLink } from 'vue-router';
 import ToastContainer from '@/components/shared/ToastContainer.vue';
 import { useAuth } from '@/composables/useAuth';
 
@@ -10,9 +10,13 @@ const { logout, isAuthenticated } = useAuth();
   <div class="min-h-screen bg-gray-100">
     <header class="bg-white shadow">
       <div class="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8 flex items-center justify-between">
-        <h1 class="text-2xl font-bold text-gray-900">
+        <RouterLink
+          to="/"
+          class="text-2xl font-bold text-gray-900 hover:text-blue-600 transition-colors cursor-pointer"
+          aria-label="Přejít na hlavní stránku"
+        >
           SecureDealAI
-        </h1>
+        </RouterLink>
         <button
           v-if="isAuthenticated"
           @click="logout()"

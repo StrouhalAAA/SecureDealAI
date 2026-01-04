@@ -4,33 +4,49 @@ import { useAuthStore } from '@/stores/authStore'
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
-// Create base client
-export const supabase = createClient(supabaseUrl, supabaseKey)
+/**
+ * Create Supabase client with custom fetch that automatically includes auth token.
+ *
+ * The key insight is that we intercept ALL fetch requests and dynamically inject
+ * the JWT token from authStore when available. This means:
+ * 1. All components using this client automatically get authenticated requests
+ * 2. No need to change individual components
+ * 3. Token changes are picked up immediately (no stale clients)
+ */
+export const supabase = createClient(supabaseUrl, supabaseKey, {
+  global: {
+    fetch: (url: RequestInfo | URL, options?: RequestInit) => {
+      // Get auth store lazily at request time to avoid circular dependencies
+      // and ensure we always get the current token value
+      const authStore = useAuthStore()
+      const token = authStore.token
+
+      const headers = new Headers(options?.headers)
+
+      // If we have a valid token, replace the Authorization header with our JWT
+      // This overrides the default anon key authorization
+      if (token && authStore.isAuthenticated) {
+        headers.set('Authorization', `Bearer ${token}`)
+      }
+
+      return fetch(url, {
+        ...options,
+        headers
+      })
+    }
+  }
+})
 
 export function useSupabase() {
   return { supabase }
 }
 
 /**
- * Get a Supabase client with auth headers
- * Use this for all API calls that require authentication
+ * @deprecated Use the regular `supabase` export instead.
+ * The client now automatically includes auth headers when a token is available.
  */
 export function useAuthenticatedSupabase(): SupabaseClient {
-  const authStore = useAuthStore()
-
-  // Create a new client with the auth token in global headers
-  const token = authStore.token
-
-  if (token) {
-    return createClient(supabaseUrl, supabaseKey, {
-      global: {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      }
-    })
-  }
-
+  // Now same as regular client - auth is handled by custom fetch
   return supabase
 }
 
