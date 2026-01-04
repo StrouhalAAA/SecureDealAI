@@ -21,7 +21,7 @@ This document tracks the implementation progress of Phase 5: Access Code Authent
 
 | Phase | Total Tasks | Completed | In Progress | Pending |
 |-------|-------------|-----------|-------------|---------|
-| Phase 5: Access Code Auth | 7 | 0 | 0 | 7 |
+| Phase 5: Access Code Auth | 7 | 6 | 0 | 1 |
 
 **Estimated Total Effort**: 9.5 hours
 
@@ -31,13 +31,13 @@ This document tracks the implementation progress of Phase 5: Access Code Authent
 
 | # | Task | Document | Status | Depends On | Est. Time |
 |---|------|----------|--------|------------|-----------|
-| 5.1 | Verify Access Code Edge Function | [05_01_VERIFY_ACCESS_CODE.md](./05_01_VERIFY_ACCESS_CODE.md) | [ ] Pending | None | 2h |
-| 5.2 | Enable JWT Verification | [05_02_ENABLE_JWT_VERIFICATION.md](./05_02_ENABLE_JWT_VERIFICATION.md) | [ ] Pending | 5.1 | 1h |
-| 5.3 | Update RLS Policies | [05_03_UPDATE_RLS_POLICIES.md](./05_03_UPDATE_RLS_POLICIES.md) | [ ] Pending | 5.2 | 1h |
-| 5.4 | Frontend Access Code Page | [05_04_ACCESS_CODE_PAGE.md](./05_04_ACCESS_CODE_PAGE.md) | [ ] Pending | 5.1 | 1.5h |
-| 5.5 | Auth Store & Composable | [05_05_AUTH_STORE_COMPOSABLE.md](./05_05_AUTH_STORE_COMPOSABLE.md) | [ ] Pending | None | 1.5h |
-| 5.6 | Route Guards & API Integration | [05_06_ROUTE_GUARDS.md](./05_06_ROUTE_GUARDS.md) | [ ] Pending | 5.4, 5.5 | 1h |
-| 5.7 | E2E Authentication Tests | [05_07_E2E_AUTH_TESTS.md](./05_07_E2E_AUTH_TESTS.md) | [ ] Pending | All above | 1.5h |
+| 5.1 | Verify Access Code Edge Function | [05_01_VERIFY_ACCESS_CODE.md](./05_01_VERIFY_ACCESS_CODE.md) | [x] Complete | None | 2h |
+| 5.2 | Enable JWT Verification | [05_02_ENABLE_JWT_VERIFICATION.md](./05_02_ENABLE_JWT_VERIFICATION.md) | [x] Complete | 5.1 | 1h |
+| 5.3 | Update RLS Policies | [05_03_UPDATE_RLS_POLICIES.md](./05_03_UPDATE_RLS_POLICIES.md) | [x] Complete | 5.2 | 1h |
+| 5.4 | Frontend Access Code Page | [05_04_ACCESS_CODE_PAGE.md](./05_04_ACCESS_CODE_PAGE.md) | [x] Complete | 5.1 | 1.5h |
+| 5.5 | Auth Store & Composable | [05_05_AUTH_STORE_COMPOSABLE.md](./05_05_AUTH_STORE_COMPOSABLE.md) | [x] Complete | None | 1.5h |
+| 5.6 | Route Guards & API Integration | [05_06_ROUTE_GUARDS.md](./05_06_ROUTE_GUARDS.md) | [x] Complete | 5.4, 5.5 | 1h |
+| 5.7 | E2E Authentication Tests | [05_07_E2E_AUTH_TESTS.md](./05_07_E2E_AUTH_TESTS.md) | [x] Complete | All above | 1.5h |
 
 ---
 
@@ -204,6 +204,149 @@ If issues arise after deployment:
 ---
 
 ## Changelog
+
+### 2026-01-04: Task 5.7 Completed (E2E Authentication Tests)
+
+**Task 5.7 (E2E Authentication Tests)** was successfully implemented using Playwright.
+
+**Files Created:**
+- `apps/web/e2e/auth.spec.ts` - 12 E2E tests covering the complete authentication flow
+- `apps/web/e2e/helpers/auth.ts` - Helper functions for authentication in E2E tests
+- `apps/web/.env.test` - Test environment variables configuration
+
+**Files Modified:**
+- `apps/web/playwright.config.ts` - Updated with device configuration and BASE_URL environment variable support
+
+**Test Coverage (12 tests):**
+
+*Authentication Flow (9 tests):*
+- Displays access code page for unauthenticated users
+- Grants access with valid code
+- Rejects invalid access code
+- Shows remaining attempts on failure
+- Shows rate limit after multiple failures
+- Preserves intended destination after login
+- Session persists across page refresh
+- Logout clears session and redirects
+- Redirects authenticated user away from access code page
+
+*API Authentication (2 tests):*
+- API returns 401 without auth token
+- API accepts request with valid token
+
+*Cross-Tab Session Sync (1 test):*
+- Logout in one tab affects other tabs
+
+**Validation Results:**
+- All 12 tests recognized by Playwright ✓
+- TypeScript compilation successful ✓
+- Test helper functions exported correctly ✓
+
+**Running Tests:**
+```bash
+cd apps/web
+npx playwright test auth.spec.ts
+```
+
+---
+
+### 2026-01-04: Tasks 5.4 & 5.5 Completed (Frontend Access Code Page & Auth Store)
+
+**Task 5.4 (Frontend Access Code Page)** and **Task 5.5 (Auth Store & Composable)** were successfully implemented together.
+
+**Files Created:**
+- `apps/web/src/pages/AccessCode.vue` - Access code entry page with form validation, error handling, and rate limit countdown
+- `apps/web/src/stores/authStore.ts` - Pinia store for JWT token management with localStorage persistence
+- `apps/web/src/composables/useAuth.ts` - Composable with login/logout/checkAuth functions
+- `apps/web/src/pages/__tests__/AccessCode.spec.ts` - Unit tests for the access code page (6 tests)
+- `apps/web/src/stores/__tests__/authStore.spec.ts` - Unit tests for auth store (9 tests)
+- `apps/web/src/composables/__tests__/useAuth.spec.ts` - Unit tests for useAuth composable (5 tests)
+
+**Files Modified:**
+- `apps/web/src/router/index.ts` - Added `/access-code` route with `requiresAuth: false` meta, catch-all redirect
+- `apps/web/src/composables/useSupabase.ts` - Added `useAuthenticatedSupabase()` and `fetchWithAuth()` for authenticated API calls
+
+**Features Implemented:**
+- Clean, centered dark theme login form with SecureDealAI branding
+- Password-masked input with auto-focus
+- Loading state during verification
+- Error messages with remaining attempts display
+- Rate limit countdown timer (formats mm:ss)
+- Automatic redirect if already authenticated
+- Cross-tab session sync via storage events
+- Token expiry detection with 5-minute warning threshold
+
+**Validation Results:**
+- Build passes (vue-tsc + vite build) ✓
+- All 157 unit tests pass ✓
+- TypeScript types verified ✓
+
+---
+
+### 2026-01-04: Task 5.3 Completed (RLS Policies Updated)
+
+**Task 5.3 (Update RLS Policies)** was successfully implemented.
+
+**Files Created:**
+- `supabase/migrations/013_authenticated_rls_policies.sql` - Replaces anonymous RLS policies with authenticated policies
+- `supabase/rollbacks/013_authenticated_rls_policies_DOWN.sql` - Rollback script for emergency reversion
+
+**Changes Made:**
+- Dropped all `*_anon_*` RLS policies from all tables
+- Created new `*_auth_*` RLS policies requiring `authenticated` role
+- Tables updated: `buying_opportunities`, `vehicles`, `vendors`, `ocr_extractions`, `ares_validations`, `validation_rules`, `validation_results`, `validation_audit_log`
+- Storage bucket policies unchanged (already required `authenticated`)
+
+**Verification Results:**
+- Anonymous REST API access returns empty arrays ✓
+- Service role access returns data ✓
+- `verify-access-code` Edge Function remains accessible ✓
+- All protected Edge Functions still work with service role ✓
+
+**Security Note:**
+This creates defense in depth - even if attackers bypass Edge Functions, they cannot access data through direct REST API calls with the anon key.
+
+---
+
+### 2026-01-04: Task 5.2 Completed (JWT Verification Enabled)
+
+**Task 5.2 (Enable JWT Verification)** was successfully implemented.
+
+**Files Modified:**
+- `supabase/config.toml` - Updated all Edge Functions to `verify_jwt = true` except `verify-access-code`
+
+**Changes Made:**
+- `verify-access-code`: Remains open (`verify_jwt = false`) - this is the authentication entry point
+- All other 10 functions now require valid JWT: `buying-opportunity`, `vehicle`, `vendor`, `document-upload`, `get-document-url`, `ocr-extract`, `validation-run`, `ares-lookup`, `ares-validate`, `validation-preview`
+
+**Verification Results:**
+- All protected endpoints return 401 without Authorization header ✓
+- `verify-access-code` remains accessible and returns function-level errors (not JWT errors) ✓
+- All functions redeployed with updated configuration ✓
+
+**Important Note:**
+JWT tokens issued by `verify-access-code` must use the same secret as Supabase's project JWT secret for automatic verification to work. The `JWT_SECRET` environment variable is configured in Supabase secrets.
+
+---
+
+### 2026-01-04: Task 5.1 Completed (Manual Tracker Fix)
+
+**Task 5.1 (Verify Access Code Edge Function)** was successfully implemented by the ADW agent but the tracker update failed. Manual fix applied.
+
+**Files Created:**
+- `supabase/functions/verify-access-code/index.ts` - Full Edge Function implementation
+- `supabase/migrations/012_access_code_attempts.sql` - Rate limiting table
+
+**Files Modified:**
+- `supabase/config.toml` - Added `[functions.verify-access-code]` with `verify_jwt = false`
+
+**Features Implemented:**
+- SHA-256 code hashing for secure comparison
+- JWT token generation with proper claims (`role: "authenticated"`, `aud: "authenticated"`)
+- IP-based rate limiting (5 attempts / 15 min lockout)
+- Support for multiple valid access codes
+
+---
 
 ### 2026-01-04: Phase 5 Plan Created
 

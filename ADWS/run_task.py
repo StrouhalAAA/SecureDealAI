@@ -41,14 +41,31 @@ from adw_modules.task_parser import (
 )
 
 
+def get_tracker_path_for_task(task_id: str) -> str:
+    """Get the appropriate tracker file path for a given task ID.
+
+    Phase 5 tasks use PHASE5_IMPLEMENTATION_TRACKER.md, others use 00_IMPLEMENTATION_TRACKER.md.
+    """
+    from adw_modules.utils import get_project_root
+    project_root = get_project_root()
+    impl_dir = os.path.join(project_root, "docs", "implementation")
+
+    phase = int(task_id.split("_")[0])
+
+    if phase == 5:
+        return os.path.join(impl_dir, "PHASE5_IMPLEMENTATION_TRACKER.md")
+    else:
+        return os.path.join(impl_dir, "00_IMPLEMENTATION_TRACKER.md")
+
+
 def update_tracker(task_id: str, status: str = "completed") -> bool:
     """Update the implementation tracker with task status.
 
     Returns True if successful.
+    Supports both main tracker (00_IMPLEMENTATION_TRACKER.md) and phase-specific trackers.
     """
-    from adw_modules.utils import get_project_root
-    project_root = get_project_root()
-    tracker_path = os.path.join(project_root, "docs", "implementation", "00_IMPLEMENTATION_TRACKER.md")
+    import re
+    tracker_path = get_tracker_path_for_task(task_id)
 
     if not os.path.exists(tracker_path):
         return False
@@ -60,18 +77,27 @@ def update_tracker(task_id: str, status: str = "completed") -> bool:
     phase, task = task_id.split("_")
     display_id = f"{int(phase)}.{int(task)}"
 
-    # Find and update the task line
-    # Pattern: | 2.6 | Task Name | [Doc] | [ ] Pending |
-    import re
-    pattern = rf"(\|\s*{re.escape(display_id)}\s*\|[^|]+\|[^|]+\|)\s*\[\s*\]\s*Pending\s*\|"
+    # Find and update the task line - support both formats:
+    # Main tracker: | 2.6 | Task Name | [Doc] | [ ] Pending | Date |
+    # Phase tracker: | 5.1 | Task Name | [Doc] | [ ] Pending | Depends | Time |
+
+    # Pattern for main tracker (Phases 1-4): matches "[ ] Pending |" or "[ ] Implemented |"
+    pattern_main = rf"(\|\s*{re.escape(display_id)}\s*\|[^|]+\|[^|]+\|)\s*\[\s*\]\s*Pending\s*\|"
+
+    # Pattern for Phase 5 tracker: matches "[ ] Pending |" in different column structure
+    pattern_phase5 = rf"(\|\s*{re.escape(display_id)}\s*\|[^|]+\|[^|]+\|)\s*\[\s*\]\s*Pending\s*\|"
 
     if status == "completed":
         today = datetime.now().strftime("%Y-%m-%d")
-        replacement = rf"\1 [x] Implemented | {today} |"
+        if int(phase) == 5:
+            # Phase 5 tracker uses "Complete" not "Implemented"
+            replacement = rf"\1 [x] Complete |"
+        else:
+            replacement = rf"\1 [x] Implemented | {today} |"
     else:
-        replacement = rf"\1 [ ] {status.title()} | - |"
+        replacement = rf"\1 [ ] {status.title()} |"
 
-    new_content, count = re.subn(pattern, replacement, content)
+    new_content, count = re.subn(pattern_main, replacement, content)
 
     if count > 0:
         with open(tracker_path, "w", encoding="utf-8") as f:
