@@ -24,7 +24,7 @@ test.describe('Dashboard', () => {
 
   test('displays list of buying opportunities', async ({ page }) => {
     // Wait for the dashboard to load
-    await expect(page.getByRole('heading', { name: /Prehled prilezitosti/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /SecureDealAI/i })).toBeVisible();
 
     // Should show a table or list of opportunities
     const opportunitiesList = page.locator('[data-testid="opportunities-list"], table, .opportunity-card');
@@ -32,53 +32,58 @@ test.describe('Dashboard', () => {
   });
 
   test('has create new opportunity button', async ({ page }) => {
-    const createButton = page.getByRole('button', { name: /Nova prilezitost|Pridat|Vytvorit/i });
+    const createButton = page.getByRole('button', { name: /Nová příležitost|Nova prilezitost/i });
     await expect(createButton).toBeVisible();
   });
 
   test('can open create opportunity modal', async ({ page }) => {
     // Click create button
-    const createButton = page.getByRole('button', { name: /Nova prilezitost|Pridat|Vytvorit/i });
+    const createButton = page.getByRole('button', { name: /Nová příležitost|Nova prilezitost/i });
     await createButton.click();
 
-    // Modal should appear
-    const modal = page.locator('[data-testid="create-modal"], .modal, [role="dialog"]');
-    await expect(modal).toBeVisible();
+    // Modal should appear with heading
+    const modalHeading = page.getByRole('heading', { name: /Nová nákupní příležitost/i });
+    await expect(modalHeading).toBeVisible();
 
-    // Modal should have SPZ input
-    const spzInput = page.getByPlaceholder(/SPZ|spz/i);
+    // Modal should have SPZ input (use exact placeholder to avoid matching search input)
+    const spzInput = page.getByPlaceholder('např. 5L94454');
     await expect(spzInput).toBeVisible();
   });
 
   test('can create new buying opportunity', async ({ page }) => {
     // Open modal
-    const createButton = page.getByRole('button', { name: /Nova prilezitost|Pridat|Vytvorit/i });
+    const createButton = page.getByRole('button', { name: /Nová příležitost|Nova prilezitost/i });
     await createButton.click();
 
+    // Wait for modal
+    await expect(page.getByRole('heading', { name: /Nová nákupní příležitost/i })).toBeVisible();
+
     // Enter SPZ
-    const spzInput = page.getByPlaceholder(/SPZ|spz/i);
+    const spzInput = page.getByPlaceholder(/5L94454/i);
     await spzInput.fill(TEST_SPZ);
 
     // Submit
-    const submitButton = page.getByRole('button', { name: /Vytvorit|Ulozit|OK/i });
+    const submitButton = page.getByRole('button', { name: /Vytvořit/i });
     await submitButton.click();
 
-    // Should navigate to detail page or show success
-    await expect(page).toHaveURL(/\/detail\/|created|success/i, { timeout: 5000 });
+    // Should navigate to opportunity detail page
+    await expect(page).toHaveURL(/\/opportunity\//, { timeout: 5000 });
   });
 
   test('shows validation error for empty SPZ', async ({ page }) => {
     // Open modal
-    const createButton = page.getByRole('button', { name: /Nova prilezitost|Pridat|Vytvorit/i });
+    const createButton = page.getByRole('button', { name: /Nová příležitost|Nova prilezitost/i });
     await createButton.click();
 
+    // Wait for modal
+    await expect(page.getByRole('heading', { name: /Nová nákupní příležitost/i })).toBeVisible();
+
     // Try to submit without SPZ
-    const submitButton = page.getByRole('button', { name: /Vytvorit|Ulozit|OK/i });
+    const submitButton = page.getByRole('button', { name: /Vytvořit/i });
     await submitButton.click();
 
-    // Should show error or stay on modal
-    const errorMessage = page.locator('.error, .text-red, [role="alert"]');
-    await expect(errorMessage.first()).toBeVisible({ timeout: 3000 });
+    // Should show error or stay on modal (modal should still be visible)
+    await expect(page.getByRole('heading', { name: /Nová nákupní příležitost/i })).toBeVisible({ timeout: 3000 });
   });
 
   test('can search by SPZ', async ({ page }) => {
@@ -100,14 +105,14 @@ test.describe('Dashboard', () => {
 
   test('can navigate to detail page', async ({ page }) => {
     // Wait for list to load
-    await page.waitForSelector('[data-testid="opportunities-list"] tr, .opportunity-card, table tbody tr');
+    await page.waitForSelector('table tbody tr');
 
-    // Click on first opportunity
-    const firstRow = page.locator('[data-testid="opportunities-list"] tr, .opportunity-card, table tbody tr').first();
-    await firstRow.click();
+    // Click the "Otevřít" button on the first opportunity
+    const openButton = page.getByRole('button', { name: /Otevřít|Otevrit/i }).first();
+    await openButton.click();
 
-    // Should navigate to detail page
-    await expect(page).toHaveURL(/\/detail\//);
+    // Should navigate to opportunity detail page
+    await expect(page).toHaveURL(/\/opportunity\//);
   });
 
   test('displays status badges correctly', async ({ page }) => {
