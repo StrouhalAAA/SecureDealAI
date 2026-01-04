@@ -8,6 +8,9 @@
 [functions.document-upload]
 verify_jwt = false
 
+[functions.get-document-url]
+verify_jwt = false
+
 [functions.ocr-extract]
 verify_jwt = false
 

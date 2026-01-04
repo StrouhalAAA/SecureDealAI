@@ -27,7 +27,7 @@ interface DocumentUploadResponse {
   id: string;
   spz: string;
   document_type: DocumentType;
-  document_file_url: string;
+  document_file_path: string;
   ocr_status: 'PENDING';
   created_at: string;
 }
@@ -198,7 +198,6 @@ async function validateRequest(req: Request): Promise<ValidationResult> {
 interface UploadResult {
   success: boolean;
   filePath?: string;
-  publicUrl?: string;
   error?: string;
 }
 
@@ -226,15 +225,10 @@ async function uploadToStorage(
       return { success: false, error: error.message };
     }
 
-    // Get public URL (or use path for signed URL generation later)
-    const { data: urlData } = supabase.storage
-      .from(STORAGE_BUCKET)
-      .getPublicUrl(filePath);
-
+    // Store the file path only - URLs will be generated on demand via signed URLs
     return {
       success: true,
       filePath: data.path,
-      publicUrl: urlData.publicUrl,
     };
   } catch (error) {
     console.error('[Storage] Unexpected error:', error);
@@ -297,7 +291,7 @@ async function createOcrExtractionRecord(
   supabase: SupabaseClient,
   spz: string,
   documentType: DocumentType,
-  documentFileUrl: string
+  documentFilePath: string
 ): Promise<CreateRecordResult> {
   try {
     const { data, error } = await supabase
@@ -305,11 +299,11 @@ async function createOcrExtractionRecord(
       .insert({
         spz,
         document_type: documentType,
-        document_file_url: documentFileUrl,
+        document_file_path: documentFilePath,
         ocr_status: 'PENDING',
         ocr_provider: 'MISTRAL',
       })
-      .select('id, spz, document_type, document_file_url, ocr_status, created_at')
+      .select('id, spz, document_type, document_file_path, ocr_status, created_at')
       .single();
 
     if (error) {
@@ -364,12 +358,12 @@ async function handleUpload(req: Request): Promise<Response> {
     );
   }
 
-  // Create database record
+  // Create database record with file path (not URL - URLs generated on demand)
   const recordResult = await createOcrExtractionRecord(
     supabase,
     spz!,
     documentType!,
-    uploadResult.publicUrl!
+    uploadResult.filePath!
   );
 
   if (!recordResult.success) {

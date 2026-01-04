@@ -229,3 +229,48 @@ export async function extractDocumentWithRetry(
     error: `Failed after ${maxRetries} attempts. Last error: ${lastError}`,
   };
 }
+
+/**
+ * Extract document from base64 with retry logic.
+ *
+ * @param base64Data - Base64-encoded document content (without data URI prefix)
+ * @param documentType - Type of document (ORV, OP, VTP)
+ * @param maxRetries - Maximum number of retry attempts (default: 3)
+ * @returns Extraction result
+ */
+export async function extractDocumentFromBase64WithRetry(
+  base64Data: string,
+  documentType: DocumentType,
+  maxRetries: number = 3
+): Promise<ExtractionResult> {
+  let lastError: string | undefined;
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    const result = await extractDocumentFromBase64(base64Data, documentType);
+
+    if (result.success) {
+      return result;
+    }
+
+    lastError = result.error;
+
+    // Don't retry on auth errors or bad requests
+    if (result.error?.includes("401") || result.error?.includes("400")) {
+      return result;
+    }
+
+    // Exponential backoff: 1s, 2s, 4s
+    if (attempt < maxRetries) {
+      const delay = Math.pow(2, attempt - 1) * 1000;
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+  }
+
+  return {
+    success: false,
+    data: null,
+    rawMarkdown: "",
+    pagesProcessed: 0,
+    error: `Failed after ${maxRetries} attempts. Last error: ${lastError}`,
+  };
+}
