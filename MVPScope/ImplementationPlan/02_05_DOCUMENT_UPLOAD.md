@@ -1,7 +1,7 @@
 # Task 2.5: Document Upload API
 
 > **Phase**: 2 - Backend API
-> **Status**: [ ] Pending
+> **Status**: [x] Implemented
 > **Priority**: High
 > **Depends On**: 1.3 Storage Bucket
 > **Estimated Effort**: Medium

@@ -2,7 +2,7 @@
 
 > **Version**: 1.2
 > **Created**: 2026-01-01
-> **Last Updated**: 2026-01-02
+> **Last Updated**: 2026-01-04
 
 ---
 
@@ -16,11 +16,11 @@ This document tracks the implementation progress of SecureDealAI MVP. Each task 
 
 | Phase | Total Tasks | Completed | In Progress | Pending |
 |-------|-------------|-----------|-------------|---------|
-| Phase 1: Infrastructure | 4 | 0 | 0 | 4 |
-| Phase 2: Backend API | 9 | 1 | 0 | 8 |
-| Phase 3: Frontend | 10 | 0 | 0 | 10 |
-| Phase 4: Testing | 2 | 0 | 0 | 2 |
-| **TOTAL** | **25** | **1** | **0** | **24** |
+| Phase 1: Infrastructure | 5 | 4 | 0 | 1 |
+| Phase 2: Backend API | 9 | 8 | 0 | 1 |
+| Phase 3: Frontend | 10 | 7 | 0 | 3 |
+| Phase 4: Testing | 2 | 2 | 0 | 0 |
+| **TOTAL** | **26** | **21** | **0** | **5** |
 
 ---
 
@@ -28,9 +28,10 @@ This document tracks the implementation progress of SecureDealAI MVP. Each task 
 
 | # | Task | Document | Status | Completed Date |
 |---|------|----------|--------|----------------|
-| 1.1 | Verify/Apply Database Schema | [01_01_DATABASE_SCHEMA.md](./01_01_DATABASE_SCHEMA.md) | [ ] Pending | - |
-| 1.2 | Seed Validation Rules | [01_02_SEED_VALIDATION_RULES.md](./01_02_SEED_VALIDATION_RULES.md) | [ ] Pending | - |
-| 1.3 | Create Storage Bucket | [01_03_STORAGE_BUCKET.md](./01_03_STORAGE_BUCKET.md) | [ ] Pending | - |
+| 1.0 | Test Infrastructure Setup | [01_00_TEST_INFRASTRUCTURE.md](./01_00_TEST_INFRASTRUCTURE.md) | [x] Implemented | 2026-01-03 |
+| 1.1 | Verify/Apply Database Schema | [01_01_DATABASE_SCHEMA.md](./01_01_DATABASE_SCHEMA.md) | [x] Implemented | 2026-01-03 |
+| 1.2 | Seed Validation Rules | [01_02_SEED_VALIDATION_RULES.md](./01_02_SEED_VALIDATION_RULES.md) | [x] Implemented | 2026-01-03 |
+| 1.3 | Create Storage Bucket | [01_03_STORAGE_BUCKET.md](./01_03_STORAGE_BUCKET.md) | [x] Implemented | 2026-01-03 |
 | 1.4 | Environment Configuration | [01_04_ENVIRONMENT_CONFIG.md](./01_04_ENVIRONMENT_CONFIG.md) | [ ] Pending | - |
 
 ---
@@ -39,13 +40,13 @@ This document tracks the implementation progress of SecureDealAI MVP. Each task 
 
 | # | Task | Document | Status | Completed Date |
 |---|------|----------|--------|----------------|
-| 2.1 | Buying Opportunity CRUD | [02_01_BUYING_OPPORTUNITY_CRUD.md](./02_01_BUYING_OPPORTUNITY_CRUD.md) | [ ] Pending | - |
-| 2.2 | Vehicle CRUD | [02_02_VEHICLE_CRUD.md](./02_02_VEHICLE_CRUD.md) | [ ] Pending | - |
-| 2.3 | Vendor CRUD | [02_03_VENDOR_CRUD.md](./02_03_VENDOR_CRUD.md) | [ ] Pending | - |
-| 2.4 | ARES Lookup (Instant) | [02_04_ARES_LOOKUP.md](./02_04_ARES_LOOKUP.md) | [ ] Pending | - |
-| 2.5 | Document Upload | [02_05_DOCUMENT_UPLOAD.md](./02_05_DOCUMENT_UPLOAD.md) | [ ] Pending | - |
-| 2.6 | OCR Extract (Mistral) | [02_06_OCR_EXTRACT_MISTRAL.md](./02_06_OCR_EXTRACT_MISTRAL.md) | [ ] Pending | - |
-| 2.7 | ARES Validate (Full) | [02_07_ARES_VALIDATE.md](./02_07_ARES_VALIDATE.md) | [ ] Pending | - |
+| 2.1 | Buying Opportunity CRUD | [02_01_BUYING_OPPORTUNITY_CRUD.md](./02_01_BUYING_OPPORTUNITY_CRUD.md) | [x] Implemented | 2026-01-03 |
+| 2.2 | Vehicle CRUD | [02_02_VEHICLE_CRUD.md](./02_02_VEHICLE_CRUD.md) | [x] Implemented | 2026-01-03 |
+| 2.3 | Vendor CRUD | [02_03_VENDOR_CRUD.md](./02_03_VENDOR_CRUD.md) | [x] Implemented | 2026-01-03 |
+| 2.4 | ARES Lookup (Instant) | [02_04_ARES_LOOKUP.md](./02_04_ARES_LOOKUP.md) | [x] Implemented | 2026-01-03 |
+| 2.5 | Document Upload | [02_05_DOCUMENT_UPLOAD.md](./02_05_DOCUMENT_UPLOAD.md) | [x] Implemented | 2026-01-03 |
+| 2.6 | OCR Extract (Mistral) | [02_06_OCR_EXTRACT_MISTRAL.md](./02_06_OCR_EXTRACT_MISTRAL.md) | [x] Implemented | 2026-01-03 |
+| 2.7 | ARES Validate (Full) | [02_07_ARES_VALIDATE.md](./02_07_ARES_VALIDATE.md) | [x] Implemented | 2026-01-03 |
 | 2.8 | Validation Run (Deploy) | [02_08_VALIDATION_RUN_DEPLOY.md](./02_08_VALIDATION_RUN_DEPLOY.md) | [x] Implemented | - |
 | 2.9 | Validation Preview | [02_09_VALIDATION_PREVIEW.md](./02_09_VALIDATION_PREVIEW.md) | [ ] Pending | - |
 
@@ -56,15 +57,15 @@ This document tracks the implementation progress of SecureDealAI MVP. Each task 
 | # | Task | Document | Status | Completed Date |
 |---|------|----------|--------|----------------|
 | 3.1 | Vue.js Project Setup | [03_01_VUEJS_PROJECT_SETUP.md](./03_01_VUEJS_PROJECT_SETUP.md) | [ ] Pending | - |
-| 3.2 | Dashboard Page | [03_02_DASHBOARD_PAGE.md](./03_02_DASHBOARD_PAGE.md) | [ ] Pending | - |
-| 3.3 | Vehicle Form Component | [03_03_VEHICLE_FORM.md](./03_03_VEHICLE_FORM.md) | [ ] Pending | - |
-| 3.4 | Vendor Form Component | [03_04_VENDOR_FORM.md](./03_04_VENDOR_FORM.md) | [ ] Pending | - |
+| 3.2 | Dashboard Page | [03_02_DASHBOARD_PAGE.md](./03_02_DASHBOARD_PAGE.md) | [x] Implemented | 2026-01-03 |
+| 3.3 | Vehicle Form Component | [03_03_VEHICLE_FORM.md](./03_03_VEHICLE_FORM.md) | [x] Implemented | 2026-01-03 |
+| 3.4 | Vendor Form Component | [03_04_VENDOR_FORM.md](./03_04_VENDOR_FORM.md) | [x] Implemented | 2026-01-03 |
 | 3.5 | ARES Status Component | [03_05_ARES_STATUS.md](./03_05_ARES_STATUS.md) | [ ] Pending | - |
-| 3.6 | Document Upload Component | [03_06_DOCUMENT_UPLOAD.md](./03_06_DOCUMENT_UPLOAD.md) | [ ] Pending | - |
-| 3.7 | OCR Status Component | [03_07_OCR_STATUS.md](./03_07_OCR_STATUS.md) | [ ] Pending | - |
+| 3.6 | Document Upload Component | [03_06_DOCUMENT_UPLOAD.md](./03_06_DOCUMENT_UPLOAD.md) | [x] Implemented | 2026-01-03 |
+| 3.7 | OCR Status Component | [03_07_OCR_STATUS.md](./03_07_OCR_STATUS.md) | [x] Implemented | 2026-01-03 |
 | 3.8 | Validation Result Component | [03_08_VALIDATION_RESULT.md](./03_08_VALIDATION_RESULT.md) | [ ] Pending | - |
-| 3.9 | Detail Page (Multi-step) | [03_09_DETAIL_PAGE.md](./03_09_DETAIL_PAGE.md) | [ ] Pending | - |
-| 3.10 | Validation Sidebar | [03_10_VALIDATION_SIDEBAR.md](./03_10_VALIDATION_SIDEBAR.md) | [ ] Pending | - |
+| 3.9 | Detail Page (Multi-step) | [03_09_DETAIL_PAGE.md](./03_09_DETAIL_PAGE.md) | [x] Implemented | 2026-01-04 |
+| 3.10 | Validation Sidebar | [03_10_VALIDATION_SIDEBAR.md](./03_10_VALIDATION_SIDEBAR.md) | [x] Implemented | 2026-01-04 |
 
 ---
 
@@ -72,8 +73,8 @@ This document tracks the implementation progress of SecureDealAI MVP. Each task 
 
 | # | Task | Document | Status | Completed Date |
 |---|------|----------|--------|----------------|
-| 4.1 | End-to-End Testing | [04_01_E2E_TESTING.md](./04_01_E2E_TESTING.md) | [ ] Pending | - |
-| 4.2 | Error Handling & UX Polish | [04_02_ERROR_HANDLING_UX.md](./04_02_ERROR_HANDLING_UX.md) | [ ] Pending | - |
+| 4.1 | End-to-End Testing | [04_01_E2E_TESTING.md](./04_01_E2E_TESTING.md) | [x] Implemented | 2026-01-03 |
+| 4.2 | Error Handling & UX Polish | [04_02_ERROR_HANDLING_UX.md](./04_02_ERROR_HANDLING_UX.md) | [x] Implemented | 2026-01-03 |
 
 ---
 
@@ -135,10 +136,11 @@ When completing a task:
 ## Notes
 
 - Task 2.8 (Validation Run) is marked as implemented - complete Edge Function exists in `MVPScope/supabase/functions/validation-run/` with index.ts entry point
-- Task 2.6 (OCR Extract) is **NOT yet an Edge Function** - only schemas and Mistral client code prepared:
-  - `MVPScope/supabase/functions/ocr-extract/schemas/` - JSON schemas for ORV, OP, VTP
-  - `MVPScope/supabase/functions/ocr-extract/mistral-client.ts` - API client code
-  - **Missing**: `index.ts` (Edge Function entry point), HTTP handler, Supabase Storage integration
+- Task 2.6 (OCR Extract) is **NOW IMPLEMENTED** - complete Edge Function exists in `MVPScope/supabase/functions/ocr-extract/`:
+  - `index.ts` - Edge Function entry point with HTTP handler
+  - `mistral-client.ts` - Mistral API client with retry logic
+  - `transformer.ts` - Data normalization (dates, IČO, rodné číslo, SPZ, VIN)
+  - `schemas/` - JSON schemas for ORV, OP, VTP document types
 - OCR/Mistral API tested locally via Node.js script (`test-mistral-ocr.mjs`):
   - ORV: 2 pages, 4.5s - VIN, SPZ, keeper info, vehicle specs ✅
   - OP: 1 page, 3.7s - name, personal number, document number, addresses ✅

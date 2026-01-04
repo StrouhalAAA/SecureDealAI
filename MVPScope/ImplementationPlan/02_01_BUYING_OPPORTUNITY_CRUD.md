@@ -1,10 +1,11 @@
 # Task 2.1: Buying Opportunity CRUD API
 
 > **Phase**: 2 - Backend API
-> **Status**: [ ] Pending
+> **Status**: [x] Implemented
 > **Priority**: High
 > **Depends On**: 1.1 Database Schema
 > **Estimated Effort**: Medium
+> **Completed Date**: 2026-01-03
 
 ---
 
@@ -16,8 +17,8 @@ Create a Supabase Edge Function for CRUD operations on the `buying_opportunities
 
 ## Prerequisites
 
-- [ ] Task 1.1 completed (database schema applied)
-- [ ] Task 1.4 completed (environment configured)
+- [x] Task 1.1 completed (database schema applied)
+- [x] Task 1.4 completed (environment configured)
 
 ---
 
@@ -182,13 +183,13 @@ supabase functions deploy buying-opportunity
 
 ## Validation Criteria
 
-- [ ] POST creates new buying opportunity with SPZ
-- [ ] GET retrieves by ID or SPZ
-- [ ] PUT updates status field
-- [ ] DELETE removes record
-- [ ] Duplicate SPZ returns 409 Conflict
-- [ ] Invalid requests return 400
-- [ ] Authentication required (401 if missing)
+- [x] POST creates new buying opportunity with SPZ
+- [x] GET retrieves by ID or SPZ
+- [x] PUT updates status field
+- [x] DELETE removes record
+- [x] Duplicate SPZ returns 409 Conflict
+- [x] Invalid requests return 400
+- [x] Authentication required (401 if missing)
 
 ---
 
@@ -216,8 +217,30 @@ curl -X PUT "https://[project].supabase.co/functions/v1/buying-opportunity/{id}"
 
 ## Completion Checklist
 
-- [ ] Function created and deployed
-- [ ] All CRUD operations working
-- [ ] Error handling implemented
-- [ ] Tests pass
-- [ ] Update tracker: `00_IMPLEMENTATION_TRACKER.md`
+- [x] Function created and deployed
+- [x] All CRUD operations working
+- [x] Error handling implemented
+- [x] Tests pass
+- [x] Update tracker: `00_IMPLEMENTATION_TRACKER.md`
+
+---
+
+## Implementation Notes
+
+**File Created**: `MVPScope/supabase/functions/buying-opportunity/index.ts`
+
+**Features Implemented**:
+- Full CRUD operations (Create, Read, Update, Delete)
+- GET /list endpoint with pagination (page, limit params) and status filtering
+- SPZ normalization (uppercase, remove spaces)
+- UUID validation for ID parameters
+- Proper HTTP status codes (201, 204, 400, 401, 404, 405, 409, 500)
+- CORS preflight handling
+- Authentication enforcement (401 for missing Authorization header)
+- Comprehensive error handling with error codes
+
+**Deployment**:
+```bash
+cd MVPScope/supabase
+supabase functions deploy buying-opportunity --env-file .env.local
+```

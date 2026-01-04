@@ -1,7 +1,7 @@
 # Task 2.4: ARES Lookup API (Instant IČO Validation)
 
 > **Phase**: 2 - Backend API
-> **Status**: [ ] Pending
+> **Status**: [x] Implemented
 > **Priority**: High
 > **Depends On**: 1.1 Database Schema, INT_02 ARES API Spec
 > **Estimated Effort**: Medium
@@ -357,9 +357,9 @@ curl "https://[project].supabase.co/functions/v1/ares-lookup/99999999" \
 
 ## Completion Checklist
 
-- [ ] Function created and deployed
-- [ ] ARES API integration working
-- [ ] Caching implemented
-- [ ] Error handling complete
-- [ ] Tests pass
+- [x] Function created and deployed
+- [x] ARES API integration working
+- [x] Caching implemented
+- [x] Error handling complete
+- [x] Tests pass
 - [ ] Update tracker: `00_IMPLEMENTATION_TRACKER.md`
