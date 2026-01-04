@@ -63,9 +63,10 @@ No new files need to be created.
 ### Step 2: Set required secrets on remote project
 - Run:
   ```bash
-  supabase secrets set SUPABASE_SERVICE_ROLE_KEY="sb_secret_Rvqts5H3M_rreUjesNpEmg_dK9vNYKY"
-  supabase secrets set MISTRAL_API_KEY="A2DeEHjTmSvv1F6Cqhkr1GEqItVtsdsJ"
+  supabase secrets set SUPABASE_SERVICE_ROLE_KEY="<your-service-role-key>"
+  supabase secrets set MISTRAL_API_KEY="<your-mistral-api-key>"
   ```
+- Get the actual values from your Supabase dashboard and Mistral console
 
 ### Step 3: Deploy all Edge Functions
 - Deploy each function individually:
