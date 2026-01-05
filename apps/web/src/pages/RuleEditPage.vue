@@ -10,7 +10,7 @@
         </button>
         <div>
           <h1 class="page-title">Upravit pravidlo {{ ruleId }}</h1>
-          <p class="page-subtitle">{{ rule?.rule_name || 'Načítám...' }}</p>
+          <p class="page-subtitle">{{ rule?.rule_definition?.name || 'Načítám...' }}</p>
         </div>
       </div>
       <div v-if="rule" class="header-right">
@@ -70,7 +70,7 @@ import { ref, computed, onMounted } from 'vue';
 import { useRouter, useRoute, onBeforeRouteLeave } from 'vue-router';
 import RuleForm from '@/components/rules/RuleForm.vue';
 import RuleStatusBadge from '@/components/rules/RuleStatusBadge.vue';
-import { useRules, type RuleResponse, type TransformType, type ComparatorType, type CategoryType, type SeverityType, type VendorType, type BuyingType } from '@/composables/useRules';
+import { useRules, type SingleRuleResponse, type TransformType, type ComparatorType, type CategoryType, type SeverityType, type VendorType, type BuyingType } from '@/composables/useRules';
 
 const router = useRouter();
 const route = useRoute();
@@ -79,62 +79,59 @@ const { getRule } = useRules();
 
 const ruleId = computed(() => route.params.id as string);
 
-const rule = ref<RuleResponse | null>(null);
+const rule = ref<SingleRuleResponse | null>(null);
 const loading = ref(true);
 const notFound = ref(false);
 const isDirty = ref(false);
 const toast = ref({ show: false, message: '', type: 'success' as 'success' | 'error' });
 
 // Transform API response to form data structure
+// The backend GET /rules/:id returns SingleRuleResponse with nested rule_definition
 const formData = computed(() => {
   if (!rule.value) return undefined;
 
   const r = rule.value;
+  const def = r.rule_definition;
 
-  // Parse transforms from API format
-  const sourceTransforms: TransformType[] = [];
-  const targetTransforms: TransformType[] = [];
-
-  if (r.transform && Array.isArray(r.transform)) {
-    r.transform.forEach((t: { type: string; target?: string }) => {
-      if (t.target === 'target') {
-        targetTransforms.push(t.type as TransformType);
-      } else {
-        sourceTransforms.push(t.type as TransformType);
-      }
-    });
-  }
+  // Extract transforms from the nested source/target structure
+  const sourceTransforms: TransformType[] = def.source?.transforms ?? [];
+  const targetTransforms: TransformType[] = def.target?.transforms ?? [];
 
   return {
     rule_id: r.rule_id,
-    name: r.rule_name,
-    description: r.description || '',
+    name: def.name ?? '',
+    description: def.description ?? '',
     source: {
-      entity: r.source_entity,
-      field: r.source_field,
+      entity: def.source?.entity ?? '',
+      field: def.source?.field ?? '',
       transforms: sourceTransforms,
     },
     target: {
-      entity: r.target_entity,
-      field: r.target_field,
+      entity: def.target?.entity ?? '',
+      field: def.target?.field ?? '',
       transforms: targetTransforms,
     },
     comparison: {
-      type: r.comparator as ComparatorType,
-      ...r.comparator_params,
+      type: (def.comparison?.type ?? 'EXACT') as ComparatorType,
+      caseSensitive: def.comparison?.caseSensitive,
+      threshold: def.comparison?.threshold,
+      tolerance: def.comparison?.tolerance,
+      toleranceType: def.comparison?.toleranceType,
+      pattern: def.comparison?.pattern,
+      allowedValues: def.comparison?.allowedValues,
     },
-    severity: r.severity as SeverityType,
-    blockOnFail: r.severity === 'CRITICAL',
+    severity: (def.severity ?? 'WARNING') as SeverityType,
+    blockOnFail: def.blockOnFail ?? def.severity === 'CRITICAL',
     errorMessage: {
-      cs: r.error_message,
-      en: '',
+      cs: def.errorMessage?.cs ?? '',
+      en: def.errorMessage?.en ?? '',
     },
     metadata: {
-      category: '' as CategoryType | '',
-      phase: '' as 'mvp' | 'phase2' | 'future' | '',
-      applicableTo: (r.applies_to?.vendor_type || []) as VendorType[],
-      applicableToBuyingType: (r.applies_to?.buying_type || []) as BuyingType[],
-      tags: [],
+      category: (def.metadata?.category ?? '') as CategoryType | '',
+      phase: (def.metadata?.phase ?? '') as 'mvp' | 'phase2' | 'future' | '',
+      applicableTo: (def.metadata?.applicableTo ?? []) as VendorType[],
+      applicableToBuyingType: (def.metadata?.applicableToBuyingType ?? []) as BuyingType[],
+      tags: def.metadata?.tags ?? [],
     },
   };
 });
@@ -170,7 +167,7 @@ function handleBack() {
   router.push('/rules');
 }
 
-function handleSaved(updatedRule: RuleResponse) {
+function handleSaved(updatedRule: { rule_id: string }) {
   isDirty.value = false;
   showToast(`Pravidlo ${updatedRule.rule_id} bylo uloženo`, 'success');
   setTimeout(() => {

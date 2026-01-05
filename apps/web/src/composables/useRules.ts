@@ -40,6 +40,7 @@ export type CategoryType = typeof CATEGORY_TYPES[number];
 export type VendorType = typeof VENDOR_TYPES[number];
 export type BuyingType = typeof BUYING_TYPES[number];
 
+// RuleListItem - flat structure returned by list endpoint
 export interface RuleResponse {
   id: string;
   rule_id: string;
@@ -64,6 +65,77 @@ export interface RuleResponse {
   version: number;
   created_at: string;
   updated_at: string;
+}
+
+// RuleDefinition - the nested rule_definition structure from the backend
+export interface RuleDefinition {
+  id: string;
+  name: string;
+  description?: string;
+  enabled: boolean;
+  source: {
+    entity: string;
+    field: string;
+    transforms?: TransformType[];
+  };
+  target: {
+    entity: string;
+    field: string;
+    transforms?: TransformType[];
+  };
+  comparison: {
+    type: ComparatorType;
+    caseSensitive?: boolean;
+    threshold?: number;
+    tolerance?: number;
+    toleranceType?: 'absolute' | 'percentage';
+    pattern?: string;
+    allowedValues?: string[];
+  };
+  severity: SeverityType;
+  blockOnFail?: boolean;
+  conditions?: {
+    operator?: 'AND' | 'OR';
+    conditions: Array<{
+      field: string;
+      operator: string;
+      value: unknown;
+    }>;
+  };
+  errorMessage?: {
+    cs: string;
+    en: string;
+    sk?: string;
+    pl?: string;
+  };
+  metadata?: {
+    category?: CategoryType;
+    phase?: 'mvp' | 'phase2' | 'future';
+    requiresDocument?: 'ORV' | 'OP' | 'VTP' | null;
+    requiresDocuments?: number[];
+    requiresDocumentGroup?: 'VTP' | 'ORV' | 'OP';
+    applicableTo?: VendorType[];
+    applicableToBuyingType?: BuyingType[];
+    priority?: number;
+    tags?: string[];
+  };
+}
+
+// SingleRuleResponse - nested structure returned by GET /rules/:id endpoint
+export interface SingleRuleResponse {
+  id: string;
+  rule_id: string;
+  rule_definition: RuleDefinition;
+  is_active: boolean;
+  is_draft: boolean;
+  version: number;
+  schema_version?: string;
+  created_by?: string;
+  created_at: string;
+  updated_by?: string | null;
+  updated_at: string | null;
+  activated_by?: string | null;
+  activated_at?: string | null;
 }
 
 /**
@@ -163,7 +235,7 @@ export function useRules() {
     }
   }
 
-  async function getRule(ruleId: string): Promise<RuleResponse | null> {
+  async function getRule(ruleId: string): Promise<SingleRuleResponse | null> {
     loading.value = true;
     error.value = null;
 
@@ -178,7 +250,7 @@ export function useRules() {
       }
 
       const data = await response.json();
-      return data.data as RuleResponse;
+      return data.data as SingleRuleResponse;
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Unknown error';
       console.error('Failed to fetch rule:', err);
