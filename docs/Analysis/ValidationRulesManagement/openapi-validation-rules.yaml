@@ -44,7 +44,7 @@ tags:
     description: Bulk operations for rules
 
 paths:
-  /api/v1/validate:
+  /validate:
     post:
       tags:
         - Validation
@@ -84,7 +84,7 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
-  /api/v1/validate/{validationId}:
+  /validate/{validationId}:
     get:
       tags:
         - Validation
@@ -109,7 +109,7 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
-  /api/v1/validate/spz/{spz}:
+  /validate/spz/{spz}:
     get:
       tags:
         - Validation
@@ -132,7 +132,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ValidationResult'
 
-  /api/v1/validate/spz/{spz}/history:
+  /validate/spz/{spz}/history:
     get:
       tags:
         - Validation
@@ -165,7 +165,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ValidationHistory'
 
-  /api/v1/rules:
+  /rules:
     get:
       tags:
         - Rules
@@ -264,7 +264,7 @@ paths:
         '400':
           $ref: '#/components/responses/SchemaValidationError'
 
-  /api/v1/rules/{ruleId}:
+  /rules/{ruleId}:
     get:
       tags:
         - Rules
@@ -333,7 +333,7 @@ paths:
         '409':
           $ref: '#/components/responses/Conflict'
 
-  /api/v1/rules/{ruleId}/activate:
+  /rules/{ruleId}/activate:
     post:
       tags:
         - Rule Lifecycle
@@ -360,7 +360,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/RuleActivatedResponse'
 
-  /api/v1/rules/{ruleId}/deactivate:
+  /rules/{ruleId}/deactivate:
     post:
       tags:
         - Rule Lifecycle
@@ -387,7 +387,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/RuleDeactivatedResponse'
 
-  /api/v1/rules/{ruleId}/test:
+  /rules/{ruleId}/test:
     post:
       tags:
         - Rule Lifecycle
@@ -420,7 +420,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/TestRuleResponse'
 
-  /api/v1/rules/{ruleId}/history:
+  /rules/{ruleId}/history:
     get:
       tags:
         - Rules
@@ -438,7 +438,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/RuleHistory'
 
-  /api/v1/rules/schema:
+  /rules/schema:
     get:
       tags:
         - Rules
@@ -455,7 +455,7 @@ paths:
                 type: object
                 description: JSON Schema draft-07 for validation rules
 
-  /api/v1/rules/import:
+  /rules/import:
     post:
       tags:
         - Import/Export
@@ -477,7 +477,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ImportRulesResponse'
 
-  /api/v1/rules/export:
+  /rules/export:
     get:
       tags:
         - Import/Export

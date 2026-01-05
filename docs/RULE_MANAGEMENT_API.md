@@ -27,7 +27,7 @@ Admin endpoints require `role: admin` in JWT claims.
 
 ### 1. Validation Execution
 
-#### POST /api/v1/validate
+#### POST /validate
 
 Execute validation for a buying opportunity.
 
@@ -86,7 +86,7 @@ Execute validation for a buying opportunity.
 
 ---
 
-#### GET /api/v1/validate/{validationId}
+#### GET /validate/{validationId}
 
 Get validation result by ID.
 
@@ -104,7 +104,7 @@ Get validation result by ID.
 
 ---
 
-#### GET /api/v1/validate/spz/{spz}
+#### GET /validate/spz/{spz}
 
 Get latest validation result for a vehicle by SPZ.
 
@@ -121,7 +121,7 @@ Get latest validation result for a vehicle by SPZ.
 
 ---
 
-#### GET /api/v1/validate/spz/{spz}/history
+#### GET /validate/spz/{spz}/history
 
 Get all validation results for a vehicle.
 
@@ -155,7 +155,7 @@ Get all validation results for a vehicle.
 
 ### 2. Rule Management (Admin Only)
 
-#### GET /api/v1/rules
+#### GET /rules
 
 List all validation rules.
 
@@ -191,7 +191,7 @@ List all validation rules.
 
 ---
 
-#### GET /api/v1/rules/{ruleId}
+#### GET /rules/{ruleId}
 
 Get rule details by rule_id (e.g., VEH-001).
 
@@ -223,7 +223,7 @@ Get rule details by rule_id (e.g., VEH-001).
 
 ---
 
-#### POST /api/v1/rules
+#### POST /rules
 
 Create a new validation rule (as draft).
 
@@ -292,7 +292,7 @@ Create a new validation rule (as draft).
 
 ---
 
-#### PUT /api/v1/rules/{ruleId}
+#### PUT /rules/{ruleId}
 
 Update an existing rule. Creates a new version if rule is active.
 
@@ -320,7 +320,7 @@ Update an existing rule. Creates a new version if rule is active.
 
 ---
 
-#### DELETE /api/v1/rules/{ruleId}
+#### DELETE /rules/{ruleId}
 
 Delete a rule (soft delete - marks as deleted).
 
@@ -348,7 +348,7 @@ Delete a rule (soft delete - marks as deleted).
 
 ---
 
-#### POST /api/v1/rules/{ruleId}/activate
+#### POST /rules/{ruleId}/activate
 
 Activate a draft rule for production use.
 
@@ -372,7 +372,7 @@ Activate a draft rule for production use.
 
 ---
 
-#### POST /api/v1/rules/{ruleId}/deactivate
+#### POST /rules/{ruleId}/deactivate
 
 Deactivate a rule (remove from production).
 
@@ -394,7 +394,7 @@ Deactivate a rule (remove from production).
 
 ---
 
-#### POST /api/v1/rules/{ruleId}/test
+#### POST /rules/{ruleId}/test
 
 Test a rule against sample data without saving results.
 
@@ -432,7 +432,7 @@ Test a rule against sample data without saving results.
 
 ---
 
-#### GET /api/v1/rules/schema
+#### GET /rules/schema
 
 Get JSON Schema for rule validation.
 
@@ -448,7 +448,7 @@ Get JSON Schema for rule validation.
 
 ---
 
-#### POST /api/v1/rules/import
+#### POST /rules/import
 
 Bulk import rules from JSON.
 
@@ -481,7 +481,7 @@ Bulk import rules from JSON.
 
 ---
 
-#### GET /api/v1/rules/export
+#### GET /rules/export
 
 Export all rules as JSON.
 
@@ -504,7 +504,7 @@ Export all rules as JSON.
 
 ### 3. Rule History (Admin Only)
 
-#### GET /api/v1/rules/{ruleId}/history
+#### GET /rules/{ruleId}/history
 
 Get change history for a rule.
 

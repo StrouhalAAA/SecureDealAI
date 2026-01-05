@@ -518,36 +518,36 @@ const config = {
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `POST` | `/api/v1/validate` | Execute validation |
-| `GET` | `/api/v1/validate/{id}` | Get result by ID |
-| `GET` | `/api/v1/validate/spz/{spz}` | Latest result for vehicle |
-| `GET` | `/api/v1/validate/spz/{spz}/history` | All results for vehicle |
+| `POST` | `/validate` | Execute validation |
+| `GET` | `/validate/{id}` | Get result by ID |
+| `GET` | `/validate/spz/{spz}` | Latest result for vehicle |
+| `GET` | `/validate/spz/{spz}/history` | All results for vehicle |
 
 ### Rule Management Endpoints (Admin)
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `GET` | `/api/v1/rules` | List all rules |
-| `GET` | `/api/v1/rules/{id}` | Get rule details |
-| `POST` | `/api/v1/rules` | Create new rule (as draft) |
-| `PUT` | `/api/v1/rules/{id}` | Update rule |
-| `DELETE` | `/api/v1/rules/{id}` | Soft delete rule |
-| `POST` | `/api/v1/rules/{id}/activate` | Activate draft rule |
-| `POST` | `/api/v1/rules/{id}/deactivate` | Deactivate rule |
-| `POST` | `/api/v1/rules/{id}/test` | Test rule with sample data |
+| `GET` | `/rules` | List all rules |
+| `GET` | `/rules/{id}` | Get rule details |
+| `POST` | `/rules` | Create new rule (as draft) |
+| `PUT` | `/rules/{id}` | Update rule |
+| `DELETE` | `/rules/{id}` | Soft delete rule |
+| `POST` | `/rules/{id}/activate` | Activate draft rule |
+| `POST` | `/rules/{id}/deactivate` | Deactivate rule |
+| `POST` | `/rules/{id}/test` | Test rule with sample data |
 
 ### Bulk Operations
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `POST` | `/api/v1/rules/import` | Import rules from JSON |
-| `GET` | `/api/v1/rules/export` | Export all rules |
-| `GET` | `/api/v1/rules/schema` | Get JSON Schema |
+| `POST` | `/rules/import` | Import rules from JSON |
+| `GET` | `/rules/export` | Export all rules |
+| `GET` | `/rules/schema` | Get JSON Schema |
 
 ### Query Parameters for List Endpoint
 
 ```
-GET /api/v1/rules?
+GET /rules?
   active_only=true&
   category=vehicle&
   severity=CRITICAL&
