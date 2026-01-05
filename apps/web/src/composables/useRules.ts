@@ -17,12 +17,28 @@ export const COMPARATOR_TYPES = [
 // Entity types (data sources)
 export const ENTITY_TYPES = [
   'vehicle', 'vendor', 'buying_opportunity',
-  'ocr_orv', 'ocr_op', 'ocr_vtp', 'ares', 'adis', 'cebia'
+  'ocr_orv', 'ocr_op', 'ocr_vtp', 'ares', 'adis', 'cebia', 'dolozky'
 ] as const;
+
+// Severity levels for rules
+export const SEVERITY_TYPES = ['CRITICAL', 'WARNING', 'INFO'] as const;
+
+// Rule categories
+export const CATEGORY_TYPES = ['vehicle', 'vendor_fo', 'vendor_po', 'cross', 'external'] as const;
+
+// Vendor types for applicability
+export const VENDOR_TYPES = ['PHYSICAL_PERSON', 'COMPANY'] as const;
+
+// Buying types for applicability
+export const BUYING_TYPES = ['BRANCH', 'MOBILE_BUYING'] as const;
 
 export type TransformType = typeof TRANSFORM_TYPES[number];
 export type ComparatorType = typeof COMPARATOR_TYPES[number];
 export type EntityType = typeof ENTITY_TYPES[number];
+export type SeverityType = typeof SEVERITY_TYPES[number];
+export type CategoryType = typeof CATEGORY_TYPES[number];
+export type VendorType = typeof VENDOR_TYPES[number];
+export type BuyingType = typeof BUYING_TYPES[number];
 
 export interface RuleResponse {
   id: string;

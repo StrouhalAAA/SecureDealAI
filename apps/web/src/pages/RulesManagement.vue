@@ -26,7 +26,7 @@
           </svg>
           Import
         </button>
-        <button class="btn-primary" disabled title="Připravuje se">
+        <button class="btn-primary" @click="$router.push('/rules/new')">
           <svg viewBox="0 0 20 20" fill="currentColor">
             <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
           </svg>
@@ -59,6 +59,26 @@
       />
     </main>
 
+    <!-- Delete Modal -->
+    <DeleteRuleModal
+      v-model="showDeleteModal"
+      :rule="selectedRule"
+      :loading="modalLoading"
+      @confirm="confirmDelete"
+      @cancel="showDeleteModal = false"
+    />
+
+    <!-- Clone Modal -->
+    <CloneRuleModal
+      v-model="showCloneModal"
+      :rule="selectedRule"
+      :loading="modalLoading"
+      :existing-rules="rules"
+      @confirm="confirmClone"
+      @cancel="showCloneModal = false"
+    />
+
+    <!-- Toast -->
     <div v-if="toast.show" :class="['toast', `toast-${toast.type}`]">
       {{ toast.message }}
     </div>
@@ -67,13 +87,24 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
 import { useRules, type RuleResponse } from '@/composables/useRules';
 import RulesStatsBar from '@/components/rules/RulesStatsBar.vue';
 import RulesList from '@/components/rules/RulesList.vue';
+import DeleteRuleModal from '@/components/rules/DeleteRuleModal.vue';
+import CloneRuleModal from '@/components/rules/CloneRuleModal.vue';
 
-const { rules, loading, error, pagination, fetchRules, activateRule, deactivateRule } = useRules();
+const router = useRouter();
+
+const { rules, loading, error, pagination, fetchRules, activateRule, deactivateRule, deleteRule, cloneRule } = useRules();
 
 const toast = ref({ show: false, message: '', type: 'success' as 'success' | 'error' });
+
+// Modal state
+const showDeleteModal = ref(false);
+const showCloneModal = ref(false);
+const selectedRule = ref<RuleResponse | null>(null);
+const modalLoading = ref(false);
 
 function showToast(message: string, type: 'success' | 'error' = 'success') {
   toast.value = { show: true, message, type };
@@ -87,8 +118,7 @@ async function loadRules() {
 onMounted(() => { loadRules(); });
 
 function handleEdit(rule: RuleResponse) {
-  console.log('Edit rule:', rule.rule_id);
-  showToast('Editace pravidel bude brzy k dispozici', 'success');
+  router.push(`/rules/${rule.rule_id}/edit`);
 }
 
 async function handleActivate(rule: RuleResponse) {
@@ -112,13 +142,48 @@ async function handleDeactivate(rule: RuleResponse) {
 }
 
 function handleClone(rule: RuleResponse) {
-  console.log('Clone rule:', rule.rule_id);
-  showToast('Klonování pravidel bude brzy k dispozici', 'success');
+  selectedRule.value = rule;
+  showCloneModal.value = true;
+}
+
+async function confirmClone(data: { newRuleId: string; newName: string }) {
+  if (!selectedRule.value) return;
+
+  modalLoading.value = true;
+  const result = await cloneRule(selectedRule.value.rule_id, data.newRuleId, data.newName);
+  modalLoading.value = false;
+
+  if (result) {
+    showToast(`Pravidlo naklonováno jako ${data.newRuleId}`, 'success');
+    showCloneModal.value = false;
+    selectedRule.value = null;
+    // Navigate to edit the new clone
+    router.push(`/rules/${data.newRuleId}/edit`);
+  } else {
+    showToast('Klonování pravidla selhalo', 'error');
+  }
 }
 
 function handleDelete(rule: RuleResponse) {
-  console.log('Delete rule:', rule.rule_id);
-  showToast('Mazání pravidel bude brzy k dispozici', 'success');
+  selectedRule.value = rule;
+  showDeleteModal.value = true;
+}
+
+async function confirmDelete() {
+  if (!selectedRule.value) return;
+
+  modalLoading.value = true;
+  const success = await deleteRule(selectedRule.value.rule_id);
+  modalLoading.value = false;
+
+  if (success) {
+    showToast(`Pravidlo ${selectedRule.value.rule_id} bylo smazáno`, 'success');
+    showDeleteModal.value = false;
+    selectedRule.value = null;
+    await loadRules();
+  } else {
+    showToast('Smazání pravidla selhalo', 'error');
+  }
 }
 
 function handleFilter(filters: Record<string, string>) {

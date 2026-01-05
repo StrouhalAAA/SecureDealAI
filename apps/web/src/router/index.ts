@@ -32,6 +32,18 @@ const routes = [
     component: () => import('@/pages/RulesManagement.vue'),
     meta: { requiresAuth: true }
   },
+  {
+    path: '/rules/new',
+    name: 'RuleCreate',
+    component: () => import('@/pages/RuleCreatePage.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/rules/:id/edit',
+    name: 'RuleEdit',
+    component: () => import('@/pages/RuleEditPage.vue'),
+    meta: { requiresAuth: true }
+  },
   // Catch-all - redirect to dashboard (which will redirect to access-code if not authed)
   {
     path: '/:pathMatch(.*)*',
