@@ -180,12 +180,21 @@ export interface ValidationRuleRow {
 }
 
 /**
+ * Transform item for list view
+ */
+export interface TransformItem {
+  type: string;
+  params?: Record<string, unknown>;
+}
+
+/**
  * API response for listing rules (summary view)
+ * Includes flattened fields from rule_definition for table display
  */
 export interface RuleListItem {
   id: string;
   rule_id: string;
-  name: string;
+  rule_name: string;        // Renamed from 'name' to match frontend expectation
   description?: string;
   severity: SeverityType;
   category?: CategoryType;
@@ -196,6 +205,15 @@ export interface RuleListItem {
   version: number;
   created_at: string;
   updated_at: string | null;
+  // Flattened fields for table display
+  source_entity: string;
+  source_field: string;
+  target_entity: string;
+  target_field: string;
+  comparator: string;
+  comparator_params?: Record<string, unknown>;
+  transform?: TransformItem[];
+  error_message?: string;
 }
 
 /**

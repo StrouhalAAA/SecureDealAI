@@ -213,21 +213,22 @@ function setActiveChip(value: string) {
 }
 
 const filteredRules = computed(() => {
-  let result = props.rules;
+  // Defensive: ensure rules is always an array
+  let result = props.rules ?? [];
 
   if (searchQuery.value) {
     const query = searchQuery.value.toLowerCase();
     result = result.filter(rule =>
-      rule.rule_id.toLowerCase().includes(query) ||
-      rule.rule_name.toLowerCase().includes(query) ||
+      rule.rule_id?.toLowerCase().includes(query) ||
+      rule.rule_name?.toLowerCase().includes(query) ||
       (rule.description && rule.description.toLowerCase().includes(query))
     );
   }
 
   if (activeChip.value !== 'all') {
     result = result.filter(rule => {
-      const source = rule.source_entity.toLowerCase();
-      const target = rule.target_entity.toLowerCase();
+      const source = (rule.source_entity || '').toLowerCase();
+      const target = (rule.target_entity || '').toLowerCase();
       if (activeChip.value === 'ocr') {
         return source.startsWith('ocr') || target.startsWith('ocr');
       }

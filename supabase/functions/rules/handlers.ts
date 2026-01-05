@@ -34,10 +34,26 @@ import type {
  */
 function toListItem(row: ValidationRuleRow): RuleListItem {
   const def = row.rule_definition;
+
+  // Build transform array from source transforms
+  const transform = def.source.transforms?.map((t: string) => ({ type: t })) || [];
+
+  // Extract error message (prefer Czech if available)
+  const errorMessage = def.errorMessage?.cs || def.errorMessage?.en || '';
+
+  // Build comparator params from comparison config
+  const comparatorParams: Record<string, unknown> = {};
+  if (def.comparison.threshold !== undefined) comparatorParams.threshold = def.comparison.threshold;
+  if (def.comparison.tolerance !== undefined) comparatorParams.tolerance = def.comparison.tolerance;
+  if (def.comparison.toleranceType !== undefined) comparatorParams.toleranceType = def.comparison.toleranceType;
+  if (def.comparison.pattern !== undefined) comparatorParams.pattern = def.comparison.pattern;
+  if (def.comparison.allowedValues !== undefined) comparatorParams.allowedValues = def.comparison.allowedValues;
+  if (def.comparison.caseSensitive !== undefined) comparatorParams.caseSensitive = def.comparison.caseSensitive;
+
   return {
     id: row.id,
     rule_id: row.rule_id,
-    name: def.name,
+    rule_name: def.name,  // Renamed to match frontend expectation
     description: def.description,
     severity: def.severity,
     category: def.metadata?.category,
@@ -48,6 +64,15 @@ function toListItem(row: ValidationRuleRow): RuleListItem {
     version: row.version,
     created_at: row.created_at,
     updated_at: row.updated_at,
+    // Flattened fields for table display
+    source_entity: def.source.entity,
+    source_field: def.source.field,
+    target_entity: def.target.entity,
+    target_field: def.target.field,
+    comparator: def.comparison.type,
+    comparator_params: Object.keys(comparatorParams).length > 0 ? comparatorParams : undefined,
+    transform: transform.length > 0 ? transform : undefined,
+    error_message: errorMessage || undefined,
   };
 }
 
