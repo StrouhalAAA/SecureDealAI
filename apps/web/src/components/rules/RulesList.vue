@@ -1,138 +1,123 @@
 <template>
   <div class="rules-list">
     <!-- Filters -->
-    <div class="filters">
-      <div class="filter-group">
-        <label>Status</label>
-        <select v-model="filters.status" @change="onFilterChange">
-          <option value="all">All</option>
-          <option value="active">Active</option>
-          <option value="draft">Draft</option>
-        </select>
-      </div>
+    <div class="filters-section">
+      <div class="filters-row">
+        <div class="search-box">
+          <svg class="search-icon" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
+          </svg>
+          <input
+            type="text"
+            v-model="searchQuery"
+            placeholder="Hledat pravidla (ID, název, popis)..."
+            class="search-input"
+          />
+        </div>
 
-      <div class="filter-group">
-        <label>Entity</label>
-        <select v-model="filters.source_entity" @change="onFilterChange">
-          <option value="">All Entities</option>
-          <option value="VEHICLE">Vehicle</option>
-          <option value="VENDOR">Vendor</option>
-          <option value="TRANSACTION">Transaction</option>
-        </select>
-      </div>
-
-      <div class="filter-group">
-        <label>Severity</label>
-        <select v-model="filters.severity" @change="onFilterChange">
-          <option value="">All Severities</option>
-          <option value="CRITICAL">Critical</option>
-          <option value="WARNING">Warning</option>
-          <option value="INFO">Info</option>
-        </select>
-      </div>
-
-      <div class="filter-group search">
-        <label>Search</label>
-        <input
-          type="text"
-          v-model="searchQuery"
-          placeholder="Search rules..."
-          @input="onSearchChange"
-        />
+        <div class="filter-chips">
+          <button
+            v-for="chip in filterChips"
+            :key="chip.value"
+            :class="['filter-chip', { active: activeChip === chip.value }]"
+            @click="setActiveChip(chip.value)"
+          >
+            {{ chip.label }}
+          </button>
+        </div>
       </div>
     </div>
 
     <!-- Table -->
     <div class="table-container">
-      <table v-if="!loading && rules.length > 0">
+      <table v-if="!loading && filteredRules.length > 0">
         <thead>
           <tr>
-            <th>Rule ID</th>
-            <th>Name</th>
-            <th>Entity</th>
-            <th>Severity</th>
-            <th>Status</th>
-            <th>Version</th>
-            <th>Actions</th>
+            <th class="col-id">ID</th>
+            <th class="col-name">Název pravidla</th>
+            <th class="col-severity">Závažnost</th>
+            <th class="col-status">Stav</th>
+            <th class="col-mapping">Zdroj → Cíl</th>
+            <th class="col-comparison">Porovnání</th>
+            <th class="col-actions">Akce</th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="rule in filteredRules" :key="rule.id">
+          <tr v-for="rule in filteredRules" :key="rule.id" class="rule-row">
             <td class="rule-id">{{ rule.rule_id }}</td>
-            <td class="rule-name">
-              <span class="name">{{ rule.rule_name }}</span>
-              <span v-if="rule.description" class="description">{{ rule.description }}</span>
+            <td class="rule-name-cell">
+              <div class="rule-name">{{ rule.rule_name }}</div>
+              <div v-if="rule.description" class="rule-description">{{ rule.description }}</div>
             </td>
             <td>
-              <span class="entity-badge">{{ rule.source_entity }}</span>
-              →
-              <span class="entity-badge">{{ rule.target_entity }}</span>
-            </td>
-            <td>
-              <span :class="['severity-badge', `severity-${rule.severity.toLowerCase()}`]">
-                {{ rule.severity }}
-              </span>
+              <RuleSeverityBadge :severity="rule.severity" />
             </td>
             <td>
               <RuleStatusBadge :is-active="rule.is_active" :is-draft="rule.is_draft" />
             </td>
-            <td class="version">v{{ rule.version }}</td>
-            <td class="actions">
-              <button
-                class="action-btn"
-                title="Edit"
-                @click="$emit('edit', rule)"
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+            <td class="mapping-cell">
+              <div class="mapping-row">
+                <RuleEntityBadge :entity="rule.source_entity" />
+                <svg class="arrow-icon" viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clip-rule="evenodd" />
+                </svg>
+                <RuleEntityBadge :entity="rule.target_entity" />
+              </div>
+              <div class="field-mapping">{{ rule.source_field }} → {{ rule.target_field }}</div>
+            </td>
+            <td class="comparison-cell">
+              <div class="chips-stack">
+                <RuleChip type="comparator" :value="rule.comparator" />
+                <template v-if="rule.transform && rule.transform.length > 0">
+                  <RuleChip
+                    v-for="(t, idx) in rule.transform"
+                    :key="idx"
+                    type="transform"
+                    :value="t.type"
+                  />
+                </template>
+              </div>
+            </td>
+            <td class="actions-cell">
+              <button class="action-btn" title="Upravit" @click.stop="$emit('edit', rule)">
+                <svg viewBox="0 0 20 20" fill="currentColor">
+                  <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
                 </svg>
               </button>
-
-              <button
-                v-if="rule.is_draft || !rule.is_active"
-                class="action-btn activate"
-                title="Activate"
-                @click="$emit('activate', rule)"
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </button>
-
-              <button
-                v-if="rule.is_active"
-                class="action-btn deactivate"
-                title="Deactivate"
-                @click="$emit('deactivate', rule)"
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </button>
-
-              <button
-                class="action-btn"
-                title="Clone"
-                @click="$emit('clone', rule)"
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                </svg>
-              </button>
-
               <button
                 v-if="!rule.is_active"
-                class="action-btn delete"
-                title="Delete"
-                @click="$emit('delete', rule)"
+                class="action-btn action-activate"
+                title="Aktivovat"
+                @click.stop="$emit('activate', rule)"
               >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                <svg viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                </svg>
+              </button>
+              <button
+                v-if="rule.is_active"
+                class="action-btn action-deactivate"
+                title="Deaktivovat"
+                @click.stop="$emit('deactivate', rule)"
+              >
+                <svg viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8 7a1 1 0 00-1 1v4a1 1 0 001 1h4a1 1 0 001-1V8a1 1 0 00-1-1H8z" clip-rule="evenodd" />
+                </svg>
+              </button>
+              <button class="action-btn" title="Klonovat" @click.stop="$emit('clone', rule)">
+                <svg viewBox="0 0 20 20" fill="currentColor">
+                  <path d="M7 9a2 2 0 012-2h6a2 2 0 012 2v6a2 2 0 01-2 2H9a2 2 0 01-2-2V9z" />
+                  <path d="M5 3a2 2 0 00-2 2v6a2 2 0 002 2V5h8a2 2 0 00-2-2H5z" />
+                </svg>
+              </button>
+              <button
+                v-if="!rule.is_active"
+                class="action-btn action-delete"
+                title="Smazat"
+                @click.stop="$emit('delete', rule)"
+              >
+                <svg viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
                 </svg>
               </button>
             </td>
@@ -141,33 +126,44 @@
       </table>
 
       <!-- Loading State -->
-      <div v-if="loading" class="loading-state">
+      <div v-if="loading" class="state-container">
         <div class="spinner"></div>
-        <p>Loading rules...</p>
+        <p>Načítání pravidel...</p>
       </div>
 
       <!-- Empty State -->
-      <div v-if="!loading && rules.length === 0" class="empty-state">
-        <p>No rules found</p>
-        <button class="primary-btn" @click="$emit('create')">Create First Rule</button>
+      <div v-if="!loading && filteredRules.length === 0" class="state-container">
+        <p>Žádná pravidla nenalezena</p>
       </div>
     </div>
 
     <!-- Pagination -->
     <div v-if="pagination.total_pages > 1" class="pagination">
-      <button
-        :disabled="pagination.page === 1"
-        @click="changePage(pagination.page - 1)"
-      >
-        Previous
-      </button>
-      <span>Page {{ pagination.page }} of {{ pagination.total_pages }}</span>
-      <button
-        :disabled="pagination.page === pagination.total_pages"
-        @click="changePage(pagination.page + 1)"
-      >
-        Next
-      </button>
+      <div class="pagination-info">
+        Zobrazeno <span class="font-medium">{{ paginationStart }}-{{ paginationEnd }}</span>
+        z <span class="font-medium">{{ pagination.total }}</span> pravidel
+      </div>
+      <div class="pagination-buttons">
+        <button
+          :disabled="pagination.page === 1"
+          @click="$emit('page', pagination.page - 1)"
+          class="pagination-btn"
+        >
+          <svg viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
+          </svg>
+        </button>
+        <span class="pagination-current">{{ pagination.page }}</span>
+        <button
+          :disabled="pagination.page === pagination.total_pages"
+          @click="$emit('page', pagination.page + 1)"
+          class="pagination-btn"
+        >
+          <svg viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+          </svg>
+        </button>
+      </div>
     </div>
   </div>
 </template>
@@ -175,6 +171,9 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import RuleStatusBadge from './RuleStatusBadge.vue';
+import RuleSeverityBadge from './RuleSeverityBadge.vue';
+import RuleEntityBadge from './RuleEntityBadge.vue';
+import RuleChip from './RuleChip.vue';
 import type { RuleResponse } from '@/composables/useRules';
 
 const props = defineProps<{
@@ -188,281 +187,125 @@ const props = defineProps<{
   };
 }>();
 
-const emit = defineEmits<{
+defineEmits<{
   (e: 'edit', rule: RuleResponse): void;
   (e: 'activate', rule: RuleResponse): void;
   (e: 'deactivate', rule: RuleResponse): void;
   (e: 'clone', rule: RuleResponse): void;
   (e: 'delete', rule: RuleResponse): void;
-  (e: 'create'): void;
   (e: 'filter', filters: Record<string, string>): void;
   (e: 'page', page: number): void;
 }>();
 
-const filters = ref({
-  status: 'all',
-  source_entity: '',
-  severity: '',
-});
-
 const searchQuery = ref('');
+const activeChip = ref('all');
+
+const filterChips = [
+  { label: 'Vše', value: 'all' },
+  { label: 'Vozidlo', value: 'vehicle' },
+  { label: 'Dodavatel', value: 'vendor' },
+  { label: 'ARES', value: 'ares' },
+  { label: 'OCR', value: 'ocr' },
+];
+
+function setActiveChip(value: string) {
+  activeChip.value = value;
+}
 
 const filteredRules = computed(() => {
-  if (!searchQuery.value) return props.rules;
+  let result = props.rules;
 
-  const query = searchQuery.value.toLowerCase();
-  return props.rules.filter(rule =>
-    rule.rule_id.toLowerCase().includes(query) ||
-    rule.rule_name.toLowerCase().includes(query) ||
-    (rule.description && rule.description.toLowerCase().includes(query))
-  );
+  if (searchQuery.value) {
+    const query = searchQuery.value.toLowerCase();
+    result = result.filter(rule =>
+      rule.rule_id.toLowerCase().includes(query) ||
+      rule.rule_name.toLowerCase().includes(query) ||
+      (rule.description && rule.description.toLowerCase().includes(query))
+    );
+  }
+
+  if (activeChip.value !== 'all') {
+    result = result.filter(rule => {
+      const source = rule.source_entity.toLowerCase();
+      const target = rule.target_entity.toLowerCase();
+      if (activeChip.value === 'ocr') {
+        return source.startsWith('ocr') || target.startsWith('ocr');
+      }
+      return source === activeChip.value || target === activeChip.value;
+    });
+  }
+
+  return result;
 });
 
-function onFilterChange() {
-  emit('filter', {
-    status: filters.value.status,
-    source_entity: filters.value.source_entity,
-    severity: filters.value.severity,
-  });
-}
-
-function onSearchChange() {
-  // Local filtering only - no need to emit
-}
-
-function changePage(page: number) {
-  emit('page', page);
-}
+const paginationStart = computed(() => (props.pagination.page - 1) * props.pagination.limit + 1);
+const paginationEnd = computed(() => Math.min(props.pagination.page * props.pagination.limit, props.pagination.total));
 </script>
 
 <style scoped>
 .rules-list {
-  background: #1f2937;
+  background: white;
   border-radius: 0.5rem;
+  border: 1px solid #E5E7EB;
   overflow: hidden;
 }
 
-.filters {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
-  padding: 1rem;
-  background: #111827;
-  border-bottom: 1px solid #374151;
-}
+.filters-section { padding: 1rem; border-bottom: 1px solid #E5E7EB; }
+.filters-row { display: flex; align-items: center; gap: 1rem; }
 
-.filter-group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
+.search-box { position: relative; flex: 1; max-width: 28rem; }
+.search-icon { position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); width: 1.25rem; height: 1.25rem; color: #9CA3AF; }
+.search-input { width: 100%; padding: 0.5rem 0.75rem 0.5rem 2.5rem; border: 1px solid #D1D5DB; border-radius: 0.5rem; font-size: 0.875rem; outline: none; }
+.search-input:focus { border-color: #2563EB; box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2); }
 
-.filter-group label {
-  font-size: 0.75rem;
-  color: #9ca3af;
-  text-transform: uppercase;
-}
+.filter-chips { display: flex; gap: 0.5rem; }
+.filter-chip { padding: 0.375rem 0.75rem; border-radius: 9999px; font-size: 0.875rem; font-weight: 500; background: #F3F4F6; color: #374151; border: none; cursor: pointer; transition: all 0.15s; }
+.filter-chip:hover { background: #E5E7EB; }
+.filter-chip.active { background: #DBEAFE; color: #1D4ED8; }
 
-.filter-group select,
-.filter-group input {
-  padding: 0.5rem;
-  background: #374151;
-  border: 1px solid #4b5563;
-  border-radius: 0.375rem;
-  color: #f3f4f6;
-  font-size: 0.875rem;
-}
+.table-container { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; }
+th { padding: 0.75rem 1rem; text-align: left; font-size: 0.75rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; color: #6B7280; background: #F9FAFB; border-bottom: 1px solid #E5E7EB; }
+td { padding: 0.75rem 1rem; font-size: 0.875rem; color: #111827; border-bottom: 1px solid #E5E7EB; }
+.rule-row:hover { background: #F9FAFB; }
 
-.filter-group.search {
-  flex: 1;
-  min-width: 200px;
-}
+.col-id { width: 7rem; }
+.col-severity { width: 7rem; }
+.col-status { width: 6rem; }
+.col-actions { width: 8rem; text-align: center; }
 
-.filter-group.search input {
-  width: 100%;
-}
+.rule-id { font-family: 'JetBrains Mono', 'Consolas', monospace; font-weight: 500; color: #2563EB; }
+.rule-name-cell { max-width: 16rem; }
+.rule-name { font-weight: 500; color: #111827; }
+.rule-description { font-size: 0.75rem; color: #6B7280; margin-top: 0.25rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-.table-container {
-  overflow-x: auto;
-}
+.mapping-cell { min-width: 12rem; }
+.mapping-row { display: flex; align-items: center; gap: 0.5rem; }
+.arrow-icon { width: 1rem; height: 1rem; color: #9CA3AF; }
+.field-mapping { font-size: 0.75rem; font-family: 'JetBrains Mono', 'Consolas', monospace; color: #6B7280; margin-top: 0.25rem; }
 
-table {
-  width: 100%;
-  border-collapse: collapse;
-}
+.comparison-cell { min-width: 8rem; }
+.chips-stack { display: flex; flex-direction: column; gap: 0.25rem; }
 
-th, td {
-  padding: 0.75rem 1rem;
-  text-align: left;
-  border-bottom: 1px solid #374151;
-}
+.actions-cell { text-align: center; }
+.action-btn { padding: 0.375rem; background: transparent; border: none; color: #6B7280; cursor: pointer; border-radius: 0.25rem; transition: all 0.15s; }
+.action-btn:hover { background: #F3F4F6; color: #2563EB; }
+.action-btn svg { width: 1rem; height: 1rem; }
+.action-activate:hover { color: #059669; background: #ECFDF5; }
+.action-deactivate:hover { color: #D97706; background: #FEF3C7; }
+.action-delete:hover { color: #DC2626; background: #FEE2E2; }
 
-th {
-  background: #111827;
-  color: #9ca3af;
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  font-weight: 600;
-}
+.state-container { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 3rem; color: #6B7280; }
+.spinner { width: 2rem; height: 2rem; border: 2px solid #E5E7EB; border-top-color: #2563EB; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 1rem; }
+@keyframes spin { to { transform: rotate(360deg); } }
 
-td {
-  color: #f3f4f6;
-  font-size: 0.875rem;
-}
-
-.rule-id {
-  font-family: monospace;
-  color: #60a5fa;
-}
-
-.rule-name .name {
-  display: block;
-  font-weight: 500;
-}
-
-.rule-name .description {
-  display: block;
-  font-size: 0.75rem;
-  color: #9ca3af;
-  margin-top: 0.25rem;
-}
-
-.entity-badge {
-  font-size: 0.75rem;
-  color: #9ca3af;
-}
-
-.severity-badge {
-  padding: 0.125rem 0.5rem;
-  border-radius: 0.25rem;
-  font-size: 0.75rem;
-  font-weight: 600;
-}
-
-.severity-critical {
-  background: rgba(239, 68, 68, 0.1);
-  color: #ef4444;
-}
-
-.severity-warning {
-  background: rgba(245, 158, 11, 0.1);
-  color: #f59e0b;
-}
-
-.severity-info {
-  background: rgba(59, 130, 246, 0.1);
-  color: #3b82f6;
-}
-
-.version {
-  font-family: monospace;
-  color: #9ca3af;
-}
-
-.actions {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.action-btn {
-  padding: 0.25rem;
-  background: transparent;
-  border: none;
-  color: #9ca3af;
-  cursor: pointer;
-  border-radius: 0.25rem;
-  transition: all 0.2s;
-}
-
-.action-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: #f3f4f6;
-}
-
-.action-btn.activate:hover {
-  color: #10b981;
-}
-
-.action-btn.deactivate:hover {
-  color: #f59e0b;
-}
-
-.action-btn.delete:hover {
-  color: #ef4444;
-}
-
-.action-btn svg {
-  width: 1rem;
-  height: 1rem;
-}
-
-.loading-state,
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 3rem;
-  color: #9ca3af;
-}
-
-.spinner {
-  width: 2rem;
-  height: 2rem;
-  border: 2px solid #374151;
-  border-top-color: #60a5fa;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  margin-bottom: 1rem;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-.primary-btn {
-  margin-top: 1rem;
-  padding: 0.5rem 1rem;
-  background: #3b82f6;
-  color: white;
-  border: none;
-  border-radius: 0.375rem;
-  cursor: pointer;
-}
-
-.primary-btn:hover {
-  background: #2563eb;
-}
-
-.pagination {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 1rem;
-  padding: 1rem;
-  border-top: 1px solid #374151;
-}
-
-.pagination button {
-  padding: 0.5rem 1rem;
-  background: #374151;
-  color: #f3f4f6;
-  border: none;
-  border-radius: 0.375rem;
-  cursor: pointer;
-}
-
-.pagination button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.pagination button:not(:disabled):hover {
-  background: #4b5563;
-}
-
-.pagination span {
-  color: #9ca3af;
-  font-size: 0.875rem;
-}
+.pagination { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1rem; border-top: 1px solid #E5E7EB; background: #F9FAFB; }
+.pagination-info { font-size: 0.875rem; color: #374151; }
+.pagination-buttons { display: flex; align-items: center; gap: 0.5rem; }
+.pagination-btn { padding: 0.25rem 0.75rem; border: 1px solid #D1D5DB; border-radius: 0.5rem; background: white; cursor: pointer; }
+.pagination-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.pagination-btn:not(:disabled):hover { background: #F3F4F6; }
+.pagination-btn svg { width: 1rem; height: 1rem; }
+.pagination-current { padding: 0.25rem 0.75rem; background: #2563EB; color: white; border-radius: 0.5rem; font-size: 0.875rem; }
+.font-medium { font-weight: 500; }
 </style>

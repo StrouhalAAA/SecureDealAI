@@ -1,284 +1,166 @@
 <template>
-  <div class="rules-management">
-    <div class="page-header">
-      <div class="header-content">
-        <router-link to="/" class="back-link">
-          <span>&larr;</span> Back to Dashboard
-        </router-link>
-        <h1>Rules Management</h1>
-        <p class="subtitle">Manage validation rules for the SecureDealAI system</p>
+  <div class="rules-page">
+    <!-- Header -->
+    <header class="page-header">
+      <div class="header-left">
+        <button class="back-btn" @click="$router.push('/')">
+          <svg viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd" />
+          </svg>
+        </button>
+        <div>
+          <h1 class="page-title">Validační pravidla</h1>
+          <p class="page-subtitle">Správa a konfigurace pravidel pro validaci dat</p>
+        </div>
       </div>
       <div class="header-actions">
-        <button class="secondary-btn" @click="exportRules">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+        <button class="btn-secondary" disabled title="Připravuje se">
+          <svg viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
           </svg>
           Export
         </button>
-        <button class="primary-btn" @click="openCreateModal">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M12 4v16m8-8H4" />
+        <button class="btn-secondary" disabled title="Připravuje se">
+          <svg viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clip-rule="evenodd" />
           </svg>
-          New Rule
+          Import
+        </button>
+        <button class="btn-primary" disabled title="Připravuje se">
+          <svg viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
+          </svg>
+          Nové pravidlo
         </button>
       </div>
-    </div>
+    </header>
 
-    <RulesList
-      :rules="rules"
-      :loading="loading"
-      :pagination="pagination"
-      @edit="openEditModal"
-      @activate="handleActivate"
-      @deactivate="handleDeactivate"
-      @clone="openCloneModal"
-      @delete="handleDelete"
-      @create="openCreateModal"
-      @filter="handleFilter"
-      @page="handlePageChange"
-    />
+    <!-- Stats Bar -->
+    <RulesStatsBar :rules="rules" />
 
-    <!-- Rule Editor Modal would go here -->
-    <Teleport to="body">
-      <div v-if="showModal" class="modal-overlay" @click.self="closeModal">
-        <div class="modal-content">
-          <h2>{{ modalMode === 'create' ? 'Create Rule' : 'Edit Rule' }}</h2>
-          <!-- Rule form would go here -->
-          <p class="placeholder">Rule editor form implementation...</p>
-          <div class="modal-actions">
-            <button class="secondary-btn" @click="closeModal">Cancel</button>
-            <button class="primary-btn">Save</button>
-          </div>
-        </div>
+    <!-- Main Content -->
+    <main class="page-content">
+      <div v-if="error" class="error-banner">
+        <p>{{ error }}</p>
+        <button @click="loadRules">Zkusit znovu</button>
       </div>
-    </Teleport>
+
+      <RulesList
+        :rules="rules"
+        :loading="loading"
+        :pagination="pagination"
+        @edit="handleEdit"
+        @activate="handleActivate"
+        @deactivate="handleDeactivate"
+        @clone="handleClone"
+        @delete="handleDelete"
+        @filter="handleFilter"
+        @page="handlePageChange"
+      />
+    </main>
+
+    <div v-if="toast.show" :class="['toast', `toast-${toast.type}`]">
+      {{ toast.message }}
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
+import { useRules, type RuleResponse } from '@/composables/useRules';
+import RulesStatsBar from '@/components/rules/RulesStatsBar.vue';
 import RulesList from '@/components/rules/RulesList.vue';
-import { useRules, type RuleResponse, type RulesFilters } from '@/composables/useRules';
 
-const {
-  rules,
-  loading,
-  pagination,
-  fetchRules,
-  activateRule,
-  deactivateRule,
-  deleteRule,
-} = useRules();
+const { rules, loading, error, pagination, fetchRules, activateRule, deactivateRule } = useRules();
 
-const showModal = ref(false);
-const modalMode = ref<'create' | 'edit'>('create');
-const selectedRule = ref<RuleResponse | null>(null);
+const toast = ref({ show: false, message: '', type: 'success' as 'success' | 'error' });
 
-const currentFilters = ref<RulesFilters>({
-  status: 'all',
-  page: 1,
-  limit: 50,
-});
-
-onMounted(() => {
-  fetchRules(currentFilters.value);
-});
-
-function openCreateModal() {
-  modalMode.value = 'create';
-  selectedRule.value = null;
-  showModal.value = true;
+function showToast(message: string, type: 'success' | 'error' = 'success') {
+  toast.value = { show: true, message, type };
+  setTimeout(() => { toast.value.show = false; }, 3000);
 }
 
-function openEditModal(rule: RuleResponse) {
-  modalMode.value = 'edit';
-  selectedRule.value = rule;
-  showModal.value = true;
+async function loadRules() {
+  await fetchRules({ status: 'all' });
 }
 
-function openCloneModal(rule: RuleResponse) {
-  // Prompt for new rule ID
-  const newId = prompt('Enter new rule ID (format: XXX-NNN):', '');
-  if (newId) {
-    // Clone logic would go here
-    console.log('Clone', rule.rule_id, 'as', newId);
-  }
-}
+onMounted(() => { loadRules(); });
 
-function closeModal() {
-  showModal.value = false;
-  selectedRule.value = null;
+function handleEdit(rule: RuleResponse) {
+  console.log('Edit rule:', rule.rule_id);
+  showToast('Editace pravidel bude brzy k dispozici', 'success');
 }
 
 async function handleActivate(rule: RuleResponse) {
-  if (confirm(`Activate rule ${rule.rule_id}?`)) {
-    const result = await activateRule(rule.rule_id);
-    if (result) {
-      fetchRules(currentFilters.value);
-    }
+  const result = await activateRule(rule.rule_id);
+  if (result) {
+    showToast(`Pravidlo ${rule.rule_id} bylo aktivováno`, 'success');
+    await loadRules();
+  } else {
+    showToast(`Aktivace pravidla ${rule.rule_id} selhala`, 'error');
   }
 }
 
 async function handleDeactivate(rule: RuleResponse) {
-  if (confirm(`Deactivate rule ${rule.rule_id}?`)) {
-    const result = await deactivateRule(rule.rule_id);
-    if (result) {
-      fetchRules(currentFilters.value);
-    }
+  const result = await deactivateRule(rule.rule_id);
+  if (result) {
+    showToast(`Pravidlo ${rule.rule_id} bylo deaktivováno`, 'success');
+    await loadRules();
+  } else {
+    showToast(`Deaktivace pravidla ${rule.rule_id} selhala`, 'error');
   }
 }
 
-async function handleDelete(rule: RuleResponse) {
-  if (confirm(`Delete rule ${rule.rule_id}? This cannot be undone.`)) {
-    const result = await deleteRule(rule.rule_id);
-    if (result) {
-      fetchRules(currentFilters.value);
-    }
-  }
+function handleClone(rule: RuleResponse) {
+  console.log('Clone rule:', rule.rule_id);
+  showToast('Klonování pravidel bude brzy k dispozici', 'success');
+}
+
+function handleDelete(rule: RuleResponse) {
+  console.log('Delete rule:', rule.rule_id);
+  showToast('Mazání pravidel bude brzy k dispozici', 'success');
 }
 
 function handleFilter(filters: Record<string, string>) {
-  currentFilters.value = { ...currentFilters.value, ...filters, page: 1 };
-  fetchRules(currentFilters.value);
+  fetchRules({
+    status: filters.status as 'active' | 'draft' | 'all',
+    source_entity: filters.source_entity,
+    severity: filters.severity,
+  });
 }
 
 function handlePageChange(page: number) {
-  currentFilters.value.page = page;
-  fetchRules(currentFilters.value);
-}
-
-function exportRules() {
-  const functionsUrl = import.meta.env.VITE_SUPABASE_URL + '/functions/v1';
-  window.open(`${functionsUrl}/rules/export?status=all`, '_blank');
+  fetchRules({ page });
 }
 </script>
 
 <style scoped>
-.rules-management {
-  min-height: 100vh;
-  background: #1a1a2e;
-  padding: 2rem;
-}
+.rules-page { min-height: 100vh; background: #F9FAFB; }
 
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 2rem;
-}
+.page-header { display: flex; justify-content: space-between; align-items: center; padding: 1rem 1.5rem; background: white; border-bottom: 1px solid #E5E7EB; box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); }
+.header-left { display: flex; align-items: center; gap: 1rem; }
+.back-btn { padding: 0.5rem; background: transparent; border: none; color: #6B7280; cursor: pointer; border-radius: 0.375rem; }
+.back-btn:hover { background: #F3F4F6; color: #374151; }
+.back-btn svg { width: 1.25rem; height: 1.25rem; }
+.page-title { font-size: 1.25rem; font-weight: 600; color: #111827; margin: 0; }
+.page-subtitle { font-size: 0.875rem; color: #6B7280; margin: 0.25rem 0 0 0; }
 
-.header-content {
-  flex: 1;
-}
+.header-actions { display: flex; gap: 0.75rem; }
+.btn-secondary, .btn-primary { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; border-radius: 0.5rem; font-size: 0.875rem; font-weight: 500; cursor: pointer; transition: all 0.15s; }
+.btn-secondary { background: white; color: #374151; border: 1px solid #D1D5DB; }
+.btn-secondary:hover:not(:disabled) { background: #F9FAFB; }
+.btn-secondary:disabled, .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-primary { background: #2563EB; color: white; border: none; }
+.btn-primary:hover:not(:disabled) { background: #1D4ED8; }
+.btn-secondary svg, .btn-primary svg { width: 1rem; height: 1rem; }
 
-.back-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  color: #60a5fa;
-  text-decoration: none;
-  font-size: 0.875rem;
-  margin-bottom: 0.5rem;
-}
+.page-content { padding: 1.5rem; }
 
-.back-link:hover {
-  color: #93c5fd;
-}
+.error-banner { display: flex; justify-content: space-between; align-items: center; padding: 1rem; margin-bottom: 1rem; background: #FEE2E2; border: 1px solid #FECACA; border-radius: 0.5rem; color: #991B1B; }
+.error-banner button { padding: 0.375rem 0.75rem; background: white; color: #991B1B; border: 1px solid #FECACA; border-radius: 0.375rem; cursor: pointer; }
 
-h1 {
-  color: #f3f4f6;
-  font-size: 1.75rem;
-  margin: 0;
-}
-
-.subtitle {
-  color: #9ca3af;
-  margin: 0.25rem 0 0;
-}
-
-.header-actions {
-  display: flex;
-  gap: 0.75rem;
-}
-
-.primary-btn,
-.secondary-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
-  border-radius: 0.375rem;
-  font-size: 0.875rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.primary-btn {
-  background: #3b82f6;
-  color: white;
-  border: none;
-}
-
-.primary-btn:hover {
-  background: #2563eb;
-}
-
-.secondary-btn {
-  background: #374151;
-  color: #f3f4f6;
-  border: 1px solid #4b5563;
-}
-
-.secondary-btn:hover {
-  background: #4b5563;
-}
-
-.primary-btn svg,
-.secondary-btn svg {
-  width: 1rem;
-  height: 1rem;
-}
-
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.75);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 50;
-}
-
-.modal-content {
-  background: #1f2937;
-  border-radius: 0.5rem;
-  padding: 1.5rem;
-  width: 100%;
-  max-width: 600px;
-  max-height: 90vh;
-  overflow-y: auto;
-}
-
-.modal-content h2 {
-  color: #f3f4f6;
-  margin: 0 0 1rem;
-}
-
-.placeholder {
-  color: #9ca3af;
-  padding: 2rem;
-  text-align: center;
-}
-
-.modal-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.75rem;
-  margin-top: 1.5rem;
-  padding-top: 1rem;
-  border-top: 1px solid #374151;
-}
+.toast { position: fixed; bottom: 1.5rem; right: 1.5rem; padding: 1rem 1.5rem; border-radius: 0.5rem; font-weight: 500; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); z-index: 50; animation: slideIn 0.3s ease; }
+.toast-success { background: #D1FAE5; color: #065F46; }
+.toast-error { background: #FEE2E2; color: #991B1B; }
+@keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
 </style>
