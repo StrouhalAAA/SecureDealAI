@@ -11,7 +11,7 @@
  */
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient, SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import {
   ValidateRequest,
   ValidateResponse,
@@ -20,6 +20,11 @@ import {
   TriggerSource,
 } from './types.ts';
 import { validate, ValidationEngineResult } from './engine.ts';
+
+// Type alias for Supabase client without strict database types
+// This allows flexibility when database types are not generated
+// deno-lint-ignore no-explicit-any
+type AnySupabaseClient = SupabaseClient<any, any, any>;
 
 // =============================================================================
 // CORS HEADERS
@@ -55,7 +60,7 @@ function createServiceClient() {
  * Load all data needed for validation from database
  */
 async function loadValidationData(
-  supabase: ReturnType<typeof createClient>,
+  supabase: AnySupabaseClient,
   buyingOpportunityId: string
 ): Promise<ValidationInputData> {
   console.log(`[DataLoader] Loading data for buying opportunity: ${buyingOpportunityId}`);
@@ -103,15 +108,24 @@ async function loadValidationData(
   const ocrOp = ocrExtractions.find((e: { document_type: string }) => e.document_type === 'OP')?.extracted_data;
   const ocrVtp = ocrExtractions.find((e: { document_type: string }) => e.document_type === 'VTP')?.extracted_data;
 
+  // Extract vehicle and vendor from join results
+  // PostgREST returns joined relations as arrays, so we take the first element
+  const vehicle = Array.isArray(opportunity.vehicles)
+    ? opportunity.vehicles[0]
+    : opportunity.vehicles;
+  const vendor = Array.isArray(opportunity.vendors)
+    ? opportunity.vendors[0]
+    : opportunity.vendors;
+
   // Load ARES data if company vendor
   let aresData = null;
   let adisData = null;
 
-  if (opportunity.vendors?.vendor_type === 'COMPANY' && opportunity.vendors?.company_id) {
+  if (vendor?.vendor_type === 'COMPANY' && vendor?.company_id) {
     const { data: ares } = await supabase
       .from('ares_validations')
       .select('*')
-      .eq('ico', opportunity.vendors.company_id)
+      .eq('ico', vendor.company_id)
       .order('created_at', { ascending: false })
       .limit(1)
       .single();
@@ -123,8 +137,8 @@ async function loadValidationData(
   }
 
   const inputData: ValidationInputData = {
-    vehicle: opportunity.vehicles ?? undefined,
-    vendor: opportunity.vendors ?? undefined,
+    vehicle: vehicle ?? undefined,
+    vendor: vendor ?? undefined,
     ocr_orv: ocrOrv ?? undefined,
     ocr_op: ocrOp ?? undefined,
     ocr_vtp: ocrVtp ?? undefined,
@@ -147,7 +161,7 @@ async function loadValidationData(
  * Find buying opportunity by SPZ or VIN
  */
 async function findBuyingOpportunity(
-  supabase: ReturnType<typeof createClient>,
+  supabase: AnySupabaseClient,
   spz?: string,
   vin?: string
 ): Promise<string> {
@@ -191,7 +205,7 @@ async function findBuyingOpportunity(
  * Store validation result in database
  */
 async function storeValidationResult(
-  supabase: ReturnType<typeof createClient>,
+  supabase: AnySupabaseClient,
   buyingOpportunityId: string,
   result: ValidationEngineResult,
   spz?: string,
@@ -230,7 +244,7 @@ async function storeValidationResult(
  * Store audit log entry
  */
 async function storeAuditLog(
-  supabase: ReturnType<typeof createClient>,
+  supabase: AnySupabaseClient,
   validationResultId: string,
   inputData: ValidationInputData,
   request: Request,

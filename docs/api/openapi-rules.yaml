@@ -1,0 +1,944 @@
+openapi: 3.0.3
+info:
+  title: SecureDealAI - Rule Management API
+  description: |
+    REST API for managing validation rules in SecureDealAI.
+
+    ## Authentication
+    All endpoints require Bearer token authentication:
+    ```
+    Authorization: Bearer <supabase_jwt_token>
+    ```
+
+    ## Authorization Levels
+    - **authenticated**: Any authenticated user
+    - **admin**: Requires `role: admin` in JWT claims
+
+    ## Rule Lifecycle
+    1. Create rule (as draft)
+    2. Test with sample data
+    3. Activate for production use
+    4. Deactivate when needed
+    5. Update creates new version (if active)
+  version: 1.0.0
+  contact:
+    name: SecureDealAI Team
+    email: support@securedealai.cz
+
+servers:
+  - url: https://bdmygmbxtdgujkytpxha.supabase.co/functions/v1
+    description: Production
+  - url: http://localhost:54321/functions/v1
+    description: Local Development
+
+tags:
+  - name: Rules
+    description: CRUD operations for validation rules
+  - name: Workflow
+    description: Activate/deactivate rule workflow
+  - name: Testing
+    description: Test rules with sample data
+  - name: Bulk
+    description: Import/export operations
+
+paths:
+  /rules:
+    get:
+      tags: [Rules]
+      summary: List validation rules
+      description: Returns paginated list of rules with optional filters
+      operationId: listRules
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: active_only
+          in: query
+          schema:
+            type: boolean
+            default: false
+          description: Return only active rules
+        - name: category
+          in: query
+          schema:
+            type: string
+            enum: [vehicle, vendor_fo, vendor_po, cross, external]
+          description: Filter by category
+        - name: severity
+          in: query
+          schema:
+            type: string
+            enum: [CRITICAL, WARNING, INFO]
+          description: Filter by severity
+        - name: phase
+          in: query
+          schema:
+            type: string
+            enum: [mvp, phase2, future]
+          description: Filter by phase
+        - name: include_drafts
+          in: query
+          schema:
+            type: boolean
+            default: false
+          description: Include draft rules
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          description: Page number
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          description: Items per page
+      responses:
+        '200':
+          description: Paginated list of rules
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RuleListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    post:
+      tags: [Rules]
+      summary: Create new rule
+      description: Creates a new validation rule as draft. Requires admin role.
+      operationId: createRule
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateRuleRequest'
+      responses:
+        '201':
+          description: Rule created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateRuleResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /rules/schema:
+    get:
+      tags: [Rules]
+      summary: Get JSON Schema
+      description: Returns the JSON Schema for rule validation
+      operationId: getSchema
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: JSON Schema for validation rules
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /rules/import:
+    post:
+      tags: [Bulk]
+      summary: Bulk import rules
+      description: Import multiple rules at once. Requires admin role.
+      operationId: importRules
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ImportRulesRequest'
+      responses:
+        '200':
+          description: Import completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportRulesResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /rules/export:
+    get:
+      tags: [Bulk]
+      summary: Export all rules
+      description: Export rules as JSON
+      operationId: exportRules
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: active_only
+          in: query
+          schema:
+            type: boolean
+            default: false
+          description: Export only active rules
+      responses:
+        '200':
+          description: Exported rules
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExportRulesResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /rules/{ruleId}:
+    parameters:
+      - name: ruleId
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: '^[A-Z]{2,4}-[0-9]{3}$'
+        description: Rule ID (e.g., VEH-001, ARES-002)
+        example: VEH-001
+
+    get:
+      tags: [Rules]
+      summary: Get rule by ID
+      description: Returns full rule details including rule_definition
+      operationId: getRule
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: version
+          in: query
+          schema:
+            type: integer
+          description: Specific version to retrieve (latest if omitted)
+      responses:
+        '200':
+          description: Rule details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RuleDetail'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags: [Rules]
+      summary: Update rule
+      description: |
+        Updates a rule. If rule is active, creates a new version as draft.
+        If rule is a draft, updates in place. Requires admin role.
+      operationId: updateRule
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateRuleRequest'
+      responses:
+        '200':
+          description: Rule updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RuleDetail'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags: [Rules]
+      summary: Delete rule
+      description: Soft deletes a rule. Use force=true for active rules. Requires admin role.
+      operationId: deleteRule
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: force
+          in: query
+          schema:
+            type: boolean
+            default: false
+          description: Force delete even if active
+      responses:
+        '200':
+          description: Rule deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  rule_id:
+                    type: string
+                  deleted:
+                    type: boolean
+                  message:
+                    type: string
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /rules/{ruleId}/activate:
+    post:
+      tags: [Workflow]
+      summary: Activate rule
+      description: Activates a draft rule for production use. Deactivates other versions. Requires admin role.
+      operationId: activateRule
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: ruleId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                activation_note:
+                  type: string
+                  description: Optional note about activation
+      responses:
+        '200':
+          description: Rule activated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  rule_id:
+                    type: string
+                  is_active:
+                    type: boolean
+                  activated_at:
+                    type: string
+                    format: date-time
+                  activated_by:
+                    type: string
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /rules/{ruleId}/deactivate:
+    post:
+      tags: [Workflow]
+      summary: Deactivate rule
+      description: Deactivates an active rule. Requires admin role.
+      operationId: deactivateRule
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: ruleId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                deactivation_reason:
+                  type: string
+                  description: Reason for deactivation
+      responses:
+        '200':
+          description: Rule deactivated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  rule_id:
+                    type: string
+                  is_active:
+                    type: boolean
+                  deactivated_at:
+                    type: string
+                    format: date-time
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /rules/{ruleId}/test:
+    post:
+      tags: [Testing]
+      summary: Test rule
+      description: Test a rule with sample data without persisting results
+      operationId: testRule
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: ruleId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TestRuleRequest'
+      responses:
+        '200':
+          description: Test results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TestRuleResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /rules/{ruleId}/history:
+    get:
+      tags: [Rules]
+      summary: Get rule change history
+      description: Returns audit trail of changes. Requires admin role.
+      operationId: getRuleHistory
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: ruleId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: Change history
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RuleHistoryResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Supabase JWT token
+
+  schemas:
+    RuleSummary:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        rule_id:
+          type: string
+          example: VEH-001
+        name:
+          type: string
+          example: VIN Match
+        severity:
+          type: string
+          enum: [CRITICAL, WARNING, INFO]
+        category:
+          type: string
+          enum: [vehicle, vendor_fo, vendor_po, cross, external]
+        phase:
+          type: string
+          enum: [mvp, phase2, future]
+        is_active:
+          type: boolean
+        is_draft:
+          type: boolean
+        version:
+          type: integer
+        updated_at:
+          type: string
+          format: date-time
+
+    RuleListResponse:
+      type: object
+      properties:
+        total_count:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+        rules:
+          type: array
+          items:
+            $ref: '#/components/schemas/RuleSummary'
+
+    RuleDetail:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        rule_id:
+          type: string
+        rule_definition:
+          $ref: '#/components/schemas/ValidationRule'
+        is_active:
+          type: boolean
+        is_draft:
+          type: boolean
+        version:
+          type: integer
+        schema_version:
+          type: string
+        created_by:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_by:
+          type: string
+        updated_at:
+          type: string
+          format: date-time
+        activated_by:
+          type: string
+        activated_at:
+          type: string
+          format: date-time
+
+    ValidationRule:
+      type: object
+      required:
+        - id
+        - name
+        - source
+        - target
+        - comparison
+        - severity
+      properties:
+        id:
+          type: string
+          pattern: '^[A-Z]{2,4}-[0-9]{3}$'
+          example: VEH-001
+        name:
+          type: string
+          minLength: 3
+          maxLength: 100
+        description:
+          type: string
+          maxLength: 500
+        enabled:
+          type: boolean
+          default: true
+        source:
+          $ref: '#/components/schemas/DataSource'
+        target:
+          $ref: '#/components/schemas/DataSource'
+        comparison:
+          $ref: '#/components/schemas/ComparisonConfig'
+        severity:
+          type: string
+          enum: [CRITICAL, WARNING, INFO]
+        blockOnFail:
+          type: boolean
+        conditions:
+          $ref: '#/components/schemas/ConditionGroup'
+        errorMessage:
+          type: object
+          properties:
+            cs:
+              type: string
+            en:
+              type: string
+        metadata:
+          $ref: '#/components/schemas/RuleMetadata'
+
+    DataSource:
+      type: object
+      required:
+        - entity
+        - field
+      properties:
+        entity:
+          type: string
+          enum: [vehicle, vendor, ocr_orv, ocr_op, ocr_vtp, ares, adis, cebia, dolozky, buying_opportunity]
+        field:
+          type: string
+        transforms:
+          type: array
+          items:
+            type: string
+            enum: [UPPERCASE, LOWERCASE, TRIM, REMOVE_SPACES, REMOVE_DIACRITICS, NORMALIZE_DATE, EXTRACT_NUMBER, FORMAT_RC, FORMAT_ICO, FORMAT_DIC, ADDRESS_NORMALIZE, NAME_NORMALIZE, VIN_NORMALIZE, SPZ_NORMALIZE]
+
+    ComparisonConfig:
+      type: object
+      required:
+        - type
+      properties:
+        type:
+          type: string
+          enum: [EXACT, FUZZY, CONTAINS, REGEX, NUMERIC_TOLERANCE, DATE_TOLERANCE, EXISTS, NOT_EXISTS, IN_LIST]
+        caseSensitive:
+          type: boolean
+          default: false
+        threshold:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: For FUZZY comparisons (0-1)
+        tolerance:
+          type: number
+          description: For NUMERIC_TOLERANCE or DATE_TOLERANCE
+        toleranceType:
+          type: string
+          enum: [absolute, percentage]
+        pattern:
+          type: string
+          description: For REGEX comparison
+        allowedValues:
+          type: array
+          items:
+            type: string
+          description: For IN_LIST comparison
+
+    ConditionGroup:
+      type: object
+      properties:
+        operator:
+          type: string
+          enum: [AND, OR]
+          default: AND
+        conditions:
+          type: array
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+              operator:
+                type: string
+                enum: [EQUALS, NOT_EQUALS, EXISTS, NOT_EXISTS, IN, NOT_IN, GREATER_THAN, LESS_THAN]
+              value:
+                oneOf:
+                  - type: string
+                  - type: number
+                  - type: boolean
+                  - type: array
+
+    RuleMetadata:
+      type: object
+      properties:
+        category:
+          type: string
+          enum: [vehicle, vendor_fo, vendor_po, cross, external]
+        phase:
+          type: string
+          enum: [mvp, phase2, future]
+        applicableTo:
+          type: array
+          items:
+            type: string
+            enum: [PHYSICAL_PERSON, COMPANY]
+        applicableToBuyingType:
+          type: array
+          items:
+            type: string
+            enum: [BRANCH, MOBILE_BUYING]
+        priority:
+          type: integer
+          minimum: 1
+          maximum: 100
+        tags:
+          type: array
+          items:
+            type: string
+        requiresDocumentGroup:
+          type: string
+          enum: [VTP, ORV, OP]
+
+    CreateRuleRequest:
+      type: object
+      required:
+        - rule_definition
+      properties:
+        rule_definition:
+          $ref: '#/components/schemas/ValidationRule'
+
+    CreateRuleResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        rule_id:
+          type: string
+        is_draft:
+          type: boolean
+        is_active:
+          type: boolean
+        version:
+          type: integer
+        message:
+          type: string
+
+    UpdateRuleRequest:
+      type: object
+      properties:
+        rule_definition:
+          type: object
+          description: Partial rule definition (fields to update)
+        change_reason:
+          type: string
+
+    TestRuleRequest:
+      type: object
+      required:
+        - test_data
+      properties:
+        test_data:
+          type: object
+          additionalProperties:
+            type: object
+          example:
+            vehicle:
+              vin: YV1PZA3TCL1103985
+              spz: 1AB2345
+            ocr_orv:
+              vin: YV1PZA3TCL1103985
+
+    TestRuleResponse:
+      type: object
+      properties:
+        rule_id:
+          type: string
+        test_result:
+          type: object
+          properties:
+            result:
+              type: string
+              enum: [MATCH, MISMATCH, MISSING, ERROR]
+            status:
+              type: string
+              enum: [GREEN, ORANGE, RED]
+            source_value:
+              type: string
+            target_value:
+              type: string
+            normalized_source:
+              type: string
+            normalized_target:
+              type: string
+            similarity:
+              type: number
+        executed_at:
+          type: string
+          format: date-time
+
+    ImportRulesRequest:
+      type: object
+      required:
+        - rules
+      properties:
+        rules:
+          type: array
+          items:
+            $ref: '#/components/schemas/ValidationRule'
+        options:
+          type: object
+          properties:
+            skip_existing:
+              type: boolean
+              default: true
+            activate_on_import:
+              type: boolean
+              default: false
+
+    ImportRulesResponse:
+      type: object
+      properties:
+        imported:
+          type: integer
+        skipped:
+          type: integer
+        errors:
+          type: integer
+        details:
+          type: array
+          items:
+            type: object
+            properties:
+              rule_id:
+                type: string
+              status:
+                type: string
+                enum: [imported, skipped, error]
+              id:
+                type: string
+              reason:
+                type: string
+
+    ExportRulesResponse:
+      type: object
+      properties:
+        version:
+          type: string
+        exported_at:
+          type: string
+          format: date-time
+        exported_by:
+          type: string
+        rules_count:
+          type: integer
+        rules:
+          type: array
+          items:
+            $ref: '#/components/schemas/ValidationRule'
+
+    RuleHistoryResponse:
+      type: object
+      properties:
+        rule_id:
+          type: string
+        history:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+              change_type:
+                type: string
+                enum: [CREATE, UPDATE, ACTIVATE, DEACTIVATE, DELETE]
+              changed_by:
+                type: string
+              changed_at:
+                type: string
+                format: date-time
+              change_reason:
+                type: string
+
+    ApiError:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+        code:
+          type: string
+        details:
+          type: object
+
+  responses:
+    Unauthorized:
+      description: Missing or invalid authentication
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            error: UNAUTHORIZED
+            message: Authorization required
+            code: UNAUTHORIZED
+
+    Forbidden:
+      description: Insufficient permissions (admin required)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            error: FORBIDDEN
+            message: Admin role required
+            code: FORBIDDEN
+
+    NotFound:
+      description: Rule not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            error: RULE_NOT_FOUND
+            message: Rule VEH-999 not found
+            code: RULE_NOT_FOUND
+
+    ValidationError:
+      description: Request validation failed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            error: SCHEMA_VALIDATION_ERROR
+            message: Rule definition does not match schema
+            code: SCHEMA_VALIDATION_ERROR
+            details:
+              - path: /comparison/threshold
+                message: must be between 0 and 1
+
+    Conflict:
+      description: Conflict (e.g., duplicate rule, cannot delete active)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            error: CONFLICT
+            message: Cannot delete active rule. Use force=true or deactivate first.
+            code: CONFLICT
