@@ -45,7 +45,8 @@ const props = defineProps<{
 }>();
 
 const stats = computed(() => {
-  const rules = props.rules;
+  // Defensive: ensure rules is always an array
+  const rules = props.rules ?? [];
   return {
     total: rules.length,
     active: rules.filter(r => r.is_active).length,

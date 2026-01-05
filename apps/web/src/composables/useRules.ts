@@ -50,14 +50,15 @@ export interface RuleResponse {
   updated_at: string;
 }
 
-export interface RulesListResponse {
-  data: RuleResponse[];
-  pagination: {
-    page: number;
-    limit: number;
-    total: number;
-    total_pages: number;
-  };
+/**
+ * Response structure from the backend rules API
+ * The backend wraps the response in { data: { rules, total_count, page, limit }, meta }
+ */
+export interface RulesApiResponse {
+  rules: RuleResponse[];
+  total_count: number;
+  page?: number;
+  limit?: number;
 }
 
 export interface CreateRuleRequest {
@@ -121,9 +122,23 @@ export function useRules() {
         throw new Error(`Failed to fetch rules: ${response.status}`);
       }
 
-      const data = await response.json() as { data: RulesListResponse };
-      rules.value = data.data.data;
-      pagination.value = data.data.pagination;
+      // Backend returns { data: { rules, total_count, page, limit }, meta }
+      const json = await response.json() as { data: RulesApiResponse };
+      const apiData = json.data;
+
+      // Parse rules array (with fallback to empty array for safety)
+      rules.value = apiData.rules || [];
+
+      // Map backend pagination format to frontend format
+      const total = apiData.total_count || 0;
+      const currentPage = apiData.page || 1;
+      const currentLimit = apiData.limit || 50;
+      pagination.value = {
+        page: currentPage,
+        limit: currentLimit,
+        total: total,
+        total_pages: Math.ceil(total / currentLimit) || 1,
+      };
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Unknown error';
       console.error('Failed to fetch rules:', err);
