@@ -152,9 +152,18 @@ async function loadPreviewData(
     .eq('spz', opportunity.spz)
     .order('created_at', { ascending: false });
 
+  // Extract vehicle and vendor from join results
+  // PostgREST returns joined relations as arrays, so we take the first element
+  const vehicle = Array.isArray(opportunity.vehicles)
+    ? opportunity.vehicles[0]
+    : opportunity.vehicles;
+  const vendor = Array.isArray(opportunity.vendors)
+    ? opportunity.vendors[0]
+    : opportunity.vendors;
+
   // Load ARES validation if vendor is a company
   let aresValidation = null;
-  if (opportunity.vendors?.vendor_type === 'COMPANY' && opportunity.vendors?.company_id) {
+  if (vendor?.vendor_type === 'COMPANY' && vendor?.company_id) {
     const { data: ares } = await supabase
       .from('ares_validations')
       .select('ares_data, adis_data, created_at')
@@ -172,8 +181,8 @@ async function loadPreviewData(
       spz: opportunity.spz,
       status: opportunity.status,
     },
-    vehicle: opportunity.vehicles,
-    vendor: opportunity.vendors,
+    vehicle: vehicle ?? null,
+    vendor: vendor ?? null,
     ocrExtractions: ocrExtractions || [],
     aresValidation,
   };
@@ -404,7 +413,7 @@ export async function runPreviewValidation(
       buying_type: 'BRANCH', // Default for MVP
     },
     vehicle: loadedData.vehicle as ValidationInputData['vehicle'],
-    vendor: loadedData.vendor as ValidationInputData['vendor'],
+    vendor: loadedData.vendor as unknown as ValidationInputData['vendor'],
     ocr_orv: ocrOrv as ValidationInputData['ocr_orv'],
     ocr_op: ocrOp as ValidationInputData['ocr_op'],
     ocr_vtp: ocrVtp as ValidationInputData['ocr_vtp'],
