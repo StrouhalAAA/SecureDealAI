@@ -20,6 +20,18 @@ const routes = [
     component: () => import('@/pages/Detail.vue'),
     meta: { requiresAuth: true }
   },
+  {
+    path: '/api-docs',
+    name: 'ApiDocs',
+    component: () => import('@/pages/SwaggerUI.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/rules',
+    name: 'Rules',
+    component: () => import('@/pages/RulesManagement.vue'),
+    meta: { requiresAuth: true }
+  },
   // Catch-all - redirect to dashboard (which will redirect to access-code if not authed)
   {
     path: '/:pathMatch(.*)*',

@@ -11,7 +11,7 @@ Usage:
     uv run run_phase.py 2 --dry-run    # Show what would be done
     uv run run_phase.py 2 --continue   # Continue from last failed task
     uv run run_phase.py 3 --skip-completed  # Skip already completed tasks
-    uv run run_phase.py 5 --issue 42   # Run Phase 5, report to GitHub issue #42
+    uv run run_phase.py 6 --issue 22   # Run Phase 6, report to GitHub issue #22
 
 Examples:
     # Run Phase 1 (Infrastructure) tasks
@@ -20,8 +20,8 @@ Examples:
     # Run Phase 2 (Backend) tasks, skipping completed ones
     uv run run_phase.py 2 --skip-completed
 
-    # Run Phase 5 with GitHub issue tracking
-    uv run run_phase.py 5 --issue 42
+    # Run Phase 6 (Rules Management API) with GitHub issue tracking
+    uv run run_phase.py 6 --issue 22
 """
 
 import sys
@@ -133,8 +133,8 @@ Examples:
   uv run run_phase.py 5 --issue 42    Run with GitHub issue tracking
         """
     )
-    parser.add_argument("phase", type=int, choices=[1, 2, 3, 4, 5],
-                        help="Phase number (1-5)")
+    parser.add_argument("phase", type=int, choices=[1, 2, 3, 4, 5, 6],
+                        help="Phase number (1-6)")
     parser.add_argument("--issue", type=int,
                         help="GitHub issue number for progress reporting")
     parser.add_argument("--dry-run", action="store_true",
@@ -204,7 +204,8 @@ Examples:
         2: "Backend API (Edge Functions)",
         3: "Frontend (Vue.js)",
         4: "Testing & Polish",
-        5: "Access Code Authentication"
+        5: "Access Code Authentication",
+        6: "Rules Management API"
     }
     print(f"Phase: {phase_names.get(phase, 'Unknown')}")
     print(f"\nTasks in execution order:")
