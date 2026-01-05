@@ -57,3 +57,7 @@ verify_jwt = true
 
 [functions.ares-validate]
 verify_jwt = true
+
+# Rules management endpoint
+[functions.rules]
+verify_jwt = true

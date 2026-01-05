@@ -163,6 +163,15 @@ def get_dependency_map() -> Dict[str, List[str]]:
         "05_05": [],
         "05_06": ["05_04", "05_05"],
         "05_07": ["05_03", "05_06"],
+
+        # Phase 6 (Rules Management API)
+        "06_01": [],  # DB Schema Verification - no dependencies
+        "06_02": ["06_01"],  # Core Setup depends on schema
+        "06_03": ["06_02"],  # CRUD Handlers depend on core
+        "06_04": ["06_02"],  # Lifecycle Handlers depend on core
+        "06_05": ["06_02"],  # Import/Export depend on core
+        "06_06": ["06_03", "06_04", "06_05"],  # Swagger UI depends on all handlers
+        "06_07": ["06_06"],  # Frontend depends on Swagger (API must be working)
     }
 
 
@@ -210,6 +219,7 @@ def get_completed_tasks_from_tracker() -> List[str]:
     tracker_files = [
         os.path.join(impl_dir, "00_IMPLEMENTATION_TRACKER.md"),
         os.path.join(impl_dir, "PHASE5_IMPLEMENTATION_TRACKER.md"),
+        os.path.join(impl_dir, "PHASE6_IMPLEMENTATION_TRACKER.md"),
     ]
 
     completed = []

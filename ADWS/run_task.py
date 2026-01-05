@@ -44,7 +44,7 @@ from adw_modules.task_parser import (
 def get_tracker_path_for_task(task_id: str) -> str:
     """Get the appropriate tracker file path for a given task ID.
 
-    Phase 5 tasks use PHASE5_IMPLEMENTATION_TRACKER.md, others use 00_IMPLEMENTATION_TRACKER.md.
+    Phase 5 and 6 use their own trackers, others use 00_IMPLEMENTATION_TRACKER.md.
     """
     from adw_modules.utils import get_project_root
     project_root = get_project_root()
@@ -54,6 +54,8 @@ def get_tracker_path_for_task(task_id: str) -> str:
 
     if phase == 5:
         return os.path.join(impl_dir, "PHASE5_IMPLEMENTATION_TRACKER.md")
+    elif phase == 6:
+        return os.path.join(impl_dir, "PHASE6_IMPLEMENTATION_TRACKER.md")
     else:
         return os.path.join(impl_dir, "00_IMPLEMENTATION_TRACKER.md")
 
@@ -89,8 +91,8 @@ def update_tracker(task_id: str, status: str = "completed") -> bool:
 
     if status == "completed":
         today = datetime.now().strftime("%Y-%m-%d")
-        if int(phase) == 5:
-            # Phase 5 tracker uses "Complete" not "Implemented"
+        if int(phase) in (5, 6):
+            # Phase 5 and 6 trackers use "Complete" not "Implemented"
             replacement = rf"\1 [x] Complete |"
         else:
             replacement = rf"\1 [x] Implemented | {today} |"
