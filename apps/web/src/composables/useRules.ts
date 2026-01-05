@@ -1,6 +1,29 @@
 import { ref } from 'vue';
 import { fetchWithAuth } from './useSupabase';
 
+// Transform types supported by the validation engine
+export const TRANSFORM_TYPES = [
+  'UPPERCASE', 'LOWERCASE', 'TRIM', 'REMOVE_SPACES', 'REMOVE_DIACRITICS',
+  'NORMALIZE_DATE', 'EXTRACT_NUMBER', 'FORMAT_RC', 'FORMAT_ICO', 'FORMAT_DIC',
+  'ADDRESS_NORMALIZE', 'NAME_NORMALIZE', 'VIN_NORMALIZE', 'SPZ_NORMALIZE'
+] as const;
+
+// Comparator types for rule matching
+export const COMPARATOR_TYPES = [
+  'EXACT', 'FUZZY', 'CONTAINS', 'REGEX', 'NUMERIC_TOLERANCE',
+  'DATE_TOLERANCE', 'EXISTS', 'NOT_EXISTS', 'IN_LIST'
+] as const;
+
+// Entity types (data sources)
+export const ENTITY_TYPES = [
+  'vehicle', 'vendor', 'buying_opportunity',
+  'ocr_orv', 'ocr_op', 'ocr_vtp', 'ares', 'adis', 'cebia'
+] as const;
+
+export type TransformType = typeof TRANSFORM_TYPES[number];
+export type ComparatorType = typeof COMPARATOR_TYPES[number];
+export type EntityType = typeof ENTITY_TYPES[number];
+
 export interface RuleResponse {
   id: string;
   rule_id: string;
