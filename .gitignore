@@ -46,5 +46,9 @@ AgenticCoding/
 # Supabase temp files
 supabase/.temp/
 
+# Deno lockfile (version incompatibility with Supabase edge-runtime)
+# Local Deno 2.x creates v5 lockfiles, but Supabase only supports v3/v4
+supabase/functions/deno.lock
+
 # Agent workflow artifacts (may contain sensitive data)
 agents/
