@@ -45,3 +45,6 @@ AgenticCoding/
 
 # Supabase temp files
 supabase/.temp/
+
+# Agent workflow artifacts (may contain sensitive data)
+agents/
