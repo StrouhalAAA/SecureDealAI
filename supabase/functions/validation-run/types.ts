@@ -21,7 +21,8 @@ export type EntityType =
   | 'ares'
   | 'adis'
   | 'cebia'
-  | 'dolozky';
+  | 'dolozky'
+  | 'system';  // System entity for runtime values (validation_date, etc.)
 
 export type TransformType =
   | 'UPPERCASE'
@@ -80,6 +81,7 @@ export interface ComparisonConfig {
   threshold?: number;          // For FUZZY (0-1)
   tolerance?: number;          // For NUMERIC/DATE_TOLERANCE
   toleranceType?: 'absolute' | 'percentage';
+  direction?: 'MIN_DAYS_BEFORE' | 'MAX_DAYS_AFTER' | 'WITHIN_RANGE';  // For DATE_TOLERANCE
   pattern?: string;            // For REGEX
   allowedValues?: string[];    // For IN_LIST
 }
@@ -318,6 +320,13 @@ export interface DolozkyData {
   personalData?: string;
 }
 
+/**
+ * System runtime data - populated automatically by the validation engine
+ */
+export interface SystemData {
+  validation_date: string;  // ISO date string (YYYY-MM-DD) - current date at validation time
+}
+
 export interface BuyingOpportunityData {
   id?: string;
   spz?: string;
@@ -336,6 +345,7 @@ export interface ValidationInputData {
   adis?: AdisData;
   cebia?: CebiaData;
   dolozky?: DolozkyData;
+  system?: SystemData;     // Runtime system data (validation_date, etc.)
 }
 
 // =============================================================================
@@ -456,5 +466,6 @@ export const DEFAULT_ENGINE_CONFIG: EngineConfig = {
     adis: 14400,        // 4 hours
     cebia: 86400,
     dolozky: 86400,
+    system: 0,          // No caching - runtime generated
   },
 };

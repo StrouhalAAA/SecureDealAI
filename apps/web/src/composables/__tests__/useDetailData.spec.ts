@@ -26,7 +26,11 @@ describe('useDetailData', () => {
           limit: vi.fn(() => ({
             single: vi.fn(() => Promise.resolve({ data, error }))
           }))
-        }))
+        })),
+        eq: vi.fn(() => ({
+          in: vi.fn(() => Promise.resolve({ data: data ? [data] : [], error }))
+        })),
+        in: vi.fn(() => Promise.resolve({ data: data ? [data] : [], error }))
       }))
     }))
   })
@@ -38,11 +42,13 @@ describe('useDetailData', () => {
     })
 
     it('starts with null data', () => {
-      const { opportunity, vehicle, vendor, validationResult } = useDetailData('123')
+      const { opportunity, vehicle, vendor, validationResult, ocrExtractions, vehicleOCRData } = useDetailData('123')
       expect(opportunity.value).toBeNull()
       expect(vehicle.value).toBeNull()
       expect(vendor.value).toBeNull()
       expect(validationResult.value).toBeNull()
+      expect(ocrExtractions.value).toEqual([])
+      expect(vehicleOCRData.value).toBeNull()
     })
 
     it('starts with no error', () => {

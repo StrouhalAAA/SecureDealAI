@@ -148,7 +148,7 @@
       </div>
 
       <!-- Row 5: Engine + Power -->
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
         <div>
           <label for="motor-select" class="block text-sm font-medium text-gray-700 mb-1">
             Motor
@@ -182,6 +182,144 @@
         </div>
       </div>
 
+      <!-- Row 6: Tachometer (Phase 7.1 - Fraud Detection) -->
+      <div class="mb-6">
+        <label :for="tachometerInputId" class="block text-sm font-medium text-gray-700 mb-1">
+          Stav tachometru (km)
+          <span class="text-xs text-gray-500 ml-1">- dulezite pro detekci manipulace</span>
+        </label>
+        <input
+          :id="tachometerInputId"
+          v-model.number="form.tachometer_km"
+          type="number"
+          class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+          :class="{
+            'border-gray-300 focus:border-blue-500': !tachometerError,
+            'border-red-500 bg-red-50 focus:border-red-500': tachometerError,
+          }"
+          placeholder="napr. 150000"
+          min="0"
+          :aria-describedby="tachometerError ? tachometerErrorId : undefined"
+          :aria-invalid="!!tachometerError"
+        />
+        <p v-if="tachometerError" :id="tachometerErrorId" class="text-red-500 text-xs mt-1" role="alert">
+          {{ tachometerError }}
+        </p>
+      </div>
+
+      <!-- OCR Data Section (Phase 7.2 & 7.3 - Read Only) -->
+      <div v-if="hasOCRData" class="mb-6 bg-gray-50 rounded-lg border border-gray-200 p-4">
+        <div class="flex items-center gap-2 mb-4">
+          <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          <h3 class="text-base font-medium text-gray-700">Udaje z OCR (technicky prukaz)</h3>
+          <span class="ml-auto text-xs text-gray-500 flex items-center gap-1">
+            <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/>
+            </svg>
+            Pouze pro cteni
+          </span>
+        </div>
+
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+          <!-- Color -->
+          <div>
+            <span class="text-gray-500 block text-xs">Barva</span>
+            <p class="font-medium">{{ getOCRFieldValue('barva') || '-' }}</p>
+          </div>
+
+          <!-- Fuel Type -->
+          <div>
+            <span class="text-gray-500 block text-xs">Palivo</span>
+            <p class="font-medium">{{ fuelTypeLabel }}</p>
+          </div>
+
+          <!-- Engine Capacity -->
+          <div>
+            <span class="text-gray-500 block text-xs">Objem motoru</span>
+            <p class="font-medium">
+              {{ getOCRFieldValue('objem_motoru') ? `${getOCRFieldValue('objem_motoru')} cm3` : '-' }}
+            </p>
+          </div>
+
+          <!-- Seats -->
+          <div>
+            <span class="text-gray-500 block text-xs">Pocet mist</span>
+            <p class="font-medium">{{ getOCRFieldValue('pocet_mist') || '-' }}</p>
+          </div>
+
+          <!-- Power -->
+          <div>
+            <span class="text-gray-500 block text-xs">Vykon</span>
+            <p class="font-medium">
+              {{ getOCRFieldValue('vykon_kw') ? `${getOCRFieldValue('vykon_kw')} kW` : '-' }}
+            </p>
+          </div>
+
+          <!-- Max Speed -->
+          <div>
+            <span class="text-gray-500 block text-xs">Max. rychlost</span>
+            <p class="font-medium">
+              {{ getOCRFieldValue('max_rychlost') ? `${getOCRFieldValue('max_rychlost')} km/h` : '-' }}
+            </p>
+          </div>
+
+          <!-- Vehicle Category -->
+          <div>
+            <span class="text-gray-500 block text-xs">Kategorie</span>
+            <p class="font-medium">{{ getOCRFieldValue('kategorie_vozidla') || '-' }}</p>
+          </div>
+
+          <!-- Body Type -->
+          <div>
+            <span class="text-gray-500 block text-xs">Karoserie</span>
+            <p class="font-medium">{{ getOCRFieldValue('karoserie') || '-' }}</p>
+          </div>
+        </div>
+
+        <!-- Extended VTP data (collapsible) -->
+        <details class="mt-4">
+          <summary class="cursor-pointer text-blue-600 hover:text-blue-800 text-sm">
+            Zobrazit rozsirene technicke udaje
+          </summary>
+          <div class="mt-2 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm pt-2 border-t border-gray-200">
+            <div>
+              <span class="text-gray-500 block text-xs">Hmotnost (provozni)</span>
+              <p class="font-medium">
+                {{ getOCRFieldValue('provozni_hmotnost') ? `${getOCRFieldValue('provozni_hmotnost')} kg` : '-' }}
+              </p>
+            </div>
+            <div>
+              <span class="text-gray-500 block text-xs">Delka</span>
+              <p class="font-medium">
+                {{ getOCRFieldValue('delka') ? `${getOCRFieldValue('delka')} mm` : '-' }}
+              </p>
+            </div>
+            <div>
+              <span class="text-gray-500 block text-xs">Sirka</span>
+              <p class="font-medium">
+                {{ getOCRFieldValue('sirka') ? `${getOCRFieldValue('sirka')} mm` : '-' }}
+              </p>
+            </div>
+            <div>
+              <span class="text-gray-500 block text-xs">Vyska</span>
+              <p class="font-medium">
+                {{ getOCRFieldValue('vyska') ? `${getOCRFieldValue('vyska')} mm` : '-' }}
+              </p>
+            </div>
+            <div>
+              <span class="text-gray-500 block text-xs">Emise CO2</span>
+              <p class="font-medium">{{ getOCRFieldValue('emise_co2') || '-' }}</p>
+            </div>
+            <div>
+              <span class="text-gray-500 block text-xs">STK platnost</span>
+              <p class="font-medium">{{ getOCRFieldValue('stk_platnost') || '-' }}</p>
+            </div>
+          </div>
+        </details>
+      </div>
+
       <!-- Error message -->
       <div v-if="error" class="mb-4 p-3 bg-red-50 text-red-700 rounded-lg border border-red-200" role="alert">
         <div class="flex items-center gap-2">
@@ -197,7 +335,7 @@
         <LoadingButton
           type="submit"
           :loading="loading"
-          :disabled="!isValid"
+          :disabled="!isValid || !!tachometerError"
           loading-text="Ukladam..."
           variant="primary"
           size="md"
@@ -214,12 +352,14 @@ import { ref, computed, onMounted, nextTick } from 'vue';
 import { supabase } from '@/composables/useSupabase';
 import { useErrorHandler } from '@/composables/useErrorHandler';
 import LoadingButton from '@/components/shared/LoadingButton.vue';
-import type { Vehicle } from '@/types';
+import type { Vehicle, VehicleOCRData } from '@/types';
+import { getFuelTypeLabel } from '@/types';
 
 const props = defineProps<{
   buyingOpportunityId: string;
   initialSpz?: string;
   existingVehicle?: Vehicle | null;
+  ocrData?: VehicleOCRData | null;
 }>();
 
 const emit = defineEmits<{
@@ -239,6 +379,8 @@ const vinInputId = `vin-input-${uniqueId}`;
 const vinErrorId = `vin-error-${uniqueId}`;
 const majitelInputId = `majitel-input-${uniqueId}`;
 const majitelErrorId = `majitel-error-${uniqueId}`;
+const tachometerInputId = `tachometer-input-${uniqueId}`;
+const tachometerErrorId = `tachometer-error-${uniqueId}`;
 
 // Refs for focus management
 const spzInputRef = ref<HTMLInputElement | null>(null);
@@ -253,6 +395,7 @@ const form = ref({
   majitel: '',
   motor: '',
   vykon_kw: null as number | null,
+  tachometer_km: null as number | null,
 });
 
 // Touched state for field validation feedback
@@ -265,6 +408,24 @@ const error = ref<string | null>(null);
 const vehicleId = ref<string | null>(null);
 
 const isSpzLocked = computed(() => !!props.initialSpz);
+
+// Has OCR data been extracted?
+const hasOCRData = computed(() => {
+  if (!props.ocrData) return false;
+  // Check if any OCR field has a value
+  return Object.values(props.ocrData).some(v => v !== null && v !== undefined);
+});
+
+// Get display value for OCR field
+const getOCRFieldValue = (field: keyof VehicleOCRData) => {
+  return props.ocrData?.[field];
+};
+
+// Get fuel type label
+const fuelTypeLabel = computed(() => {
+  const value = props.ocrData?.palivo;
+  return getFuelTypeLabel(value);
+});
 
 // SPZ validation
 const spzError = computed(() => {
@@ -281,6 +442,20 @@ const vinError = computed(() => {
   if (form.value.vin.length !== 17) return 'VIN musi mit presne 17 znaku';
   if (!/^[A-HJ-NPR-Z0-9]{17}$/.test(form.value.vin)) {
     return 'VIN obsahuje neplatne znaky (I, O, Q nejsou povoleny)';
+  }
+  return null;
+});
+
+// Tachometer validation (Phase 7.1 - Fraud detection)
+const tachometerError = computed(() => {
+  if (form.value.tachometer_km === null || form.value.tachometer_km === undefined) {
+    return null;
+  }
+  if (form.value.tachometer_km < 0) {
+    return 'Stav tachometru nemuze byt zaporny';
+  }
+  if (form.value.tachometer_km > 2000000) {
+    return 'Stav tachometru se zda nerealisticky (> 2 000 000 km)';
   }
   return null;
 });
@@ -302,7 +477,7 @@ async function saveAndContinue() {
   vinTouched.value = true;
   majitelTouched.value = true;
 
-  if (!isValid.value) return;
+  if (!isValid.value || tachometerError.value) return;
 
   loading.value = true;
   error.value = null;
@@ -319,6 +494,7 @@ async function saveAndContinue() {
       majitel: form.value.majitel.toUpperCase(),
       motor: form.value.motor || null,
       vykon_kw: form.value.vykon_kw,
+      tachometer_km: form.value.tachometer_km,
       data_source: 'MANUAL',
     };
 
@@ -356,17 +532,18 @@ async function saveAndContinue() {
 // Load existing vehicle data and focus first input
 onMounted(async () => {
   if (props.existingVehicle) {
-    vehicleId.value = props.existingVehicle.id;
+    vehicleId.value = props.existingVehicle.id ?? null;
     form.value = {
       spz: props.existingVehicle.spz,
       vin: props.existingVehicle.vin || '',
       znacka: props.existingVehicle.znacka || '',
       model: props.existingVehicle.model || '',
-      rok_vyroby: props.existingVehicle.rok_vyroby,
+      rok_vyroby: props.existingVehicle.rok_vyroby ?? null,
       datum_1_registrace: props.existingVehicle.datum_1_registrace || '',
       majitel: props.existingVehicle.majitel || '',
       motor: props.existingVehicle.motor || '',
-      vykon_kw: props.existingVehicle.vykon_kw,
+      vykon_kw: props.existingVehicle.vykon_kw ?? null,
+      tachometer_km: props.existingVehicle.tachometer_km ?? null,
     };
     // Mark touched if existing data
     spzTouched.value = true;

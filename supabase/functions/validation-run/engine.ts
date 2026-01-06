@@ -344,6 +344,14 @@ export class ValidationEngine {
   async validate(inputData: ValidationInputData): Promise<ValidationEngineResult> {
     const startTime = performance.now();
 
+    // Inject system entity with runtime values
+    const enrichedInputData: ValidationInputData = {
+      ...inputData,
+      system: {
+        validation_date: new Date().toISOString().split('T')[0], // YYYY-MM-DD format
+      },
+    };
+
     // Load active rules
     const rules = await loadActiveRules();
     const rulesSnapshotHash = await getRulesSnapshotHash();
@@ -362,7 +370,7 @@ export class ValidationEngine {
       }
 
       try {
-        const result = executeRule(rule, inputData);
+        const result = executeRule(rule, enrichedInputData);
         results.push(result);
 
         // Check for critical failure
@@ -426,7 +434,14 @@ export class ValidationEngine {
    * Execute a single rule for testing
    */
   testRule(rule: ValidationRule, inputData: ValidationInputData): FieldValidationResult {
-    return executeRule(rule, inputData);
+    // Inject system entity with runtime values for testing
+    const enrichedInputData: ValidationInputData = {
+      ...inputData,
+      system: inputData.system ?? {
+        validation_date: new Date().toISOString().split('T')[0],
+      },
+    };
+    return executeRule(rule, enrichedInputData);
   }
 }
 

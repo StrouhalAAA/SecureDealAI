@@ -11,6 +11,8 @@ const mockOpportunity = ref<{ id: string; spz: string; status: string } | null>(
 const mockVehicle = ref(null)
 const mockVendor = ref(null)
 const mockValidationResult = ref(null)
+const mockOcrExtractions = ref([])
+const mockVehicleOCRData = ref(null)
 const mockCurrentStep = ref(0)
 const mockSuggestedStartStep = ref(0)
 
@@ -33,6 +35,8 @@ vi.mock('@/composables/useDetailData', () => ({
     vehicle: mockVehicle,
     vendor: mockVendor,
     validationResult: mockValidationResult,
+    ocrExtractions: mockOcrExtractions,
+    vehicleOCRData: mockVehicleOCRData,
     loadData: mockLoadData,
     setVehicle: mockSetVehicle,
     setVendor: mockSetVendor,
@@ -86,7 +90,7 @@ vi.mock('@/components/forms/VehicleForm.vue', () => ({
     name: 'VehicleForm',
     template: '<div class="vehicle-form">VehicleForm</div>',
     emits: ['saved', 'next'],
-    props: ['buyingOpportunityId', 'initialSpz', 'existingVehicle']
+    props: ['buyingOpportunityId', 'initialSpz', 'existingVehicle', 'ocrData']
   }
 }))
 
@@ -135,6 +139,8 @@ function resetMockState() {
   mockVehicle.value = null
   mockVendor.value = null
   mockValidationResult.value = null
+  mockOcrExtractions.value = []
+  mockVehicleOCRData.value = null
   mockCurrentStep.value = 0
   mockSuggestedStartStep.value = 0
 }

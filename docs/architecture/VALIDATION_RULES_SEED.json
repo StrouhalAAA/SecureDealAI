@@ -1284,36 +1284,197 @@
         "priority": 63,
         "tags": ["warning", "vtp", "owner-verification"]
       }
+    },
+    {
+      "id": "VEH-010",
+      "name": "10-Day Re-registration Check",
+      "description": "Verifies vehicle was not re-registered within last 10 business days (potential fraud indicator)",
+      "enabled": true,
+      "source": {
+        "entity": "vehicle",
+        "field": "datum_posledni_preregistrace",
+        "transforms": ["NORMALIZE_DATE"]
+      },
+      "target": {
+        "entity": "system",
+        "field": "validation_date",
+        "transforms": ["NORMALIZE_DATE"]
+      },
+      "comparison": {
+        "type": "DATE_TOLERANCE",
+        "tolerance": 10,
+        "direction": "MIN_DAYS_BEFORE"
+      },
+      "severity": "WARNING",
+      "blockOnFail": false,
+      "conditions": {
+        "operator": "AND",
+        "conditions": [
+          { "field": "vehicle.datum_posledni_preregistrace", "operator": "EXISTS" }
+        ]
+      },
+      "errorMessage": {
+        "cs": "Vozidlo bylo přeregistrováno v posledních 10 pracovních dnech - vyžaduje manuální kontrolu",
+        "en": "Vehicle was re-registered within the last 10 business days - manual review required"
+      },
+      "metadata": {
+        "category": "vehicle",
+        "phase": "phase7",
+        "requiresDocumentGroup": "VTP",
+        "applicableTo": ["PHYSICAL_PERSON", "COMPANY"],
+        "applicableToBuyingType": ["BRANCH", "MOBILE_BUYING"],
+        "priority": 15,
+        "tags": ["fraud-detection", "10-day-rule", "phase7"]
+      }
+    },
+    {
+      "id": "VEH-011",
+      "name": "Tachometer Present",
+      "description": "Verifies that tachometer reading was provided for fraud detection",
+      "enabled": true,
+      "source": {
+        "entity": "vehicle",
+        "field": "tachometer_km",
+        "transforms": []
+      },
+      "target": {
+        "entity": "vehicle",
+        "field": "tachometer_km",
+        "transforms": []
+      },
+      "comparison": {
+        "type": "EXISTS"
+      },
+      "severity": "INFO",
+      "blockOnFail": false,
+      "errorMessage": {
+        "cs": "Stav tachometru nebyl zadán - doporučeno pro kontrolu manipulace",
+        "en": "Tachometer reading not provided - recommended for tampering detection"
+      },
+      "metadata": {
+        "category": "vehicle",
+        "phase": "phase7",
+        "applicableTo": ["PHYSICAL_PERSON", "COMPANY"],
+        "applicableToBuyingType": ["BRANCH", "MOBILE_BUYING"],
+        "priority": 50,
+        "tags": ["tachometer", "cebia-prep", "phase7"]
+      }
+    },
+    {
+      "id": "VEH-012",
+      "name": "Color Consistency",
+      "description": "Verifies vehicle color matches between ORV and VTP documents",
+      "enabled": true,
+      "source": {
+        "entity": "ocr_orv",
+        "field": "color",
+        "transforms": ["UPPERCASE", "TRIM"]
+      },
+      "target": {
+        "entity": "ocr_vtp",
+        "field": "color",
+        "transforms": ["UPPERCASE", "TRIM"]
+      },
+      "comparison": {
+        "type": "EXACT",
+        "caseSensitive": false
+      },
+      "severity": "INFO",
+      "blockOnFail": false,
+      "conditions": {
+        "operator": "AND",
+        "conditions": [
+          { "field": "ocr_orv", "operator": "EXISTS" },
+          { "field": "ocr_vtp", "operator": "EXISTS" }
+        ]
+      },
+      "errorMessage": {
+        "cs": "Barva vozidla se liší mezi dokumenty ORV a VTP",
+        "en": "Vehicle color differs between ORV and VTP documents"
+      },
+      "metadata": {
+        "category": "vehicle",
+        "phase": "phase7",
+        "requiresDocumentGroup": "VTP",
+        "applicableTo": ["PHYSICAL_PERSON", "COMPANY"],
+        "applicableToBuyingType": ["BRANCH", "MOBILE_BUYING"],
+        "priority": 60,
+        "tags": ["cross-validation", "ocr", "phase7"]
+      }
+    },
+    {
+      "id": "VEH-013",
+      "name": "Fuel Type Consistency",
+      "description": "Verifies fuel type matches between ORV and VTP documents",
+      "enabled": true,
+      "source": {
+        "entity": "ocr_orv",
+        "field": "fuelType",
+        "transforms": ["UPPERCASE", "TRIM"]
+      },
+      "target": {
+        "entity": "ocr_vtp",
+        "field": "fuelType",
+        "transforms": ["UPPERCASE", "TRIM"]
+      },
+      "comparison": {
+        "type": "EXACT",
+        "caseSensitive": false
+      },
+      "severity": "INFO",
+      "blockOnFail": false,
+      "conditions": {
+        "operator": "AND",
+        "conditions": [
+          { "field": "ocr_orv", "operator": "EXISTS" },
+          { "field": "ocr_vtp", "operator": "EXISTS" }
+        ]
+      },
+      "errorMessage": {
+        "cs": "Typ paliva se liší mezi dokumenty ORV a VTP",
+        "en": "Fuel type differs between ORV and VTP documents"
+      },
+      "metadata": {
+        "category": "vehicle",
+        "phase": "phase7",
+        "requiresDocumentGroup": "VTP",
+        "applicableTo": ["PHYSICAL_PERSON", "COMPANY"],
+        "applicableToBuyingType": ["BRANCH", "MOBILE_BUYING"],
+        "priority": 61,
+        "tags": ["cross-validation", "ocr", "phase7"]
+      }
     }
   ],
   "summary": {
-    "total": 35,
+    "total": 39,
     "byPhase": {
       "mvp": 25,
-      "phase2": 10
+      "phase2": 10,
+      "phase7": 4
     },
     "byCategory": {
-      "vehicle": 13,
+      "vehicle": 17,
       "vendor_fo": 11,
       "vendor_po": 9,
       "cross": 2
     },
     "bySeverity": {
       "CRITICAL": 21,
-      "WARNING": 13,
-      "INFO": 1
+      "WARNING": 14,
+      "INFO": 4
     },
     "byBuyingType": {
-      "BRANCH": 35,
-      "MOBILE_BUYING": 0
+      "BRANCH": 39,
+      "MOBILE_BUYING": 4
     },
-    "enabled": 25,
+    "enabled": 29,
     "disabled": 10,
     "notes": [
       "VTP rules (VTP-001 to VTP-004) are conditional - only apply when VTP document is uploaded",
       "All MVP rules default to BRANCH buying type. MOBILE_BUYING rules to be added in Phase 2.",
       "Rules without explicit applicableToBuyingType apply to all buying types (backward compatible).",
-      "Document Type IDs: 63=ORV (Malý technický průkaz), 1=OP (Občanský průkaz), VTP group=[21,116]"
+      "Document Type IDs: 63=ORV (Malý technický průkaz), 1=OP (Občanský průkaz), VTP group=[21,116]",
+      "Phase 7 rules (VEH-010 to VEH-013) include fraud detection and cross-document validation"
     ]
   }
 }

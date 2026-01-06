@@ -54,6 +54,7 @@
           :buying-opportunity-id="opportunityId"
           :initial-spz="data.opportunity.value?.spz"
           :existing-vehicle="data.vehicle.value"
+          :ocr-data="data.vehicleOCRData.value"
           @saved="onVehicleSaved"
           @next="nav.nextStep"
         />

@@ -133,8 +133,8 @@ Examples:
   uv run run_phase.py 5 --issue 42    Run with GitHub issue tracking
         """
     )
-    parser.add_argument("phase", type=int, choices=[1, 2, 3, 4, 5, 6],
-                        help="Phase number (1-6)")
+    parser.add_argument("phase", type=int, choices=[1, 2, 3, 4, 5, 6, 7],
+                        help="Phase number (1-7)")
     parser.add_argument("--issue", type=int,
                         help="GitHub issue number for progress reporting")
     parser.add_argument("--dry-run", action="store_true",
@@ -205,7 +205,8 @@ Examples:
         3: "Frontend (Vue.js)",
         4: "Testing & Polish",
         5: "Access Code Authentication",
-        6: "Rules Management API"
+        6: "Rules Management API",
+        7: "Vehicle Data Schema Extension"
     }
     print(f"Phase: {phase_names.get(phase, 'Unknown')}")
     print(f"\nTasks in execution order:")
