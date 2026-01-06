@@ -341,16 +341,91 @@
 
       <!-- Bank Account -->
       <div class="mb-6">
-        <label for="bank-account-input" class="block text-sm font-medium text-gray-700 mb-1">
+        <label class="block text-sm font-medium text-gray-700 mb-1">
           Bankovni ucet
+          <span v-if="autoFilled.bank_account" class="text-green-600 text-xs ml-2" aria-live="polite">
+            (z registru ADIS)
+          </span>
         </label>
-        <input
-          id="bank-account-input"
-          v-model="form.bank_account"
-          type="text"
-          class="w-full px-4 py-2 border border-gray-300 rounded-lg font-mono focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-          placeholder="cislo uctu/kod banky"
-        />
+
+        <!-- Registered bank accounts from ADIS (radio list) -->
+        <div v-if="registeredBankAccounts.length > 0" class="space-y-2 mb-3">
+          <div
+            v-for="(account, index) in registeredBankAccounts"
+            :key="account"
+            class="flex items-center"
+          >
+            <input
+              :id="`bank-account-${index}`"
+              type="radio"
+              :value="account"
+              v-model="form.bank_account"
+              @change="onBankAccountSourceChange('registered', account)"
+              class="w-4 h-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+              name="bank-account-selection"
+            />
+            <label
+              :for="`bank-account-${index}`"
+              class="ml-2 font-mono text-sm cursor-pointer hover:text-blue-600"
+              :class="{
+                'text-green-700 font-medium': form.bank_account === account,
+                'text-gray-700': form.bank_account !== account,
+              }"
+            >
+              {{ account }}
+              <span class="text-xs text-green-600 ml-1">(registrovan v ADIS)</span>
+            </label>
+          </div>
+
+          <!-- Manual entry option -->
+          <div class="flex items-center">
+            <input
+              id="bank-account-manual"
+              type="radio"
+              value="manual"
+              :checked="bankAccountSource === 'manual'"
+              @change="onBankAccountSourceChange('manual')"
+              class="w-4 h-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+              name="bank-account-selection"
+            />
+            <label
+              for="bank-account-manual"
+              class="ml-2 text-sm cursor-pointer text-gray-700 hover:text-blue-600"
+            >
+              Jiny ucet (zadat rucne)
+            </label>
+          </div>
+
+          <!-- Manual input field (shown only when "Jiny ucet" is selected) -->
+          <div v-if="bankAccountSource === 'manual'" class="ml-6 mt-2">
+            <input
+              id="bank-account-input"
+              v-model="form.bank_account"
+              type="text"
+              class="w-full px-4 py-2 border border-gray-300 rounded-lg font-mono focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              placeholder="cislo uctu/kod banky"
+            />
+          </div>
+        </div>
+
+        <!-- Simple input when no ADIS accounts available -->
+        <div v-else>
+          <input
+            id="bank-account-input"
+            v-model="form.bank_account"
+            type="text"
+            class="w-full px-4 py-2 border border-gray-300 rounded-lg font-mono focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            placeholder="cislo uctu/kod banky"
+          />
+          <p v-if="vendorType === 'COMPANY' && aresVerified && registeredBankAccounts.length === 0" class="text-gray-500 text-xs mt-1">
+            <span class="inline-flex items-center">
+              <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+              </svg>
+              Zadne registrovane ucty v ADIS
+            </span>
+          </p>
+        </div>
       </div>
 
       <!-- Error -->
@@ -467,7 +542,12 @@ const autoFilled = ref({
   name: false,
   vat_id: false,
   address: false,
+  bank_account: false,
 });
+
+// Registered bank accounts from ADIS
+const registeredBankAccounts = ref<string[]>([]);
+const bankAccountSource = ref<'registered' | 'manual'>('manual');
 
 // General state
 const loading = ref(false);
@@ -565,12 +645,26 @@ function onIcoInput() {
     aresMessage.value = '';
     aresVerified.value = false;
     aresVerifiedAt.value = null;
-    autoFilled.value = { name: false, vat_id: false, address: false };
+    autoFilled.value = { name: false, vat_id: false, address: false, bank_account: false };
+    registeredBankAccounts.value = [];
+    bankAccountSource.value = 'manual';
   }
 
   // Trigger debounced lookup if valid
   if (isValidIco.value) {
     debouncedLookup();
+  }
+}
+
+// Handle bank account source change
+function onBankAccountSourceChange(source: 'registered' | 'manual', account?: string) {
+  bankAccountSource.value = source;
+  if (source === 'registered' && account) {
+    form.value.bank_account = account;
+    autoFilled.value.bank_account = true;
+  } else if (source === 'manual') {
+    form.value.bank_account = '';
+    autoFilled.value.bank_account = false;
   }
 }
 
@@ -606,7 +700,23 @@ async function lookupAres() {
       form.value.address_city = result.data.address?.city || '';
       form.value.address_postal_code = result.data.address?.postal_code || '';
 
+      // Handle registered bank accounts from ADIS
+      if (result.data.registered_bank_accounts && result.data.registered_bank_accounts.length > 0) {
+        registeredBankAccounts.value = result.data.registered_bank_accounts;
+        // Auto-select first account if no account is currently set
+        if (!form.value.bank_account) {
+          form.value.bank_account = result.data.registered_bank_accounts[0];
+          bankAccountSource.value = 'registered';
+          autoFilled.value.bank_account = true;
+        }
+      } else {
+        registeredBankAccounts.value = [];
+        bankAccountSource.value = 'manual';
+        autoFilled.value.bank_account = false;
+      }
+
       autoFilled.value = {
+        ...autoFilled.value,
         name: !!result.data.name,
         vat_id: !!result.data.dic,
         address: !!(result.data.address?.city || result.data.address?.street),
@@ -727,7 +837,9 @@ watch(vendorType, async () => {
   aresMessage.value = '';
   aresVerified.value = false;
   aresVerifiedAt.value = null;
-  autoFilled.value = { name: false, vat_id: false, address: false };
+  autoFilled.value = { name: false, vat_id: false, address: false, bank_account: false };
+  registeredBankAccounts.value = [];
+  bankAccountSource.value = 'manual';
 
   // Reset touched state for type-specific fields
   icoTouched.value = false;
