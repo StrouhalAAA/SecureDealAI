@@ -22,6 +22,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient, SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { fetchFromAres, transformAresResponse, AresCompanyData } from './ares-client.ts';
+import { checkDphStatus, transformAdisResponse } from '../ares-validate/adis-client.ts';
 
 // =============================================================================
 // TYPES
@@ -110,7 +111,7 @@ function isValidICO(ico: string): boolean {
 // =============================================================================
 
 /**
- * Check cache for recent ARES data
+ * Check cache for recent ARES data (including bank accounts from ADIS)
  */
 async function checkCache(
   supabase: SupabaseClient,
@@ -120,7 +121,7 @@ async function checkCache(
 
   const { data, error } = await supabase
     .from('ares_validations')
-    .select('ares_data, ares_fetched_at')
+    .select('ares_data, ares_fetched_at, dph_bank_accounts')
     .eq('ico', ico)
     .gte('ares_fetched_at', cacheExpiry)
     .order('ares_fetched_at', { ascending: false })
@@ -133,8 +134,13 @@ async function checkCache(
   }
 
   if (data?.ares_data) {
+    const aresData = data.ares_data as AresCompanyData;
+    // Include cached bank accounts if available
+    if (data.dph_bank_accounts && Array.isArray(data.dph_bank_accounts)) {
+      aresData.registered_bank_accounts = data.dph_bank_accounts;
+    }
     return {
-      data: data.ares_data as AresCompanyData,
+      data: aresData,
       fetched_at: data.ares_fetched_at,
     };
   }
@@ -257,6 +263,34 @@ serve(async (req: Request) => {
     // Transform response
     const transformedData = transformAresResponse(aresData);
     const fetchedAt = new Date().toISOString();
+
+    // Fetch bank accounts from ADIS if DIČ is available
+    if (transformedData.dic) {
+      try {
+        console.log(`[ARES Lookup] Fetching bank accounts from ADIS for DIČ: ${transformedData.dic}`);
+        const adisData = await checkDphStatus(transformedData.dic);
+        if (adisData) {
+          const dphStatus = transformAdisResponse(adisData);
+          if (dphStatus.registered_accounts && dphStatus.registered_accounts.length > 0) {
+            transformedData.registered_bank_accounts = dphStatus.registered_accounts;
+            console.log(`[ARES Lookup] Found ${dphStatus.registered_accounts.length} registered bank accounts`);
+          } else {
+            transformedData.registered_bank_accounts = [];
+            console.log('[ARES Lookup] No registered bank accounts found in ADIS');
+          }
+        } else {
+          transformedData.registered_bank_accounts = [];
+          console.log('[ARES Lookup] Company not found in ADIS (not a VAT payer)');
+        }
+      } catch (adisError) {
+        // ADIS failure is non-blocking - continue without bank accounts
+        console.warn('[ARES Lookup] ADIS lookup failed (non-blocking):', adisError);
+        transformedData.registered_bank_accounts = undefined;
+      }
+    } else {
+      console.log('[ARES Lookup] No DIČ available, skipping ADIS lookup');
+      transformedData.registered_bank_accounts = undefined;
+    }
 
     // Return response (cache storage is handled separately during validation)
     return jsonResponse({

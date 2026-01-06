@@ -61,6 +61,8 @@ export interface AresCompanyData {
   legal_form: string;
   date_founded: string;
   is_active: boolean;
+  /** Registered bank accounts from ADIS (VAT registry) - populated during lookup if DIČ available */
+  registered_bank_accounts?: string[];
 }
 
 // =============================================================================
