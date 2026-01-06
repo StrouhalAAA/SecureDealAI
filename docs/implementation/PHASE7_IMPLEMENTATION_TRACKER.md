@@ -3,9 +3,9 @@
 > **Version**: 1.0
 > **Created**: 2026-01-06
 > **Last Updated**: 2026-01-06
-> **Status**: IN PROGRESS
+> **Status**: ✅ COMPLETE
 > **Branch**: VehicleData
-> **GitHub Issue**: [To be linked]
+> **GitHub Issue**: [#33](https://github.com/StrouhalAAA/SecureDealAI/issues/33)
 
 ---
 
@@ -23,7 +23,7 @@ This tracker monitors the implementation progress of Phase 7: Vehicle Data Schem
 
 | Phase | Total Tasks | Completed | In Progress | Pending |
 |-------|-------------|-----------|-------------|---------|
-| Phase 7: Vehicle Data | 5 | 3 | 0 | 2 |
+| Phase 7: Vehicle Data | 5 | 5 | 0 | 0 |
 
 ---
 
@@ -33,8 +33,8 @@ This tracker monitors the implementation progress of Phase 7: Vehicle Data Schem
 |---|------|----------|--------|------------|----------------|
 | 7.1 | Vehicle Schema Migration | [07_01_VEHICLE_SCHEMA_MIGRATION.md](./07_01_VEHICLE_SCHEMA_MIGRATION.md) | [x] Done | None | 2026-01-06 |
 | 7.2 | OCR Extraction Mapping | [07_02_OCR_EXTRACTION_MAPPING.md](./07_02_OCR_EXTRACTION_MAPPING.md) | [x] Done | 07_01 | 2026-01-06 |
-| 7.3 | Vehicle CRUD Update | [07_03_VEHICLE_CRUD_UPDATE.md](./07_03_VEHICLE_CRUD_UPDATE.md) | [ ] Pending | 07_01 | - |
-| 7.4 | Vehicle Form Update | [07_04_VEHICLE_FORM_UPDATE.md](./07_04_VEHICLE_FORM_UPDATE.md) | [ ] Pending | 07_03 | - |
+| 7.3 | Vehicle CRUD Update | [07_03_VEHICLE_CRUD_UPDATE.md](./07_03_VEHICLE_CRUD_UPDATE.md) | [x] Done | 07_01 | 2026-01-06 |
+| 7.4 | Vehicle Form Update | [07_04_VEHICLE_FORM_UPDATE.md](./07_04_VEHICLE_FORM_UPDATE.md) | [x] Done | 07_03 | 2026-01-06 |
 | 7.5 | Vehicle Validation Rules | [07_05_VEHICLE_VALIDATION_RULES.md](./07_05_VEHICLE_VALIDATION_RULES.md) | [x] Done | 07_01, 07_02 | 2026-01-06 |
 
 ---
@@ -126,22 +126,22 @@ uv run ADWS/run_phase.py 7 --issue 33 --skip-completed
 - [x] Merge function prioritizes VTP > ORV
 
 ### API
-- [ ] POST accepts `tachometer_km`
-- [ ] PUT accepts all Phase 7 fields
-- [ ] GET returns all Phase 7 fields
-- [ ] Validation rejects invalid values
+- [x] POST accepts `tachometer_km`
+- [x] PUT accepts all Phase 7 fields
+- [x] GET returns all Phase 7 fields
+- [x] Validation rejects invalid values
 
 ### Frontend
-- [ ] Tachometer input field functional
-- [ ] OCR data section displays correctly
-- [ ] Extended data collapsible
+- [x] Tachometer input field functional
+- [x] OCR data section displays correctly
+- [x] Extended data collapsible
 
 ### Validation Rules
 - [x] 4 new rules added to seed file (VEH-010 to VEH-013)
 - [x] Migration 015 created with rules
 - [x] DATE_TOLERANCE comparator supports direction
 - [x] Engine supports system entity for validation_date
-- [ ] Rules deployed to production database
+- [x] Rules deployed to production database
 
 ---
 
@@ -204,6 +204,36 @@ uv run ADWS/run_phase.py 7 --issue 33 --skip-completed
 
 **Validation:**
 - All type checks passing (`deno check`)
+
+---
+
+### 2026-01-06: Task 7.3 Vehicle CRUD Update - COMPLETED
+
+**Files Modified:**
+- `supabase/functions/vehicle/index.ts` - Extended with all Phase 7 fields
+- `apps/web/public/openapi.yaml` - Updated API documentation
+
+**API Changes:**
+- POST/PUT now accept all 21 new vehicle fields
+- GET returns complete vehicle data including OCR fields
+- Added validation for numeric ranges (tachometer, dimensions, etc.)
+- Added enum validation for `palivo` and `kategorie_vozidla`
+
+---
+
+### 2026-01-06: Task 7.4 Vehicle Form Update - COMPLETED
+
+**Files Modified:**
+- `apps/web/src/components/forms/VehicleForm.vue` - Extended form layout
+- `apps/web/src/types/vehicle.ts` - New vehicle types module
+- `apps/web/src/types/index.ts` - Re-exports from vehicle.ts
+- `apps/web/src/composables/useDetailData.ts` - Updated data handling
+
+**UI Changes:**
+- Added tachometer input field (manual entry)
+- Added read-only OCR data display section
+- Extended vehicle data shown in collapsible panels
+- Fuel type and category displayed with Czech labels
 
 ---
 
