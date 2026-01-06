@@ -10,6 +10,52 @@ import type { OPExtractionResult } from "./schemas/op-schema.ts";
 import type { VTPExtractionResult } from "./schemas/vtp-schema.ts";
 
 // =============================================================================
+// EXTENDED VEHICLE DATA TYPES (Phase 7)
+// =============================================================================
+
+/**
+ * Extended vehicle data structure for database persistence
+ * Maps OCR extraction results to database columns
+ */
+export interface VehicleDataExtended {
+  // Existing fields (Phase 1-6)
+  spz?: string;
+  vin?: string;
+  znacka?: string;
+  model?: string;
+  datum_1_registrace?: string;
+  majitel?: string;
+  vykon_kw?: number;
+
+  // Phase 7.1: Fraud detection
+  tachometer_km?: number;
+  datum_posledni_preregistrace?: string;
+
+  // Phase 7.2: OCR-extractable (ORV + VTP)
+  barva?: string;
+  palivo?: string;
+  objem_motoru?: number;
+  pocet_mist?: number;
+  max_rychlost?: number;
+  kategorie_vozidla?: string;
+
+  // Phase 7.3: Extended VTP data
+  karoserie?: string;
+  cislo_motoru?: string;
+  provozni_hmotnost?: number;
+  povolena_hmotnost?: number;
+  delka?: number;
+  sirka?: number;
+  vyska?: number;
+  rozvor?: number;
+  emise_co2?: string;
+  spotreba_paliva?: string;
+  emisni_norma?: string;
+  datum_stk?: string;
+  stk_platnost?: string;
+}
+
+// =============================================================================
 // NORMALIZATION HELPERS
 // =============================================================================
 
@@ -326,4 +372,145 @@ export function calculateConfidence(
   }
 
   return Math.round((filledCount / fields.length) * 100);
+}
+
+// =============================================================================
+// VEHICLE DATA TRANSFORMERS (Phase 7)
+// =============================================================================
+
+/**
+ * Extract power in kW from maxPower string
+ * Handles formats like "228/5700" (kW/rpm) or just "228"
+ */
+function extractPowerKw(maxPower?: string | null): number | undefined {
+  if (!maxPower) return undefined;
+  const match = maxPower.match(/^(\d+(?:\.\d+)?)/);
+  return match ? parseFloat(match[1]) : undefined;
+}
+
+/**
+ * Transform ORV OCR extraction to vehicle data (extended)
+ * Maps ORV fields to database column names
+ */
+export function transformORVToVehicle(orvData: ORVExtractionResult): VehicleDataExtended {
+  return {
+    // Core identification
+    spz: orvData.registrationPlateNumber?.replace(/\s+/g, "").toUpperCase() || undefined,
+    vin: orvData.vin?.replace(/\s+/g, "").toUpperCase() || undefined,
+    znacka: orvData.make?.toUpperCase() || undefined,
+    model: orvData.model?.toUpperCase() || undefined,
+    datum_1_registrace: orvData.firstRegistrationDate
+      ? normalizeDate(orvData.firstRegistrationDate)
+      : undefined,
+    majitel: orvData.keeperName?.toUpperCase() || undefined,
+    vykon_kw: extractPowerKw(orvData.maxPower),
+
+    // Phase 7.2: New OCR-extractable fields from ORV
+    barva: orvData.color?.toUpperCase() || undefined,
+    palivo: orvData.fuelType?.toUpperCase() || undefined,
+    objem_motoru: orvData.engineCcm || undefined,
+    pocet_mist: orvData.seats || undefined,
+    max_rychlost: orvData.maxSpeed || undefined,
+  };
+}
+
+/**
+ * Transform VTP OCR extraction to vehicle data (extended)
+ * Maps VTP fields to database column names
+ * VTP contains more technical details than ORV
+ */
+export function transformVTPToVehicle(vtpData: VTPExtractionResult): VehicleDataExtended {
+  // Determine if there's a re-registration (fraud detection)
+  // If firstRegistrationDateCZ differs from firstRegistrationDate, it indicates re-registration
+  let datumPosledniPreregistrace: string | undefined = undefined;
+  if (vtpData.firstRegistrationDateCZ && vtpData.firstRegistrationDate) {
+    const normalizedCZ = normalizeDate(vtpData.firstRegistrationDateCZ);
+    const normalizedFirst = normalizeDate(vtpData.firstRegistrationDate);
+    if (normalizedCZ && normalizedFirst && normalizedCZ !== normalizedFirst) {
+      datumPosledniPreregistrace = normalizedCZ;
+    }
+  }
+
+  return {
+    // Core identification (same as ORV, for cross-validation)
+    spz: vtpData.registrationPlateNumber?.replace(/\s+/g, "").toUpperCase() || undefined,
+    vin: vtpData.vin?.replace(/\s+/g, "").toUpperCase() || undefined,
+    znacka: vtpData.make?.toUpperCase() || undefined,
+    model: vtpData.commercialName?.toUpperCase() || undefined,
+    datum_1_registrace: vtpData.firstRegistrationDate
+      ? normalizeDate(vtpData.firstRegistrationDate)
+      : undefined,
+    majitel: vtpData.ownerName?.toUpperCase() || undefined,
+    vykon_kw: vtpData.maxPowerKw || undefined,
+
+    // Phase 7.1: Fraud detection
+    datum_posledni_preregistrace: datumPosledniPreregistrace,
+
+    // Phase 7.2: OCR-extractable (also in ORV, VTP has priority for some)
+    barva: vtpData.color?.toUpperCase() || undefined,
+    palivo: vtpData.fuelType?.toUpperCase() || undefined,
+    objem_motoru: vtpData.engineCcm || undefined,
+    pocet_mist: vtpData.seats || undefined,
+    max_rychlost: vtpData.maxSpeed || undefined,
+    kategorie_vozidla: vtpData.vehicleCategory?.toUpperCase() || undefined,
+
+    // Phase 7.3: Extended VTP-only fields
+    karoserie: vtpData.bodyType?.toUpperCase() || undefined,
+    cislo_motoru: vtpData.engineType?.toUpperCase() || undefined,
+    provozni_hmotnost: vtpData.operatingWeight || undefined,
+    povolena_hmotnost: vtpData.maxPermittedWeight || undefined,
+    delka: vtpData.length || undefined,
+    sirka: vtpData.width || undefined,
+    vyska: vtpData.height || undefined,
+    rozvor: vtpData.wheelbase || undefined,
+    emise_co2: vtpData.co2Emissions || undefined,
+    spotreba_paliva: vtpData.fuelConsumption || undefined,
+    emisni_norma: vtpData.emissionStandard || undefined,
+    datum_stk: vtpData.lastInspectionDate
+      ? normalizeDate(vtpData.lastInspectionDate)
+      : undefined,
+    stk_platnost: vtpData.nextInspectionDue
+      ? normalizeDate(vtpData.nextInspectionDue)
+      : undefined,
+  };
+}
+
+/**
+ * Merge vehicle data from multiple OCR sources
+ * Priority: VTP > ORV > Manual (for technical specs)
+ *
+ * VTP is considered the most authoritative source for technical
+ * specifications since it's the official technical certificate.
+ */
+export function mergeVehicleData(
+  orv?: VehicleDataExtended,
+  vtp?: VehicleDataExtended,
+  manual?: VehicleDataExtended
+): VehicleDataExtended {
+  // Start with manual data as base
+  const merged: VehicleDataExtended = { ...manual };
+
+  // Layer ORV data (overwrites manual for OCR-able fields)
+  if (orv) {
+    const keys = Object.keys(orv) as (keyof VehicleDataExtended)[];
+    for (const key of keys) {
+      const value = orv[key];
+      if (value !== undefined && value !== null) {
+        (merged as Record<string, unknown>)[key] = value;
+      }
+    }
+  }
+
+  // Layer VTP data (highest priority for technical specs)
+  if (vtp) {
+    const keys = Object.keys(vtp) as (keyof VehicleDataExtended)[];
+    for (const key of keys) {
+      const value = vtp[key];
+      if (value !== undefined && value !== null) {
+        (merged as Record<string, unknown>)[key] = value;
+      }
+    }
+  }
+
+  return merged;
 }

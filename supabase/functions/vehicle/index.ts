@@ -23,7 +23,40 @@ import { createClient, SupabaseClient } from 'https://esm.sh/@supabase/supabase-
 
 type DataSource = 'MANUAL' | 'OCR' | 'BC_IMPORT';
 
-interface CreateVehicleRequest {
+// Phase 7.1: Fraud detection fields
+interface FraudDetectionFields {
+  tachometer_km?: number;
+  datum_posledni_preregistrace?: string;
+}
+
+// Phase 7.2: OCR-extractable fields
+interface OCRExtractableFields {
+  barva?: string;
+  palivo?: string;
+  objem_motoru?: number;
+  pocet_mist?: number;
+  max_rychlost?: number;
+  kategorie_vozidla?: string;
+}
+
+// Phase 7.3: Extended VTP fields
+interface ExtendedVTPFields {
+  karoserie?: string;
+  cislo_motoru?: string;
+  provozni_hmotnost?: number;
+  povolena_hmotnost?: number;
+  delka?: number;
+  sirka?: number;
+  vyska?: number;
+  rozvor?: number;
+  emise_co2?: string;
+  spotreba_paliva?: string;
+  emisni_norma?: string;
+  datum_stk?: string;
+  stk_platnost?: string;
+}
+
+interface CreateVehicleRequest extends FraudDetectionFields, OCRExtractableFields, ExtendedVTPFields {
   buying_opportunity_id: string;
   spz: string;
   vin?: string;
@@ -37,7 +70,7 @@ interface CreateVehicleRequest {
   data_source?: DataSource;
 }
 
-interface UpdateVehicleRequest {
+interface UpdateVehicleRequest extends FraudDetectionFields, OCRExtractableFields, ExtendedVTPFields {
   spz?: string;
   vin?: string;
   znacka?: string;
@@ -51,7 +84,7 @@ interface UpdateVehicleRequest {
   validation_status?: string;
 }
 
-interface VehicleResponse {
+interface VehicleResponse extends FraudDetectionFields, OCRExtractableFields, ExtendedVTPFields {
   id: string;
   buying_opportunity_id: string;
   spz: string;
@@ -125,6 +158,50 @@ function errorResponse(message: string, code: string, status: number, details?: 
 }
 
 // =============================================================================
+// VALIDATION CONSTANTS
+// =============================================================================
+
+const FUEL_TYPES = ['BA', 'NM', 'EL', 'LPG', 'CNG', 'H', 'HYBRID', 'BA/LPG', 'BA/CNG', 'EL/BA', 'EL/NM'];
+const VEHICLE_CATEGORIES = ['M1', 'M2', 'M3', 'N1', 'N2', 'N3', 'L1', 'L2', 'L3', 'L4', 'L5', 'L6', 'L7'];
+
+// Numeric field validation ranges
+const NUMERIC_FIELD_RANGES: { name: string; min: number; max: number }[] = [
+  { name: 'tachometer_km', min: 0, max: 2000000 },
+  { name: 'objem_motoru', min: 0, max: 20000 },
+  { name: 'pocet_mist', min: 1, max: 100 },
+  { name: 'max_rychlost', min: 0, max: 500 },
+  { name: 'vykon_kw', min: 0, max: 2000 },
+  { name: 'provozni_hmotnost', min: 0, max: 100000 },
+  { name: 'povolena_hmotnost', min: 0, max: 100000 },
+  { name: 'delka', min: 0, max: 30000 },
+  { name: 'sirka', min: 0, max: 5000 },
+  { name: 'vyska', min: 0, max: 5000 },
+  { name: 'rozvor', min: 0, max: 10000 },
+];
+
+// All vehicle columns for SELECT queries (Phase 7 extended)
+const VEHICLE_COLUMNS = [
+  // Metadata
+  'id', 'buying_opportunity_id', 'created_at',
+  // Original fields
+  'spz', 'vin', 'znacka', 'model', 'rok_vyroby', 'datum_1_registrace',
+  'majitel', 'motor', 'vykon_kw', 'data_source', 'validation_status',
+  // Phase 7.1: Fraud detection
+  'tachometer_km', 'datum_posledni_preregistrace',
+  // Phase 7.2: OCR-extractable
+  'barva', 'palivo', 'objem_motoru', 'pocet_mist', 'max_rychlost', 'kategorie_vozidla',
+  // Phase 7.3: Extended VTP
+  'karoserie', 'cislo_motoru', 'provozni_hmotnost', 'povolena_hmotnost',
+  'delka', 'sirka', 'vyska', 'rozvor',
+  'emise_co2', 'spotreba_paliva', 'emisni_norma',
+  'datum_stk', 'stk_platnost',
+];
+
+// Columns that can be inserted/updated (excludes id, created_at)
+const UPDATABLE_COLUMNS = VEHICLE_COLUMNS.filter(col => col !== 'id' && col !== 'created_at');
+const INSERTABLE_COLUMNS = UPDATABLE_COLUMNS.filter(col => col !== 'buying_opportunity_id' || true);
+
+// =============================================================================
 // VALIDATION
 // =============================================================================
 
@@ -168,6 +245,52 @@ function validateVehicle(data: CreateVehicleRequest): string[] {
     errors.push('data_source must be one of: MANUAL, OCR, BC_IMPORT');
   }
 
+  // Phase 7.1: Fraud detection validation
+  if (data.datum_posledni_preregistrace) {
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dateRegex.test(data.datum_posledni_preregistrace)) {
+      errors.push('datum_posledni_preregistrace must be in YYYY-MM-DD format');
+    }
+  }
+
+  // Phase 7.2: OCR field validation
+  if (data.palivo !== undefined && data.palivo !== null) {
+    if (!FUEL_TYPES.includes(data.palivo.toUpperCase())) {
+      errors.push(`palivo must be one of: ${FUEL_TYPES.join(', ')}`);
+    }
+  }
+
+  if (data.kategorie_vozidla !== undefined && data.kategorie_vozidla !== null) {
+    if (!VEHICLE_CATEGORIES.includes(data.kategorie_vozidla.toUpperCase())) {
+      errors.push(`kategorie_vozidla must be one of: ${VEHICLE_CATEGORIES.join(', ')}`);
+    }
+  }
+
+  // Phase 7.3: STK date validation
+  if (data.datum_stk) {
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dateRegex.test(data.datum_stk)) {
+      errors.push('datum_stk must be in YYYY-MM-DD format');
+    }
+  }
+
+  if (data.stk_platnost) {
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dateRegex.test(data.stk_platnost)) {
+      errors.push('stk_platnost must be in YYYY-MM-DD format');
+    }
+  }
+
+  // Numeric field range validation (Phase 7.1, 7.2, 7.3)
+  for (const { name, min, max } of NUMERIC_FIELD_RANGES) {
+    const value = (data as unknown as Record<string, unknown>)[name];
+    if (value !== undefined && value !== null) {
+      if (typeof value !== 'number' || value < min || value > max) {
+        errors.push(`${name} must be a number between ${min} and ${max}`);
+      }
+    }
+  }
+
   return errors;
 }
 
@@ -199,25 +322,54 @@ async function handleCreate(
   // Normalize VIN: uppercase and remove spaces (if provided)
   const normalizedVin = body.vin ? body.vin.toUpperCase().replace(/\s/g, '') : null;
 
-  // Prepare insert data
+  // Prepare insert data - dynamically include all Phase 7 fields
   const insertData: Record<string, unknown> = {
     buying_opportunity_id: body.buying_opportunity_id,
     spz: normalizedSpz,
     vin: normalizedVin,
-    znacka: body.znacka || null,
-    model: body.model || null,
-    rok_vyroby: body.rok_vyroby || null,
-    datum_1_registrace: body.datum_1_registrace || null,
-    majitel: body.majitel || null,
-    motor: body.motor || null,
-    vykon_kw: body.vykon_kw || null,
     data_source: body.data_source || 'MANUAL',
   };
+
+  // Original fields
+  if (body.znacka !== undefined) insertData.znacka = body.znacka;
+  if (body.model !== undefined) insertData.model = body.model;
+  if (body.rok_vyroby !== undefined) insertData.rok_vyroby = body.rok_vyroby;
+  if (body.datum_1_registrace !== undefined) insertData.datum_1_registrace = body.datum_1_registrace;
+  if (body.majitel !== undefined) insertData.majitel = body.majitel;
+  if (body.motor !== undefined) insertData.motor = body.motor;
+  if (body.vykon_kw !== undefined) insertData.vykon_kw = body.vykon_kw;
+
+  // Phase 7.1: Fraud detection fields
+  if (body.tachometer_km !== undefined) insertData.tachometer_km = body.tachometer_km;
+  if (body.datum_posledni_preregistrace !== undefined) insertData.datum_posledni_preregistrace = body.datum_posledni_preregistrace;
+
+  // Phase 7.2: OCR-extractable fields
+  if (body.barva !== undefined) insertData.barva = body.barva;
+  if (body.palivo !== undefined) insertData.palivo = body.palivo?.toUpperCase();
+  if (body.objem_motoru !== undefined) insertData.objem_motoru = body.objem_motoru;
+  if (body.pocet_mist !== undefined) insertData.pocet_mist = body.pocet_mist;
+  if (body.max_rychlost !== undefined) insertData.max_rychlost = body.max_rychlost;
+  if (body.kategorie_vozidla !== undefined) insertData.kategorie_vozidla = body.kategorie_vozidla?.toUpperCase();
+
+  // Phase 7.3: Extended VTP fields
+  if (body.karoserie !== undefined) insertData.karoserie = body.karoserie;
+  if (body.cislo_motoru !== undefined) insertData.cislo_motoru = body.cislo_motoru;
+  if (body.provozni_hmotnost !== undefined) insertData.provozni_hmotnost = body.provozni_hmotnost;
+  if (body.povolena_hmotnost !== undefined) insertData.povolena_hmotnost = body.povolena_hmotnost;
+  if (body.delka !== undefined) insertData.delka = body.delka;
+  if (body.sirka !== undefined) insertData.sirka = body.sirka;
+  if (body.vyska !== undefined) insertData.vyska = body.vyska;
+  if (body.rozvor !== undefined) insertData.rozvor = body.rozvor;
+  if (body.emise_co2 !== undefined) insertData.emise_co2 = body.emise_co2;
+  if (body.spotreba_paliva !== undefined) insertData.spotreba_paliva = body.spotreba_paliva;
+  if (body.emisni_norma !== undefined) insertData.emisni_norma = body.emisni_norma;
+  if (body.datum_stk !== undefined) insertData.datum_stk = body.datum_stk;
+  if (body.stk_platnost !== undefined) insertData.stk_platnost = body.stk_platnost;
 
   const { data, error } = await supabase
     .from('vehicles')
     .insert(insertData)
-    .select('id, buying_opportunity_id, spz, vin, znacka, model, rok_vyroby, datum_1_registrace, majitel, motor, vykon_kw, data_source, validation_status, created_at')
+    .select(VEHICLE_COLUMNS.join(', '))
     .single();
 
   if (error) {
@@ -269,7 +421,7 @@ async function handleGet(
 
   let query = supabase
     .from('vehicles')
-    .select('id, buying_opportunity_id, spz, vin, znacka, model, rok_vyroby, datum_1_registrace, majitel, motor, vykon_kw, data_source, validation_status, created_at');
+    .select(VEHICLE_COLUMNS.join(', '));
 
   if (id) {
     // Validate UUID format
@@ -362,6 +514,52 @@ async function handleUpdate(
     errors.push('data_source must be one of: MANUAL, OCR, BC_IMPORT');
   }
 
+  // Phase 7.1: Fraud detection validation
+  if (body.datum_posledni_preregistrace) {
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dateRegex.test(body.datum_posledni_preregistrace)) {
+      errors.push('datum_posledni_preregistrace must be in YYYY-MM-DD format');
+    }
+  }
+
+  // Phase 7.2: OCR field validation
+  if (body.palivo !== undefined && body.palivo !== null) {
+    if (!FUEL_TYPES.includes(body.palivo.toUpperCase())) {
+      errors.push(`palivo must be one of: ${FUEL_TYPES.join(', ')}`);
+    }
+  }
+
+  if (body.kategorie_vozidla !== undefined && body.kategorie_vozidla !== null) {
+    if (!VEHICLE_CATEGORIES.includes(body.kategorie_vozidla.toUpperCase())) {
+      errors.push(`kategorie_vozidla must be one of: ${VEHICLE_CATEGORIES.join(', ')}`);
+    }
+  }
+
+  // Phase 7.3: STK date validation
+  if (body.datum_stk) {
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dateRegex.test(body.datum_stk)) {
+      errors.push('datum_stk must be in YYYY-MM-DD format');
+    }
+  }
+
+  if (body.stk_platnost) {
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dateRegex.test(body.stk_platnost)) {
+      errors.push('stk_platnost must be in YYYY-MM-DD format');
+    }
+  }
+
+  // Numeric field range validation
+  for (const { name, min, max } of NUMERIC_FIELD_RANGES) {
+    const value = (body as Record<string, unknown>)[name];
+    if (value !== undefined && value !== null) {
+      if (typeof value !== 'number' || value < min || value > max) {
+        errors.push(`${name} must be a number between ${min} and ${max}`);
+      }
+    }
+  }
+
   if (errors.length > 0) {
     return errorResponse('Validation failed', 'VALIDATION_ERROR', 400, errors);
   }
@@ -369,39 +567,49 @@ async function handleUpdate(
   // Build update object with normalized values
   const updateData: Record<string, unknown> = {};
 
+  // Original fields
   if (body.spz !== undefined) {
     updateData.spz = body.spz.toUpperCase().replace(/\s/g, '');
   }
   if (body.vin !== undefined) {
     updateData.vin = body.vin ? body.vin.toUpperCase().replace(/\s/g, '') : null;
   }
-  if (body.znacka !== undefined) {
-    updateData.znacka = body.znacka;
-  }
-  if (body.model !== undefined) {
-    updateData.model = body.model;
-  }
-  if (body.rok_vyroby !== undefined) {
-    updateData.rok_vyroby = body.rok_vyroby;
-  }
-  if (body.datum_1_registrace !== undefined) {
-    updateData.datum_1_registrace = body.datum_1_registrace;
-  }
-  if (body.majitel !== undefined) {
-    updateData.majitel = body.majitel;
-  }
-  if (body.motor !== undefined) {
-    updateData.motor = body.motor;
-  }
-  if (body.vykon_kw !== undefined) {
-    updateData.vykon_kw = body.vykon_kw;
-  }
-  if (body.data_source !== undefined) {
-    updateData.data_source = body.data_source;
-  }
-  if (body.validation_status !== undefined) {
-    updateData.validation_status = body.validation_status;
-  }
+  if (body.znacka !== undefined) updateData.znacka = body.znacka;
+  if (body.model !== undefined) updateData.model = body.model;
+  if (body.rok_vyroby !== undefined) updateData.rok_vyroby = body.rok_vyroby;
+  if (body.datum_1_registrace !== undefined) updateData.datum_1_registrace = body.datum_1_registrace;
+  if (body.majitel !== undefined) updateData.majitel = body.majitel;
+  if (body.motor !== undefined) updateData.motor = body.motor;
+  if (body.vykon_kw !== undefined) updateData.vykon_kw = body.vykon_kw;
+  if (body.data_source !== undefined) updateData.data_source = body.data_source;
+  if (body.validation_status !== undefined) updateData.validation_status = body.validation_status;
+
+  // Phase 7.1: Fraud detection fields
+  if (body.tachometer_km !== undefined) updateData.tachometer_km = body.tachometer_km;
+  if (body.datum_posledni_preregistrace !== undefined) updateData.datum_posledni_preregistrace = body.datum_posledni_preregistrace;
+
+  // Phase 7.2: OCR-extractable fields
+  if (body.barva !== undefined) updateData.barva = body.barva;
+  if (body.palivo !== undefined) updateData.palivo = body.palivo?.toUpperCase();
+  if (body.objem_motoru !== undefined) updateData.objem_motoru = body.objem_motoru;
+  if (body.pocet_mist !== undefined) updateData.pocet_mist = body.pocet_mist;
+  if (body.max_rychlost !== undefined) updateData.max_rychlost = body.max_rychlost;
+  if (body.kategorie_vozidla !== undefined) updateData.kategorie_vozidla = body.kategorie_vozidla?.toUpperCase();
+
+  // Phase 7.3: Extended VTP fields
+  if (body.karoserie !== undefined) updateData.karoserie = body.karoserie;
+  if (body.cislo_motoru !== undefined) updateData.cislo_motoru = body.cislo_motoru;
+  if (body.provozni_hmotnost !== undefined) updateData.provozni_hmotnost = body.provozni_hmotnost;
+  if (body.povolena_hmotnost !== undefined) updateData.povolena_hmotnost = body.povolena_hmotnost;
+  if (body.delka !== undefined) updateData.delka = body.delka;
+  if (body.sirka !== undefined) updateData.sirka = body.sirka;
+  if (body.vyska !== undefined) updateData.vyska = body.vyska;
+  if (body.rozvor !== undefined) updateData.rozvor = body.rozvor;
+  if (body.emise_co2 !== undefined) updateData.emise_co2 = body.emise_co2;
+  if (body.spotreba_paliva !== undefined) updateData.spotreba_paliva = body.spotreba_paliva;
+  if (body.emisni_norma !== undefined) updateData.emisni_norma = body.emisni_norma;
+  if (body.datum_stk !== undefined) updateData.datum_stk = body.datum_stk;
+  if (body.stk_platnost !== undefined) updateData.stk_platnost = body.stk_platnost;
 
   if (Object.keys(updateData).length === 0) {
     return errorResponse('No fields to update', 'NO_FIELDS', 400);
@@ -411,7 +619,7 @@ async function handleUpdate(
     .from('vehicles')
     .update(updateData)
     .eq('id', id)
-    .select('id, buying_opportunity_id, spz, vin, znacka, model, rok_vyroby, datum_1_registrace, majitel, motor, vykon_kw, data_source, validation_status, created_at')
+    .select(VEHICLE_COLUMNS.join(', '))
     .single();
 
   if (error) {

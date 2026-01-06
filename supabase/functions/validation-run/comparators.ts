@@ -208,6 +208,10 @@ function compareNumericTolerance(
 
 /**
  * Date tolerance comparison (in days)
+ * Supports directional comparisons for fraud detection:
+ * - MIN_DAYS_BEFORE: Source date must be at least N days before target
+ * - MAX_DAYS_AFTER: Source date must be at most N days after target
+ * - WITHIN_RANGE: Source date must be within +/- N days of target (default)
  */
 function compareDateTolerance(
   source: string,
@@ -225,15 +229,50 @@ function compareDateTolerance(
   }
 
   const toleranceDays = config.tolerance ?? 0;
-  const diffMs = Math.abs(sourceDate.getTime() - targetDate.getTime());
-  const diffDays = diffMs / (1000 * 60 * 60 * 24);
+  const direction = config.direction ?? 'WITHIN_RANGE';
 
-  const isMatch = diffDays <= toleranceDays;
+  // Calculate difference: positive means target is after source
+  const diffMs = targetDate.getTime() - sourceDate.getTime();
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
-  return {
-    isMatch,
-    details: `Difference: ${diffDays.toFixed(1)} days, tolerance: ${toleranceDays} days`,
-  };
+  switch (direction) {
+    case 'MIN_DAYS_BEFORE':
+      // Source date must be at least toleranceDays before target
+      // e.g., re-registration date must be at least 10 days before validation date
+      if (diffDays >= toleranceDays) {
+        return {
+          isMatch: true,
+          details: `Date is ${diffDays} days before target, minimum required: ${toleranceDays}`,
+        };
+      }
+      return {
+        isMatch: false,
+        details: `Date is only ${diffDays} days before target, minimum required: ${toleranceDays}`,
+      };
+
+    case 'MAX_DAYS_AFTER':
+      // Source date must be at most toleranceDays after target
+      if (-diffDays <= toleranceDays) {
+        return {
+          isMatch: true,
+          details: `Date is ${-diffDays} days after target, maximum allowed: ${toleranceDays}`,
+        };
+      }
+      return {
+        isMatch: false,
+        details: `Date is ${-diffDays} days after target, maximum allowed: ${toleranceDays}`,
+      };
+
+    case 'WITHIN_RANGE':
+    default:
+      // Date must be within +/- toleranceDays (original behavior)
+      const absDiffDays = Math.abs(diffDays);
+      const isMatch = absDiffDays <= toleranceDays;
+      return {
+        isMatch,
+        details: `Difference: ${absDiffDays} days, tolerance: ${toleranceDays} days`,
+      };
+  }
 }
 
 /**

@@ -1,22 +1,91 @@
 openapi: 3.0.3
 info:
-  title: SecureDealAI Validation Rules API
+  title: SecureDealAI API
   description: |
-    REST API for managing dynamic validation rules in SecureDealAI.
+    REST API for SecureDealAI - a vehicle purchase validation service that uses a
+    **Backend-for-Frontend (BFF)** architecture to aggregate data from multiple sources.
 
-    ## Overview
+    ## 🏗️ BFF Architecture Overview
+
+    SecureDealAI implements a multi-function BFF architecture using **Supabase Edge Functions**
+    (Deno/TypeScript). The BFF layer aggregates data from multiple backend services and presents
+    optimized, unified responses for the Vue.js frontend.
+
+    ### Why BFF?
+    - **Data Aggregation**: Combine data from 7+ sources into single API responses
+    - **Service Orchestration**: Coordinate calls to ARES, ADIS, and Mistral OCR APIs
+    - **Response Transformation**: Normalize data formats across different sources
+    - **Graceful Degradation**: Continue validation even when external services are unavailable
+    - **Caching Strategy**: Reduce external API calls with intelligent caching (ARES: 24h, ADIS: 4h)
+
+    ### Data Sources Integrated
+
+    | Source | Type | Purpose | Cache TTL |
+    |--------|------|---------|-----------|
+    | **Supabase DB** | PostgreSQL | Primary data storage | N/A |
+    | **ARES API** | REST | Czech company registry lookup | 24 hours |
+    | **ADIS API** | SOAP | VAT payer status verification | 4 hours |
+    | **Mistral OCR** | AI/REST | Document text extraction | Permanent |
+    | **Supabase Storage** | S3-compatible | Document file storage | N/A |
+
+    ### Key BFF Functions
+
+    | Function | Type | Aggregation | Description |
+    |----------|------|-------------|-------------|
+    | `validation-run` | Primary BFF | HIGH | Orchestrates validation across 7 DB tables + cached external data |
+    | `ares-validate` | Secondary BFF | HIGH | Coordinates ARES REST + ADIS SOAP APIs |
+    | `ocr-extract` | Async BFF | HIGH | Processes documents via Mistral OCR with retry logic |
+    | `ares-lookup` | Utility BFF | MEDIUM | Real-time company lookup with 24h caching |
+
+    ### Production Environment Simulation
+
+    This Supabase-based architecture simulates how the production Aures deployment would work:
+    - **Supabase Edge Functions** → Aures BFF API Layer
+    - **Supabase PostgreSQL** → Aures Production Database
+    - **ARES/ADIS APIs** → Same external registries (production-ready)
+    - **Mistral OCR** → Same or equivalent OCR service
+
+    ---
+
+    ## 📋 Validation Rules System
+
     Rules are stored as JSON in PostgreSQL and can be managed without code deployments.
     Each rule defines a comparison between source data (manual input) and target data (OCR/external registries).
 
-    ## Validation Status Logic
-    - **RED** (blocked): Any CRITICAL rule fails with MISMATCH
-    - **ORANGE** (manual review): Any WARNING rule fails OR CRITICAL rule has MISSING data
-    - **GREEN** (approved): All rules pass
+    ### Validation Status Logic
+    - **🔴 RED** (blocked): Any CRITICAL rule fails with MISMATCH
+    - **🟠 ORANGE** (manual review): Any WARNING rule fails OR CRITICAL rule has MISSING data
+    - **🟢 GREEN** (approved): All rules pass
 
-    ## Authentication
+    ### Data Transformation Pipeline
+    Before comparison, data passes through configurable transforms:
+    - Text: `UPPERCASE`, `LOWERCASE`, `TRIM`, `REMOVE_SPACES`, `REMOVE_DIACRITICS`
+    - Format: `NORMALIZE_DATE`, `EXTRACT_NUMBER`, `FORMAT_RC`, `FORMAT_ICO`, `FORMAT_DIC`
+    - Domain: `ADDRESS_NORMALIZE`, `NAME_NORMALIZE`, `VIN_NORMALIZE`, `SPZ_NORMALIZE`
+
+    ### Comparison Algorithms
+    - `EXACT` - String equality
+    - `FUZZY` - Levenshtein similarity (0.0-1.0 threshold)
+    - `CONTAINS`, `REGEX`, `IN_LIST` - Pattern matching
+    - `NUMERIC_TOLERANCE`, `DATE_TOLERANCE` - Range comparisons
+    - `EXISTS`, `NOT_EXISTS` - Presence checks
+
+    ---
+
+    ## 🔐 Authentication
+
     All endpoints require Bearer token authentication via Supabase JWT.
     Admin endpoints require `role: admin` in JWT claims.
-  version: 1.0.0
+
+    ---
+
+    ## 📚 Additional Documentation
+
+    - [BFF Pattern Architecture](/docs/architecture/BFF_PATTERN_ARCHITECTURE.md)
+    - [Validation Backend Architecture](/docs/architecture/VALIDATION_BACKEND_ARCHITECTURE.md)
+    - [ARES Integration Scope](/docs/architecture/ARES_VALIDATION_SCOPE.md)
+
+  version: 1.1.0
   contact:
     name: SecureDealAI Team
     email: dev@aures.cz
@@ -30,6 +99,14 @@ servers:
     description: Local development
 
 tags:
+  - name: Architecture
+    description: |
+      Documentation endpoints explaining the BFF (Backend-for-Frontend) architecture.
+      These endpoints return static documentation data for understanding system design.
+  - name: Data Sources
+    description: |
+      Information about external data sources integrated into SecureDealAI.
+      Includes ARES, ADIS, Mistral OCR, and internal database schemas.
   - name: Validation
     description: Execute and retrieve validation results
   - name: Rules
@@ -40,6 +117,291 @@ tags:
     description: Bulk operations for rules
 
 paths:
+  # ==========================================
+  # Architecture Documentation Endpoints
+  # ==========================================
+
+  /architecture/overview:
+    get:
+      tags:
+        - Architecture
+      summary: BFF Architecture Overview
+      description: |
+        Returns a comprehensive overview of the Backend-for-Frontend (BFF) architecture
+        used in SecureDealAI, including data source integrations, key design decisions,
+        and how the current setup simulates the production Aures environment.
+
+        **Note**: This is a documentation-only endpoint that returns static information
+        about the system architecture.
+      operationId: getArchitectureOverview
+      responses:
+        '200':
+          description: Architecture overview
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ArchitectureOverview'
+              example:
+                pattern_name: "Backend-for-Frontend (BFF)"
+                description: "SecureDealAI implements a multi-function BFF architecture using Supabase Edge Functions (Deno/TypeScript)."
+                key_principles:
+                  - principle: "Data Aggregation"
+                    implementation: "validation-run combines data from 7 DB tables + cached external APIs"
+                  - principle: "Service Orchestration"
+                    implementation: "ares-validate coordinates ARES REST + ADIS SOAP APIs"
+                  - principle: "Graceful Degradation"
+                    implementation: "Missing external data triggers ORANGE status, not failure"
+                  - principle: "Caching Strategy"
+                    implementation: "ARES data cached 24h, ADIS 4h to reduce API calls"
+                bff_functions:
+                  - name: "validation-run"
+                    type: "PRIMARY_BFF"
+                    aggregation_level: "HIGH"
+                    data_sources: ["buying_opportunities", "vehicles", "vendors", "ocr_extractions", "ares_validations", "validation_rules"]
+                    endpoint: "POST /functions/v1/validation-run"
+                  - name: "ares-validate"
+                    type: "SECONDARY_BFF"
+                    aggregation_level: "HIGH"
+                    data_sources: ["ARES API", "ADIS SOAP API", "Supabase DB"]
+                    endpoint: "POST /functions/v1/ares-validate"
+                  - name: "ocr-extract"
+                    type: "ASYNC_BFF"
+                    aggregation_level: "HIGH"
+                    data_sources: ["Supabase Storage", "Mistral OCR API", "Supabase DB"]
+                    endpoint: "POST /functions/v1/ocr-extract"
+                production_simulation:
+                  description: "The current Supabase-based architecture simulates Aures production deployment"
+                  components_mapped:
+                    - current: "Supabase Edge Functions"
+                      production_equivalent: "Aures BFF API Layer"
+                    - current: "Supabase PostgreSQL"
+                      production_equivalent: "Aures Production Database"
+                    - current: "ARES/ADIS APIs"
+                      production_equivalent: "Same external registries"
+
+  /architecture/flows/{flowName}:
+    get:
+      tags:
+        - Architecture
+      summary: Get Data Flow Diagram
+      description: |
+        Returns a detailed data flow diagram for a specific operation, showing
+        how data moves through the BFF layer and which services are called.
+
+        Includes step-by-step descriptions and a Mermaid-format sequence diagram.
+      operationId: getDataFlow
+      parameters:
+        - name: flowName
+          in: path
+          required: true
+          description: Name of the data flow to retrieve
+          schema:
+            type: string
+            enum: [validation, ares-lookup, ocr-processing, vendor-verification]
+      responses:
+        '200':
+          description: Data flow diagram
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataFlowDiagram'
+              example:
+                flow_name: "validation"
+                description: "Complete validation flow aggregating manual input, OCR data, and ARES/ADIS registry data"
+                steps:
+                  - step: 1
+                    action: "Frontend sends validation request"
+                    source: "Vue.js Frontend"
+                    target: "validation-run Edge Function"
+                    data_exchanged: "{ buying_opportunity_id } OR { spz } OR { vin }"
+                  - step: 2
+                    action: "Load buying opportunity context"
+                    source: "validation-run"
+                    target: "Supabase DB"
+                    data_exchanged: "buying_opportunities + vehicles + vendors"
+                  - step: 3
+                    action: "Load OCR extractions by SPZ"
+                    source: "validation-run"
+                    target: "Supabase DB"
+                    data_exchanged: "ocr_extractions (ORV, OP, VTP)"
+                  - step: 4
+                    action: "Load cached ARES/ADIS data"
+                    source: "validation-run"
+                    target: "Supabase DB"
+                    data_exchanged: "ares_validations.ares_data + dph_status"
+                  - step: 5
+                    action: "Execute validation engine"
+                    source: "validation-run (engine.ts)"
+                    target: "Internal processing"
+                    data_exchanged: "Apply transforms → comparators → evaluate rules"
+                  - step: 6
+                    action: "Store results and return"
+                    source: "validation-run"
+                    target: "Supabase DB → Frontend"
+                    data_exchanged: "ValidationResult with overall_status"
+                sequence_diagram_mermaid: |
+                  sequenceDiagram
+                      participant FE as Vue.js Frontend
+                      participant BFF as validation-run
+                      participant DB as Supabase DB
+                      FE->>BFF: POST /validation-run {buying_opportunity_id}
+                      BFF->>DB: Load buying_opportunity + vehicle + vendor
+                      DB-->>BFF: Manual input data
+                      BFF->>DB: Query ocr_extractions by SPZ
+                      DB-->>BFF: ORV + OP + VTP extracted fields
+                      BFF->>DB: Query cached ARES/ADIS
+                      DB-->>BFF: Company + DPH data
+                      Note over BFF: Execute validation engine
+                      BFF->>DB: Store validation_results
+                      BFF-->>FE: ValidationResult {overall_status}
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ==========================================
+  # Data Sources Documentation Endpoints
+  # ==========================================
+
+  /data-sources:
+    get:
+      tags:
+        - Data Sources
+      summary: List All Data Sources
+      description: |
+        Returns information about all external data sources integrated into SecureDealAI,
+        including their endpoints, caching strategies, and the data they provide.
+      operationId: listDataSources
+      responses:
+        '200':
+          description: List of data sources
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataSourceList'
+              example:
+                sources:
+                  - name: "ARES API"
+                    type: "REST_API"
+                    base_url: "https://ares.gov.cz/ekonomicke-subjekty-v-be/rest"
+                    used_by: ["ares-lookup", "ares-validate"]
+                    cache_strategy:
+                      enabled: true
+                      ttl_hours: 24
+                      storage: "ares_validations.ares_data"
+                    data_provided:
+                      - "Company legal name (obchodniJmeno)"
+                      - "IČO (registration number)"
+                      - "DIČ (VAT ID)"
+                      - "Company registration date"
+                      - "Registered address"
+                    fallback_behavior: "Continue validation with ORANGE status"
+                  - name: "ADIS SOAP API (DPH Registry)"
+                    type: "SOAP_API"
+                    base_url: "https://adisspr.mfcr.cz/dpr/axis2/services/"
+                    used_by: ["ares-validate"]
+                    cache_strategy:
+                      enabled: true
+                      ttl_hours: 4
+                      storage: "ares_validations.dph_status"
+                    data_provided:
+                      - "VAT payer status (active/inactive)"
+                      - "Unreliable payer flag"
+                      - "Registered bank accounts"
+                    fallback_behavior: "Skip DPH checks; mark as WARNING"
+                  - name: "Mistral OCR API"
+                    type: "AI_SERVICE"
+                    base_url: "https://api.mistral.ai/v1"
+                    used_by: ["ocr-extract"]
+                    cache_strategy:
+                      enabled: false
+                      storage: "ocr_extractions.extracted_data (permanent)"
+                    data_provided:
+                      - "ORV fields (VIN, SPZ, make, model)"
+                      - "OP fields (personal ID, name)"
+                      - "VTP fields (technical data)"
+                    fallback_behavior: "Retry 3x with exponential backoff"
+
+  /data-sources/{sourceName}:
+    get:
+      tags:
+        - Data Sources
+      summary: Get Data Source Details
+      description: |
+        Returns detailed information about a specific data source, including
+        its integration pattern, request/response examples, and error handling.
+      operationId: getDataSourceDetails
+      parameters:
+        - name: sourceName
+          in: path
+          required: true
+          description: Name of the data source
+          schema:
+            type: string
+            enum: [ares, adis, mistral-ocr, supabase-db, supabase-storage]
+      responses:
+        '200':
+          description: Data source details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataSourceDetail'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /data-sources/integration-matrix:
+    get:
+      tags:
+        - Data Sources
+      summary: Get Integration Matrix
+      description: |
+        Returns a matrix showing which Edge Functions call which data sources,
+        useful for understanding the overall system architecture at a glance.
+      operationId: getIntegrationMatrix
+      responses:
+        '200':
+          description: Integration matrix
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IntegrationMatrix'
+              example:
+                functions:
+                  - name: "validation-run"
+                    integrations:
+                      supabase_db: true
+                      ares_api: false
+                      adis_api: false
+                      mistral_ocr: false
+                      supabase_storage: false
+                    notes: "Uses cached ARES/ADIS from DB, not direct API calls"
+                  - name: "ares-validate"
+                    integrations:
+                      supabase_db: true
+                      ares_api: true
+                      adis_api: true
+                      mistral_ocr: false
+                      supabase_storage: false
+                    notes: "Primary external API orchestrator"
+                  - name: "ocr-extract"
+                    integrations:
+                      supabase_db: true
+                      ares_api: false
+                      adis_api: false
+                      mistral_ocr: true
+                      supabase_storage: true
+                    notes: "Document processing pipeline"
+                  - name: "ares-lookup"
+                    integrations:
+                      supabase_db: true
+                      ares_api: true
+                      adis_api: false
+                      mistral_ocr: false
+                      supabase_storage: false
+                    notes: "Real-time lookup with cache"
+
+  # ==========================================
+  # Validation Endpoints
+  # ==========================================
+
   /validate:
     post:
       tags:
@@ -520,6 +882,264 @@ components:
         pattern: '^[A-Z]{2,4}-[0-9]{3}$'
 
   schemas:
+    # === Architecture Documentation Schemas ===
+
+    ArchitectureOverview:
+      type: object
+      description: High-level overview of the BFF architecture
+      properties:
+        pattern_name:
+          type: string
+          description: Name of the architectural pattern
+          example: "Backend-for-Frontend (BFF)"
+        description:
+          type: string
+          description: Brief description of the architecture
+        key_principles:
+          type: array
+          description: Core architectural principles and their implementations
+          items:
+            type: object
+            properties:
+              principle:
+                type: string
+                description: Name of the principle
+              implementation:
+                type: string
+                description: How this principle is implemented
+        bff_functions:
+          type: array
+          description: List of BFF Edge Functions
+          items:
+            $ref: '#/components/schemas/BffFunctionSummary'
+        production_simulation:
+          type: object
+          description: How current setup maps to production Aures environment
+          properties:
+            description:
+              type: string
+            components_mapped:
+              type: array
+              items:
+                type: object
+                properties:
+                  current:
+                    type: string
+                    description: Current component
+                  production_equivalent:
+                    type: string
+                    description: Production equivalent
+
+    BffFunctionSummary:
+      type: object
+      description: Summary of a BFF Edge Function
+      properties:
+        name:
+          type: string
+          description: Function name
+          example: "validation-run"
+        type:
+          type: string
+          enum: [PRIMARY_BFF, SECONDARY_BFF, ASYNC_BFF, UTILITY_BFF, CRUD, SERVICE]
+          description: |
+            BFF function type:
+            - `PRIMARY_BFF` - Main aggregation function (highest complexity)
+            - `SECONDARY_BFF` - External API orchestrator
+            - `ASYNC_BFF` - Async processing handler
+            - `UTILITY_BFF` - Cached lookup service
+            - `CRUD` - Simple database CRUD
+            - `SERVICE` - Utility service
+        aggregation_level:
+          type: string
+          enum: [HIGH, MEDIUM, LOW]
+          description: Level of data aggregation complexity
+        data_sources:
+          type: array
+          items:
+            type: string
+          description: Data sources this function aggregates
+        endpoint:
+          type: string
+          description: API endpoint path
+          example: "POST /functions/v1/validation-run"
+
+    DataFlowDiagram:
+      type: object
+      description: Detailed data flow for a specific operation
+      properties:
+        flow_name:
+          type: string
+          description: Name of the flow
+          example: "validation"
+        description:
+          type: string
+          description: What this flow accomplishes
+        steps:
+          type: array
+          description: Step-by-step flow description
+          items:
+            type: object
+            properties:
+              step:
+                type: integer
+                description: Step number
+              action:
+                type: string
+                description: What happens in this step
+              source:
+                type: string
+                description: Origin of the action
+              target:
+                type: string
+                description: Destination of the action
+              data_exchanged:
+                type: string
+                description: Data moving in this step
+        sequence_diagram_mermaid:
+          type: string
+          description: Mermaid-format sequence diagram for visualization
+
+    DataSourceList:
+      type: object
+      description: List of all integrated data sources
+      properties:
+        sources:
+          type: array
+          items:
+            $ref: '#/components/schemas/DataSourceIntegration'
+
+    DataSourceIntegration:
+      type: object
+      description: Information about an integrated data source
+      properties:
+        name:
+          type: string
+          description: Human-readable name
+          example: "ARES API"
+        type:
+          type: string
+          enum: [REST_API, SOAP_API, DATABASE, STORAGE, AI_SERVICE]
+          description: |
+            Type of data source:
+            - `REST_API` - RESTful HTTP API
+            - `SOAP_API` - SOAP/XML-based API
+            - `DATABASE` - Direct database connection
+            - `STORAGE` - File/blob storage
+            - `AI_SERVICE` - AI/ML service API
+        base_url:
+          type: string
+          description: Base URL or connection info
+          example: "https://ares.gov.cz/ekonomicke-subjekty-v-be/rest"
+        used_by:
+          type: array
+          items:
+            type: string
+          description: Edge Functions that use this source
+        cache_strategy:
+          type: object
+          description: Caching configuration
+          properties:
+            enabled:
+              type: boolean
+            ttl_hours:
+              type: integer
+              nullable: true
+              description: Time-to-live in hours (null = permanent)
+            storage:
+              type: string
+              description: Where cached data is stored
+        data_provided:
+          type: array
+          items:
+            type: string
+          description: List of data fields this source provides
+        fallback_behavior:
+          type: string
+          description: What happens when this source is unavailable
+
+    DataSourceDetail:
+      type: object
+      description: Detailed information about a specific data source
+      allOf:
+        - $ref: '#/components/schemas/DataSourceIntegration'
+        - type: object
+          properties:
+            authentication:
+              type: object
+              description: How authentication is handled
+              properties:
+                method:
+                  type: string
+                  enum: [API_KEY, BEARER_TOKEN, BASIC_AUTH, NONE]
+                header_name:
+                  type: string
+            request_examples:
+              type: array
+              description: Example requests to this source
+              items:
+                type: object
+                properties:
+                  name:
+                    type: string
+                  method:
+                    type: string
+                  url:
+                    type: string
+                  description:
+                    type: string
+            response_examples:
+              type: array
+              description: Example responses from this source
+              items:
+                type: object
+                properties:
+                  name:
+                    type: string
+                  status:
+                    type: integer
+                  body:
+                    type: object
+            error_handling:
+              type: object
+              description: How errors are handled
+              properties:
+                retry_strategy:
+                  type: string
+                max_retries:
+                  type: integer
+                timeout_ms:
+                  type: integer
+
+    IntegrationMatrix:
+      type: object
+      description: Matrix showing which functions use which data sources
+      properties:
+        functions:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+                description: Edge Function name
+              integrations:
+                type: object
+                description: Boolean flags for each data source
+                properties:
+                  supabase_db:
+                    type: boolean
+                  ares_api:
+                    type: boolean
+                  adis_api:
+                    type: boolean
+                  mistral_ocr:
+                    type: boolean
+                  supabase_storage:
+                    type: boolean
+              notes:
+                type: string
+                description: Additional context about this function's integrations
+
     # === Request/Response Schemas ===
 
     ValidationRequestById:

@@ -1,24 +1,13 @@
+// Re-export vehicle types from dedicated module
+export type { Vehicle, VehicleFormInput, VehicleOCRData } from './vehicle';
+export { FUEL_TYPE_OPTIONS, VEHICLE_CATEGORY_OPTIONS, getFuelTypeLabel, getVehicleCategoryLabel } from './vehicle';
+
 export interface BuyingOpportunity {
   id: string;
   spz: string;
   status: 'DRAFT' | 'PENDING' | 'VALIDATED' | 'REJECTED';
   created_at: string;
   updated_at: string;
-}
-
-export interface Vehicle {
-  id: string;
-  buying_opportunity_id: string;
-  spz: string;
-  vin: string | null;
-  znacka: string | null;
-  model: string | null;
-  rok_vyroby: number | null;
-  datum_1_registrace: string | null;
-  majitel: string | null;
-  motor: string | null;
-  vykon_kw: number | null;
-  data_source?: 'MANUAL' | 'OCR' | 'BC_IMPORT';
 }
 
 export interface Vendor {
