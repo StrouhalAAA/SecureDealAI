@@ -1,9 +1,12 @@
 # ARES Validation Scope - SecureDeal AI MVP
 
-> **Version**: 1.0
+> **Version**: 1.1
 > **Created**: 2025-12-30
+> **Updated**: 2026-01-06
 > **Status**: ✅ APPROVED - součást MVP
 > **Purpose**: Kompletní specifikace ARES/ADIS validace pro právnické osoby (COMPANY)
+>
+> 📌 **Implementation Reference**: For the latest API integration code and Deno examples, see [`INT_02_ARES_ADIS_API.md`](../implementation/Completed/INT_02_ARES_ADIS_API.md)
 
 ---
 
@@ -753,5 +756,13 @@ Všechny validace musí být logovány:
 ---
 
 **Dokument vytvořen**: 2025-12-30
+**Aktualizován**: 2026-01-06
 **Autor**: AI osobní asistent
-**Version**: 1.0
+**Version**: 1.1
+
+### Changelog
+
+| Datum | Změna |
+|-------|-------|
+| 2026-01-06 | De-duplikace dokumentace, přidán odkaz na implementační dokument |
+| 2025-12-30 | Iniciální verze |
