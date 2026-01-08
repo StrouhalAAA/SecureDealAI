@@ -63,6 +63,7 @@
             <tr>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">SPZ</th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Prodejce</th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Vytvořeno</th>
               <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Akce</th>
             </tr>
@@ -74,6 +75,9 @@
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
                 <StatusBadge :status="opp.status" />
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-gray-700 max-w-xs truncate" :title="opp.vendors?.name || ''">
+                {{ opp.vendors?.name || '-' }}
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-gray-500">
                 {{ formatDate(opp.created_at) }}
@@ -140,13 +144,13 @@ import { useRouter } from 'vue-router';
 import { supabase } from '@/composables/useSupabase';
 import StatusBadge from '@/components/shared/StatusBadge.vue';
 import CreateOpportunityModal from '@/components/shared/CreateOpportunityModal.vue';
-import type { BuyingOpportunity } from '@/types';
+import type { BuyingOpportunity, BuyingOpportunityWithVendor } from '@/types';
 import { format } from 'date-fns';
 import { cs } from 'date-fns/locale';
 
 const router = useRouter();
 
-const opportunities = ref<BuyingOpportunity[]>([]);
+const opportunities = ref<BuyingOpportunityWithVendor[]>([]);
 const loading = ref(true);
 const error = ref<string | null>(null);
 const searchQuery = ref('');
@@ -171,7 +175,7 @@ async function fetchOpportunities() {
 
     let query = supabase
       .from('buying_opportunities')
-      .select('*', { count: 'exact' })
+      .select('*, vendors(name)', { count: 'exact' })
       .order('created_at', { ascending: false })
       .range(from, to);
 

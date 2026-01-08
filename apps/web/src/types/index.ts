@@ -10,6 +10,14 @@ export interface BuyingOpportunity {
   updated_at: string;
 }
 
+/**
+ * Extended BuyingOpportunity with joined vendor data
+ * Used in Dashboard list view for displaying vendor name
+ */
+export interface BuyingOpportunityWithVendor extends BuyingOpportunity {
+  vendors: { name: string } | null;
+}
+
 export interface Vendor {
   id: string;
   buying_opportunity_id: string;
