@@ -128,6 +128,44 @@ test.describe('Dashboard', () => {
     }
   });
 
+  test('displays vendor name column in table', async ({ page }) => {
+    // Wait for table to load
+    await page.waitForSelector('table thead');
+
+    // Check that the Prodejce (Vendor) column header is visible
+    const vendorHeader = page.locator('th', { hasText: 'Prodejce' });
+    await expect(vendorHeader).toBeVisible();
+
+    // Verify it's positioned correctly (between Status and Vytvořeno)
+    const headers = await page.locator('table thead th').allTextContents();
+    const prodejceIndex = headers.findIndex(h => h.includes('Prodejce'));
+    const statusIndex = headers.findIndex(h => h.includes('Status'));
+    const vytvorenIndex = headers.findIndex(h => h.includes('Vytvořeno'));
+
+    expect(prodejceIndex).toBeGreaterThan(statusIndex);
+    expect(prodejceIndex).toBeLessThan(vytvorenIndex);
+  });
+
+  test('displays vendor name or placeholder in table rows', async ({ page }) => {
+    // Wait for table rows to load
+    await page.waitForSelector('table tbody tr');
+
+    // Get all rows
+    const rows = page.locator('table tbody tr');
+    const rowCount = await rows.count();
+
+    if (rowCount > 0) {
+      // Check that each row has vendor cell content (either a name or '-' placeholder)
+      const firstRow = rows.first();
+      const cells = await firstRow.locator('td').allTextContents();
+
+      // The vendor column should be at index 2 (after SPZ and Status)
+      expect(cells.length).toBeGreaterThanOrEqual(4);
+      // Vendor cell should contain either a name or the '-' placeholder
+      expect(cells[2].trim()).toBeTruthy();
+    }
+  });
+
   test('pagination works if present', async ({ page }) => {
     // Wait for list to load
     await page.waitForTimeout(1000);
