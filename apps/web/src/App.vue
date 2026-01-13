@@ -12,9 +12,15 @@ const { logout, isAuthenticated } = useAuth();
       <div class="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8 flex items-center justify-between">
         <RouterLink
           to="/"
-          class="text-2xl font-bold text-gray-900 hover:text-blue-600 transition-colors cursor-pointer"
+          class="flex items-center gap-3 text-2xl font-bold text-gray-900 hover:text-blue-600 transition-colors cursor-pointer"
           aria-label="Přejít na hlavní stránku"
         >
+          <img
+            v-if="isAuthenticated"
+            src="/aaa-auto-logo.svg"
+            alt="AAA Auto logo"
+            class="h-8"
+          />
           SecureDealAI
         </RouterLink>
         <div v-if="isAuthenticated" class="flex items-center gap-4">
