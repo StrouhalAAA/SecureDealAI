@@ -105,6 +105,9 @@ function formatTime(seconds: number): string {
         </div>
         <h1 class="text-2xl font-bold text-white">SecureDealAI</h1>
         <p class="text-gray-400 mt-2">Vehicle Validation Platform</p>
+        <p class="text-gray-500 mt-3 text-sm max-w-sm mx-auto">
+          Platforma pro testování validace procesu nákupu vozidel
+        </p>
       </div>
 
       <!-- Access Code Form -->
@@ -169,9 +172,17 @@ function formatTime(seconds: number): string {
         </form>
 
         <!-- Help Text -->
-        <p class="mt-6 text-center text-sm text-gray-500">
-          Contact your administrator if you need an access code.
-        </p>
+        <div class="mt-6 text-center text-sm text-gray-500">
+          <p>Potřebujete přístupový kód?</p>
+          <p class="mt-1">
+            Kontaktujte
+            <span class="text-gray-400">Jakub Strouhal</span> –
+            <a
+              href="mailto:jakub.strouhal@aaaauto.cz"
+              class="text-blue-400 hover:text-blue-300 underline transition-colors"
+            >jakub.strouhal@aaaauto.cz</a>
+          </p>
+        </div>
       </div>
 
       <!-- Footer -->
