@@ -129,8 +129,8 @@
         </div>
       </div>
 
-    <!-- Create Modal -->
-    <CreateOpportunityModal
+    <!-- Create Wizard Modal -->
+    <CreateOpportunityWizard
       v-if="showCreateModal"
       @close="showCreateModal = false"
       @created="onOpportunityCreated"
@@ -143,7 +143,7 @@ import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { supabase } from '@/composables/useSupabase';
 import StatusBadge from '@/components/shared/StatusBadge.vue';
-import CreateOpportunityModal from '@/components/shared/CreateOpportunityModal.vue';
+import CreateOpportunityWizard, { type CreateResult } from '@/components/shared/CreateOpportunityWizard.vue';
 import type { BuyingOpportunity, BuyingOpportunityWithVendor } from '@/types';
 import { format } from 'date-fns';
 import { cs } from 'date-fns/locale';
@@ -218,9 +218,22 @@ function openCreateModal() {
   showCreateModal.value = true;
 }
 
-function onOpportunityCreated(opp: BuyingOpportunity) {
+function onOpportunityCreated(result: CreateResult) {
   showCreateModal.value = false;
-  router.push(`/opportunity/${opp.id}`);
+
+  // Navigate with query params to indicate entry method
+  const query: Record<string, string> = {
+    from: result.entryMethod,
+  };
+
+  if (result.entryMethod === 'upload' && result.ocrCompleted) {
+    query.ocr = 'completed';
+  }
+
+  router.push({
+    path: `/opportunity/${result.opportunity.id}`,
+    query,
+  });
 }
 
 function confirmDelete(opp: BuyingOpportunity) {
