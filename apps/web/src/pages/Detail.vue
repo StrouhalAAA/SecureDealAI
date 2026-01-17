@@ -107,6 +107,10 @@ const router = useRouter()
 
 const opportunityId = computed(() => route.params.id as string)
 
+// Query params for entry method from CreateOpportunityWizard
+const entryMethod = computed(() => route.query.from as string | undefined)
+const ocrStatus = computed(() => route.query.ocr as string | undefined)
+
 // Step definitions
 const steps = [
   { label: 'Vozidlo' },
@@ -119,10 +123,32 @@ const steps = [
 const data = useDetailData(opportunityId.value)
 const nav = useStepNavigation(steps)
 
+// Determine starting step based on query params and existing data
+const startingStep = computed(() => {
+  // If coming from upload with OCR completed, start at step 2 (Vendor)
+  if (entryMethod.value === 'upload' && ocrStatus.value === 'completed') {
+    return 1; // Step 2: Vendor (0-indexed)
+  }
+  // If coming from manual entry, start at step 1 (Vehicle) to add remaining fields
+  if (entryMethod.value === 'manual') {
+    return 0; // Step 1: Vehicle (0-indexed)
+  }
+  // Otherwise use the suggested step from existing data
+  return data.suggestedStartStep.value;
+})
+
 // Sync step with data on load
-watch(() => data.suggestedStartStep.value, (step) => {
+watch(() => startingStep.value, (step) => {
   nav.goToStep(step)
 }, { immediate: true })
+
+// Clear query params after initial load to avoid confusion on refresh
+onMounted(() => {
+  if (entryMethod.value || ocrStatus.value) {
+    // Replace the route without query params
+    router.replace({ path: route.path });
+  }
+})
 
 // Event handlers
 function onVehicleSaved(v: Vehicle) {
