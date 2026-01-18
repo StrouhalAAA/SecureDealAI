@@ -155,10 +155,14 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import { supabase } from '@/composables/useSupabase';
+import { useErrorHandler } from '@/composables/useErrorHandler';
 import DropZone from '@/components/ocr/DropZone.vue';
 import OcrStatus from '@/components/ocr/OcrStatus.vue';
 import QuickVehicleForm from './QuickVehicleForm.vue';
+import { parseCzechAddress, extractPowerKw } from '@/utils/addressParser';
 import type { BuyingOpportunity, OcrExtraction } from '@/types';
+
+const { handleError } = useErrorHandler();
 
 type WizardStep = 'choice' | 'upload-orv' | 'manual-entry';
 
@@ -363,10 +367,10 @@ async function createFromUpload() {
       return;
     }
 
-    // Create vehicle from OCR data
+    // Create vehicle from OCR data with all extractable fields
     const ocrData = ocrExtraction.value?.extracted_data as Record<string, unknown> | null;
     if (ocrData) {
-      await supabase.from('vehicles').insert({
+      const { error: vehicleError } = await supabase.from('vehicles').insert({
         buying_opportunity_id: opportunity.id,
         spz: spz.value.toUpperCase(),
         vin: (ocrData.vin as string) || null,
@@ -374,8 +378,45 @@ async function createFromUpload() {
         model: (ocrData.model as string) || null,
         majitel: (ocrData.keeperName as string) || null,
         datum_1_registrace: (ocrData.firstRegistrationDate as string) || null,
+        // Technical specs from OCR
+        palivo: (ocrData.fuelType as string) || null,
+        objem_motoru: (ocrData.engineCcm as number) || null,
+        vykon_kw: extractPowerKw(ocrData.maxPower as string | number | null),
+        pocet_mist: (ocrData.seats as number) || null,
+        max_rychlost: (ocrData.maxSpeed as number) || null,
+        barva: (ocrData.color as string) || null,
+        kategorie_vozidla: (ocrData.vehicleType as string) || null,
         data_source: 'OCR',
       });
+
+      if (vehicleError) {
+        console.error('Vehicle insert failed:', vehicleError);
+        throw vehicleError;
+      }
+
+      // Auto-create vendor from OCR keeper info
+      const keeperName = ocrData.keeperName as string | undefined;
+      const keeperAddress = ocrData.keeperAddress as string | undefined;
+
+      if (keeperName) {
+        const parsed = parseCzechAddress(keeperAddress);
+
+        const { error: vendorError } = await supabase.from('vendors').insert({
+          buying_opportunity_id: opportunity.id,
+          vendor_type: 'PHYSICAL_PERSON',
+          name: keeperName.toUpperCase(),
+          personal_id: null, // User must fill in VendorForm
+          address_street: parsed.street,
+          address_city: parsed.city,
+          address_postal_code: parsed.postalCode,
+          data_source: 'OCR',
+        });
+
+        if (vendorError) {
+          console.error('Vendor insert failed:', vendorError);
+          throw vendorError;
+        }
+      }
     }
 
     emit('created', {
@@ -384,7 +425,7 @@ async function createFromUpload() {
       ocrCompleted: true,
     });
   } catch (e) {
-    error.value = e instanceof Error ? e.message : 'Chyba při vytváření';
+    error.value = handleError(e, 'CreateOpportunityWizard.createFromUpload');
   } finally {
     loading.value = false;
   }
@@ -420,7 +461,7 @@ async function createFromManual(formData: ManualFormData) {
     }
 
     // Create vehicle with manual data
-    await supabase.from('vehicles').insert({
+    const { error: vehicleError } = await supabase.from('vehicles').insert({
       buying_opportunity_id: opportunity.id,
       spz: formData.spz.toUpperCase(),
       vin: formData.vin.toUpperCase() || null,
@@ -430,13 +471,18 @@ async function createFromManual(formData: ManualFormData) {
       data_source: 'MANUAL',
     });
 
+    if (vehicleError) {
+      console.error('Vehicle insert failed:', vehicleError);
+      throw vehicleError;
+    }
+
     emit('created', {
       opportunity,
       entryMethod: 'manual',
       ocrCompleted: false,
     });
   } catch (e) {
-    error.value = e instanceof Error ? e.message : 'Chyba při vytváření';
+    error.value = handleError(e, 'CreateOpportunityWizard.createFromManual');
   } finally {
     loading.value = false;
   }

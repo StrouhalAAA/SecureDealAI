@@ -139,8 +139,25 @@ export function useDetailData(opportunityId: string): UseDetailDataReturn {
   })
 
   /**
+   * Helper function to extract power in kW from maxPower string format "110/3500" or "110 / 3 500"
+   * Returns the first number (kW value) or null if parsing fails
+   */
+  function extractPowerKw(maxPower: string | number | null | undefined): number | null {
+    if (maxPower === null || maxPower === undefined) return null
+    // If already a number (from VTP), return directly
+    if (typeof maxPower === 'number') return maxPower
+    // Parse string format like "110/3500" or "110 / 3 500"
+    const match = String(maxPower).match(/^(\d+)/)
+    return match ? parseInt(match[1], 10) : null
+  }
+
+  /**
    * Extract vehicle-related OCR data from completed extractions
    * Merges data from VTP and ORV documents, preferring VTP when both exist
+   *
+   * IMPORTANT: OCR extracted_data uses English camelCase field names (fuelType, engineCcm, maxPower, seats)
+   * but this composable outputs Czech snake_case field names (palivo, objem_motoru, vykon_kw, pocet_mist)
+   * to match database column names used in VehicleForm.vue
    */
   const vehicleOCRData = computed<VehicleOCRData | null>(() => {
     if (ocrExtractions.value.length === 0) return null
@@ -156,25 +173,39 @@ export function useDetailData(opportunityId: string): UseDetailDataReturn {
     if (!vtpData && !orvData) return null
 
     // Merge data, preferring VTP values when both exist
+    // Map from OCR schema field names (camelCase) to database column names (Czech snake_case)
     return {
-      barva: (vtpData?.barva as string) || (orvData?.barva as string) || null,
-      palivo: (vtpData?.palivo as string) || (orvData?.palivo as string) || null,
-      objem_motoru: (vtpData?.objem_motoru as number) || (orvData?.objem_motoru as number) || null,
-      pocet_mist: (vtpData?.pocet_mist as number) || (orvData?.pocet_mist as number) || null,
-      max_rychlost: (vtpData?.max_rychlost as number) || (orvData?.max_rychlost as number) || null,
-      kategorie_vozidla: (vtpData?.kategorie_vozidla as string) || (orvData?.kategorie_vozidla as string) || null,
-      vykon_kw: (vtpData?.vykon_kw as number) || (orvData?.vykon_kw as number) || null,
-      karoserie: (vtpData?.karoserie as string) || null,
-      provozni_hmotnost: (vtpData?.provozni_hmotnost as number) || null,
-      povolena_hmotnost: (vtpData?.povolena_hmotnost as number) || null,
-      delka: (vtpData?.delka as number) || null,
-      sirka: (vtpData?.sirka as number) || null,
-      vyska: (vtpData?.vyska as number) || null,
-      rozvor: (vtpData?.rozvor as number) || null,
-      emise_co2: (vtpData?.emise_co2 as string) || null,
-      spotreba_paliva: (vtpData?.spotreba_paliva as string) || null,
-      emisni_norma: (vtpData?.emisni_norma as string) || null,
-      stk_platnost: (vtpData?.stk_platnost as string) || null,
+      // OCR field: color → DB column: barva
+      barva: (vtpData?.color as string) || (orvData?.color as string) || null,
+      // OCR field: fuelType → DB column: palivo
+      palivo: (vtpData?.fuelType as string) || (orvData?.fuelType as string) || null,
+      // OCR field: engineCcm → DB column: objem_motoru
+      objem_motoru: (vtpData?.engineCcm as number) || (orvData?.engineCcm as number) || null,
+      // OCR field: seats → DB column: pocet_mist
+      pocet_mist: (vtpData?.seats as number) || (orvData?.seats as number) || null,
+      // OCR field: maxSpeed → DB column: max_rychlost (not in scope but keeping for completeness)
+      max_rychlost: (vtpData?.maxSpeed as number) || (orvData?.maxSpeed as number) || null,
+      // OCR field: vehicleType → DB column: kategorie_vozidla
+      kategorie_vozidla: (vtpData?.vehicleType as string) || (orvData?.vehicleType as string) || null,
+      // OCR field: maxPower (string "110/3500") or maxPowerKw (number) → DB column: vykon_kw
+      // VTP uses maxPowerKw (number), ORV uses maxPower (string that needs parsing)
+      vykon_kw: extractPowerKw(
+        (vtpData?.maxPowerKw as number | undefined) ||
+        (vtpData?.maxPower as string | undefined) ||
+        (orvData?.maxPower as string | undefined)
+      ),
+      // VTP-only fields (already use correct field names from VTP schema)
+      karoserie: (vtpData?.bodyType as string) || null,
+      provozni_hmotnost: (vtpData?.operatingWeight as number) || null,
+      povolena_hmotnost: (vtpData?.maxPermittedWeight as number) || null,
+      delka: (vtpData?.length as number) || null,
+      sirka: (vtpData?.width as number) || null,
+      vyska: (vtpData?.height as number) || null,
+      rozvor: (vtpData?.wheelbase as number) || null,
+      emise_co2: (vtpData?.co2Emissions as string) || null,
+      spotreba_paliva: (vtpData?.fuelConsumption as string) || null,
+      emisni_norma: (vtpData?.emissionStandard as string) || null,
+      stk_platnost: (vtpData?.nextInspectionDue as string) || null,
     }
   })
 

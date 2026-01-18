@@ -483,7 +483,8 @@ async function saveAndContinue() {
   error.value = null;
 
   try {
-    const vehicleData = {
+    // Base editable fields
+    const editableData = {
       buying_opportunity_id: props.buyingOpportunityId,
       spz: form.value.spz.toUpperCase(),
       vin: form.value.vin.toUpperCase(),
@@ -495,24 +496,26 @@ async function saveAndContinue() {
       motor: form.value.motor || null,
       vykon_kw: form.value.vykon_kw,
       tachometer_km: form.value.tachometer_km,
-      data_source: 'MANUAL',
     };
 
     let result;
 
     if (vehicleId.value) {
-      // Update existing
+      // Update existing - only update editable fields, preserve OCR data
       result = await supabase
         .from('vehicles')
-        .update(vehicleData)
+        .update(editableData)
         .eq('id', vehicleId.value)
         .select()
         .single();
     } else {
-      // Create new
+      // Create new - set data_source to MANUAL
       result = await supabase
         .from('vehicles')
-        .insert(vehicleData)
+        .insert({
+          ...editableData,
+          data_source: 'MANUAL',
+        })
         .select()
         .single();
     }

@@ -92,6 +92,10 @@ const extractedDataPreview = computed(() => {
       make: data.make,
       model: data.model,
       keeperName: data.keeperName,
+      fuelType: data.fuelType,
+      engineCcm: data.engineCcm,
+      maxPower: data.maxPower,
+      seats: data.seats,
     };
   } else if (props.extraction.document_type === 'VTP') {
     return {
@@ -128,6 +132,11 @@ const fieldNameMap: Record<string, string> = {
   lastName: 'Příjmení',
   personalNumber: 'Rodné číslo',
   permanentStay: 'Trvalý pobyt',
+  // Technical vehicle fields from ORV
+  fuelType: 'Palivo',
+  engineCcm: 'Objem motoru [cm³]',
+  maxPower: 'Výkon [kW/ot.]',
+  seats: 'Počet míst',
 };
 
 function formatFieldName(key: string): string {

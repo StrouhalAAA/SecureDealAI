@@ -31,6 +31,26 @@
       </div>
     </fieldset>
 
+    <!-- OCR Data Warning Banner -->
+    <div
+      v-if="isOcrCreated && vendorType === 'PHYSICAL_PERSON' && !form.personal_id"
+      class="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg"
+      role="alert"
+    >
+      <div class="flex items-start gap-3">
+        <svg class="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        </svg>
+        <div>
+          <h4 class="font-medium text-yellow-800">Data z OCR - doplnte rodne cislo</h4>
+          <p class="text-sm text-yellow-700 mt-1">
+            Udaje dodavatele byly automaticky nacteny z technickeho prukazu.
+            Pro dokonceni je nutne doplnit rodne cislo.
+          </p>
+        </div>
+      </div>
+    </div>
+
     <form @submit.prevent="saveAndContinue" novalidate>
       <!-- COMPANY FORM -->
       <template v-if="vendorType === 'COMPANY'">
@@ -136,6 +156,9 @@
         <div class="mb-4">
           <label :for="personNameInputId" class="block text-sm font-medium text-gray-700 mb-1">
             Jmeno a prijmeni <span class="text-red-500" aria-label="povinna polozka">*</span>
+            <span v-if="isOcrCreated && autoFilled.name" class="text-blue-600 text-xs ml-2" aria-live="polite">
+              (z OCR)
+            </span>
           </label>
           <input
             :id="personNameInputId"
@@ -237,8 +260,11 @@
       <div class="mb-4">
         <label for="street-input" class="block text-sm font-medium text-gray-700 mb-1">
           Ulice
-          <span v-if="autoFilled.address" class="text-green-600 text-xs ml-2" aria-live="polite">
+          <span v-if="autoFilled.address && !isOcrCreated" class="text-green-600 text-xs ml-2" aria-live="polite">
             (vyplneno z ARES)
+          </span>
+          <span v-else-if="isOcrCreated && autoFilled.address" class="text-blue-600 text-xs ml-2" aria-live="polite">
+            (z OCR)
           </span>
         </label>
         <input
@@ -544,6 +570,9 @@ const autoFilled = ref({
   address: false,
   bank_account: false,
 });
+
+// Track if vendor was created from OCR
+const isOcrCreated = ref(false);
 
 // Registered bank accounts from ADIS
 const registeredBankAccounts = ref<string[]>([]);
@@ -876,6 +905,18 @@ onMounted(async () => {
       bank_account: props.existingVendor.bank_account || '',
     };
 
+    // Check if vendor was created from OCR
+    if (props.existingVendor.data_source === 'OCR') {
+      isOcrCreated.value = true;
+      // Mark OCR-filled fields
+      autoFilled.value = {
+        name: !!props.existingVendor.name,
+        vat_id: false,
+        address: !!(props.existingVendor.address_street || props.existingVendor.address_city),
+        bank_account: false,
+      };
+    }
+
     // Mark all fields as touched for existing data
     nameTouched.value = true;
     cityTouched.value = true;
@@ -883,7 +924,10 @@ onMounted(async () => {
     if (props.existingVendor.vendor_type === 'COMPANY') {
       icoTouched.value = true;
     } else {
-      rcTouched.value = true;
+      // Only mark RC as touched if it has a value (OCR vendors may not have it)
+      if (props.existingVendor.personal_id) {
+        rcTouched.value = true;
+      }
     }
 
     // Restore ARES verification state
