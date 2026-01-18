@@ -2,6 +2,16 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import CreateOpportunityWizard from '../CreateOpportunityWizard.vue'
 
+// Mock useErrorHandler to avoid Pinia dependency
+vi.mock('@/composables/useErrorHandler', () => ({
+  useErrorHandler: () => ({
+    handleError: vi.fn(() => 'Mocked error'),
+    handleApiError: vi.fn(),
+    shouldRedirect: vi.fn(() => ({ redirect: false })),
+    isRetryable: vi.fn(() => false),
+  })
+}))
+
 // Mock Supabase
 vi.mock('@/composables/useSupabase', () => ({
   supabase: {
