@@ -104,6 +104,7 @@ export type ORVExtractionResult = {
   vin?: string;
   firstRegistrationDate?: string;
   keeperName?: string;
+  keeperParsedName?: string;
   keeperAddress?: string;
   keeperIdentifier?: string;
   // Derived vendor fields (added by transformer)

@@ -370,13 +370,16 @@ async function createFromUpload() {
     // Create vehicle from OCR data with all extractable fields
     const ocrData = ocrExtraction.value?.extracted_data as Record<string, unknown> | null;
     if (ocrData) {
+      // Use parsed name if available, fallback to raw keeperName
+      const keeperDisplayName = (ocrData.keeperParsedName as string) || (ocrData.keeperName as string) || null;
+
       const { error: vehicleError } = await supabase.from('vehicles').insert({
         buying_opportunity_id: opportunity.id,
         spz: spz.value.toUpperCase(),
         vin: (ocrData.vin as string) || null,
         znacka: (ocrData.make as string) || null,
         model: (ocrData.model as string) || null,
-        majitel: (ocrData.keeperName as string) || null,
+        majitel: keeperDisplayName,
         datum_1_registrace: (ocrData.firstRegistrationDate as string) || null,
         // Technical specs from OCR
         palivo: (ocrData.fuelType as string) || null,
@@ -396,18 +399,22 @@ async function createFromUpload() {
 
       // Auto-create vendor from OCR keeper info with vendor type detection
       const keeperName = ocrData.keeperName as string | undefined;
+      const keeperParsedName = ocrData.keeperParsedName as string | undefined;
       const keeperAddress = ocrData.keeperAddress as string | undefined;
       const keeperVendorType = (ocrData.keeperVendorType as 'PHYSICAL_PERSON' | 'COMPANY') || 'PHYSICAL_PERSON';
       const keeperPersonalId = ocrData.keeperPersonalId as string | undefined;
       const keeperCompanyId = ocrData.keeperCompanyId as string | undefined;
 
-      if (keeperName) {
+      // Use parsed name if available, fallback to raw keeperName
+      const vendorDisplayName = keeperParsedName || keeperName;
+
+      if (vendorDisplayName) {
         const parsed = parseCzechAddress(keeperAddress);
 
         const { error: vendorError } = await supabase.from('vendors').insert({
           buying_opportunity_id: opportunity.id,
           vendor_type: keeperVendorType,
-          name: keeperName.toUpperCase(),
+          name: vendorDisplayName.toUpperCase(),
           personal_id: keeperVendorType === 'PHYSICAL_PERSON' ? (keeperPersonalId || null) : null,
           company_id: keeperVendorType === 'COMPANY' ? (keeperCompanyId || null) : null,
           address_street: parsed.street,
