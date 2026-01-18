@@ -72,6 +72,32 @@ EXACT, FUZZY (Levenshtein), CONTAINS, REGEX, NUMERIC_TOLERANCE, DATE_TOLERANCE, 
 - `docs/architecture/VALIDATION_BACKEND_ARCHITECTURE.md` - Backend design
 - `docs/architecture/RULE_MANAGEMENT_API.md` - REST API specifications
 - `docs/architecture/DB_SCHEMA_DYNAMIC_RULES.sql` - PostgreSQL schema
+- `docs/architecture/FIELD_NAMING_CONVENTIONS.md` - **OCR ↔ Database field mapping**
+
+## Field Naming Conventions (IMPORTANT)
+
+The application uses two naming conventions that must be translated:
+
+| Layer | Convention | Example |
+|-------|------------|---------|
+| OCR Schema (Mistral API) | English camelCase | `fuelType`, `engineCcm` |
+| Database/Frontend | Czech snake_case | `palivo`, `objem_motoru` |
+
+**Translation Layer**: `apps/web/src/composables/useDetailData.ts` (vehicleOCRData computed)
+
+When adding new OCR fields:
+1. Add to OCR schema using camelCase
+2. Add database column using Czech snake_case
+3. Update translation in `useDetailData.ts`
+4. Document in `FIELD_NAMING_CONVENTIONS.md`
+
+Quick reference:
+```
+fuelType → palivo       | engineCcm → objem_motoru
+maxPower → vykon_kw     | seats → pocet_mist
+maxSpeed → max_rychlost | color → barva
+vehicleType → kategorie_vozidla
+```
 
 ## Database Tables
 
