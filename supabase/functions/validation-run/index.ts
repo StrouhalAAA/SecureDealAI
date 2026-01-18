@@ -136,6 +136,29 @@ async function loadValidationData(
     }
   }
 
+  // Load MVCR Invalid Documents data if physical person vendor with document_number
+  let mvcrData = null;
+
+  if (vendor?.vendor_type === 'PHYSICAL_PERSON' && vendor?.document_number) {
+    const { data: mvcr } = await supabase
+      .from('mvcr_document_validations')
+      .select('is_valid, is_invalid_document, check_status, mvcr_checked_at')
+      .eq('buying_opportunity_id', buyingOpportunityId)
+      .eq('document_number', vendor.document_number)
+      .order('mvcr_checked_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (mvcr) {
+      mvcrData = {
+        is_valid: mvcr.is_valid,
+        is_invalid_document: mvcr.is_invalid_document,
+        check_status: mvcr.check_status,
+        checked_at: mvcr.mvcr_checked_at,
+      };
+    }
+  }
+
   const inputData: ValidationInputData = {
     vehicle: vehicle ?? undefined,
     vendor: vendor ?? undefined,
@@ -144,6 +167,7 @@ async function loadValidationData(
     ocr_vtp: ocrVtp ?? undefined,
     ares: aresData ?? undefined,
     adis: adisData ?? undefined,
+    mvcr_invalid_docs: mvcrData ?? undefined,
   };
 
   console.log(`[DataLoader] Data loaded successfully`);
@@ -153,6 +177,7 @@ async function loadValidationData(
   console.log(`[DataLoader] - OCR OP: ${inputData.ocr_op ? 'yes' : 'no'}`);
   console.log(`[DataLoader] - OCR VTP: ${inputData.ocr_vtp ? 'yes' : 'no'}`);
   console.log(`[DataLoader] - ARES: ${inputData.ares ? 'yes' : 'no'}`);
+  console.log(`[DataLoader] - MVCR: ${inputData.mvcr_invalid_docs ? 'yes' : 'no'}`);
 
   return inputData;
 }

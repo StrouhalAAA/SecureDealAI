@@ -22,6 +22,7 @@ export type EntityType =
   | 'adis'
   | 'cebia'
   | 'dolozky'
+  | 'mvcr_invalid_docs'   // MVCR Invalid Documents registry
   | 'system';  // System entity for runtime values (validation_date, etc.)
 
 export type TransformType =
@@ -321,6 +322,17 @@ export interface DolozkyData {
 }
 
 /**
+ * MVCR Invalid Documents registry data
+ * Checks if ID card is in the lost/stolen/revoked registry
+ */
+export interface MvcrInvalidDocsData {
+  is_valid?: boolean;              // true = document NOT in invalid list (good)
+  is_invalid_document?: boolean;   // true = found in MVCR invalid list (bad)
+  check_status?: 'SUCCESS' | 'API_ERROR' | 'TIMEOUT' | 'INVALID_RESPONSE';
+  checked_at?: string;
+}
+
+/**
  * System runtime data - populated automatically by the validation engine
  */
 export interface SystemData {
@@ -345,6 +357,7 @@ export interface ValidationInputData {
   adis?: AdisData;
   cebia?: CebiaData;
   dolozky?: DolozkyData;
+  mvcr_invalid_docs?: MvcrInvalidDocsData;  // MVCR Invalid Documents check
   system?: SystemData;     // Runtime system data (validation_date, etc.)
 }
 
@@ -466,6 +479,7 @@ export const DEFAULT_ENGINE_CONFIG: EngineConfig = {
     adis: 14400,        // 4 hours
     cebia: 86400,
     dolozky: 86400,
+    mvcr_invalid_docs: 86400,  // 1 day
     system: 0,          // No caching - runtime generated
   },
 };

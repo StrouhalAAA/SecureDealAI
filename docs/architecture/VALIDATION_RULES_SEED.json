@@ -765,6 +765,46 @@
       }
     },
     {
+      "id": "DOC-001",
+      "name": "ID Card Validity Check (MVCR)",
+      "description": "Verify vendor ID card is not in MVCR invalid documents registry (lost/stolen/revoked)",
+      "enabled": true,
+      "source": {
+        "entity": "vendor",
+        "field": "document_number",
+        "transforms": ["REMOVE_SPACES"]
+      },
+      "target": {
+        "entity": "mvcr_invalid_docs",
+        "field": "is_valid"
+      },
+      "comparison": {
+        "type": "EXISTS"
+      },
+      "severity": "CRITICAL",
+      "blockOnFail": true,
+      "conditions": {
+        "operator": "AND",
+        "conditions": [
+          { "field": "vendor.vendor_type", "operator": "EQUALS", "value": "PHYSICAL_PERSON" },
+          { "field": "vendor.document_number", "operator": "EXISTS", "value": true }
+        ]
+      },
+      "errorMessage": {
+        "cs": "Občanský průkaz je evidován jako neplatný v registru MVČR (ztracený/odcizený/zneplatněný)",
+        "en": "ID card is listed as invalid in the MVCR registry (lost/stolen/revoked)"
+      },
+      "metadata": {
+        "category": "vendor_fo",
+        "phase": "mvp",
+        "requiresDocuments": [1],
+        "applicableTo": ["PHYSICAL_PERSON"],
+        "applicableToBuyingType": ["BRANCH"],
+        "priority": 9,
+        "tags": ["critical", "id-verification", "mvcr", "document-validity"]
+      }
+    },
+    {
       "id": "XV-001",
       "name": "Vehicle Owner = Vendor",
       "description": "Vehicle owner from ORV must match vendor name",
@@ -1446,35 +1486,36 @@
     }
   ],
   "summary": {
-    "total": 39,
+    "total": 40,
     "byPhase": {
-      "mvp": 25,
+      "mvp": 26,
       "phase2": 10,
       "phase7": 4
     },
     "byCategory": {
       "vehicle": 17,
-      "vendor_fo": 11,
+      "vendor_fo": 12,
       "vendor_po": 9,
       "cross": 2
     },
     "bySeverity": {
-      "CRITICAL": 21,
+      "CRITICAL": 22,
       "WARNING": 14,
       "INFO": 4
     },
     "byBuyingType": {
-      "BRANCH": 39,
+      "BRANCH": 40,
       "MOBILE_BUYING": 4
     },
-    "enabled": 29,
+    "enabled": 30,
     "disabled": 10,
     "notes": [
       "VTP rules (VTP-001 to VTP-004) are conditional - only apply when VTP document is uploaded",
       "All MVP rules default to BRANCH buying type. MOBILE_BUYING rules to be added in Phase 2.",
       "Rules without explicit applicableToBuyingType apply to all buying types (backward compatible).",
       "Document Type IDs: 63=ORV (Malý technický průkaz), 1=OP (Občanský průkaz), VTP group=[21,116]",
-      "Phase 7 rules (VEH-010 to VEH-013) include fraud detection and cross-document validation"
+      "Phase 7 rules (VEH-010 to VEH-013) include fraud detection and cross-document validation",
+      "DOC-001 uses MVCR Invalid Documents API to verify ID cards are not lost/stolen/revoked"
     ]
   }
 }
