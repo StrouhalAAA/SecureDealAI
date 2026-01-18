@@ -230,11 +230,12 @@ export function useDetailData(opportunityId: string): UseDetailDataReturn {
     if (!orvData && !vtpData) return null
 
     // Prefer ORV keeper data, fallback to VTP owner for IČO
+    // Use parsed name if available (without ICO suffix), fallback to raw keeperName
     return {
       vendor_type: (orvData?.keeperVendorType as 'PHYSICAL_PERSON' | 'COMPANY') || 'PHYSICAL_PERSON',
       personal_id: (orvData?.keeperPersonalId as string) || null,
       company_id: (orvData?.keeperCompanyId as string) || (vtpData?.ownerIco as string) || null,
-      name: (orvData?.keeperName as string) || (vtpData?.ownerName as string) || null,
+      name: (orvData?.keeperParsedName as string) || (orvData?.keeperName as string) || (vtpData?.ownerName as string) || null,
       address: (orvData?.keeperAddress as string) || (vtpData?.ownerAddress as string) || null,
       identifier_valid: (orvData?.keeperIdentifierValid as boolean) || false,
     }

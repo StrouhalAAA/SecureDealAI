@@ -205,10 +205,12 @@ function extractVendorDataFromORV(
   keeperPersonalId: string | null;
   keeperCompanyId: string | null;
   keeperIdentifierValid: boolean;
+  keeperParsedName: string | null;
 } {
   // First try to use the explicitly extracted keeperIdentifier
   let identifier = keeperIdentifier?.replace(/\D/g, '') || null;
   let name = keeperName || '';
+  let parsedName: string | null = null;
 
   // If no explicit identifier, try parsing from keeperName format "NAME/IDENTIFIER"
   if (!identifier && keeperName) {
@@ -216,6 +218,13 @@ function extractVendorDataFromORV(
     if (parsed.identifier) {
       identifier = parsed.identifier;
       name = parsed.name;
+      parsedName = parsed.name;
+    }
+  } else if (keeperName) {
+    // Even with explicit identifier, try to parse name portion from keeperName
+    const parsed = parseKeeperNameIdentifier(keeperName);
+    if (parsed.name && parsed.name !== keeperName) {
+      parsedName = parsed.name;
     }
   }
 
@@ -248,6 +257,7 @@ function extractVendorDataFromORV(
     keeperPersonalId: personalId,
     keeperCompanyId: companyId,
     keeperIdentifierValid: identifierValid,
+    keeperParsedName: parsedName,
   };
 }
 
@@ -268,6 +278,7 @@ export function transformORVData(
     vin: normalizeVin(raw.vin as string),
     firstRegistrationDate: normalizeDate(raw.firstRegistrationDate as string),
     keeperName,
+    keeperParsedName: vendorData.keeperParsedName || undefined,
     keeperAddress: normalizeText(raw.keeperAddress as string),
     keeperIdentifier,
     // Vendor-related fields derived from keeper info
