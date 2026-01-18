@@ -394,18 +394,22 @@ async function createFromUpload() {
         throw vehicleError;
       }
 
-      // Auto-create vendor from OCR keeper info
+      // Auto-create vendor from OCR keeper info with vendor type detection
       const keeperName = ocrData.keeperName as string | undefined;
       const keeperAddress = ocrData.keeperAddress as string | undefined;
+      const keeperVendorType = (ocrData.keeperVendorType as 'PHYSICAL_PERSON' | 'COMPANY') || 'PHYSICAL_PERSON';
+      const keeperPersonalId = ocrData.keeperPersonalId as string | undefined;
+      const keeperCompanyId = ocrData.keeperCompanyId as string | undefined;
 
       if (keeperName) {
         const parsed = parseCzechAddress(keeperAddress);
 
         const { error: vendorError } = await supabase.from('vendors').insert({
           buying_opportunity_id: opportunity.id,
-          vendor_type: 'PHYSICAL_PERSON',
+          vendor_type: keeperVendorType,
           name: keeperName.toUpperCase(),
-          personal_id: null, // User must fill in VendorForm
+          personal_id: keeperVendorType === 'PHYSICAL_PERSON' ? (keeperPersonalId || null) : null,
+          company_id: keeperVendorType === 'COMPANY' ? (keeperCompanyId || null) : null,
           address_street: parsed.street,
           address_city: parsed.city,
           address_postal_code: parsed.postalCode,

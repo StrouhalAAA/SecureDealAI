@@ -27,11 +27,15 @@ export const ORV_EXTRACTION_SCHEMA = {
       // Keeper/Operator Info
       keeperName: {
         type: "string",
-        description: "C.1.1./C.1.2. PROVOZOVATEL - Name of the vehicle keeper/operator (person or company)"
+        description: "C.1.1./C.1.2. PROVOZOVATEL - Name of the vehicle keeper/operator (person or company). Format may be 'NAME/IDENTIFIER' where identifier is Rodné číslo (8-10 digits) for physical person or IČO (8 digits) for company"
       },
       keeperAddress: {
         type: "string",
         description: "C.1.3. ADRESA POBYTU/SÍDLO - Address of the keeper (street, city, postal code)"
+      },
+      keeperIdentifier: {
+        type: "string",
+        description: "C.1.1./C.1.2. PROVOZOVATEL - The identifier after '/' in the keeper field. Rodné číslo (8-10 digits) for physical person (FO) or IČO (8 digits) for company (PO)"
       },
 
       // Vehicle Specifications
@@ -101,6 +105,12 @@ export type ORVExtractionResult = {
   firstRegistrationDate?: string;
   keeperName?: string;
   keeperAddress?: string;
+  keeperIdentifier?: string;
+  // Derived vendor fields (added by transformer)
+  keeperVendorType?: 'PHYSICAL_PERSON' | 'COMPANY';
+  keeperPersonalId?: string | null;
+  keeperCompanyId?: string | null;
+  keeperIdentifierValid?: boolean;
   make?: string;
   model?: string;
   makeTypeVariantVersion?: string;

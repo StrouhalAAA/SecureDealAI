@@ -2,6 +2,19 @@
 export type { Vehicle, VehicleFormInput, VehicleOCRData } from './vehicle';
 export { FUEL_TYPE_OPTIONS, VEHICLE_CATEGORY_OPTIONS, getFuelTypeLabel, getVehicleCategoryLabel } from './vehicle';
 
+/**
+ * Vendor OCR Data extracted from ORV/VTP documents
+ * Used for pre-filling vendor forms with OCR-extracted identity information
+ */
+export interface VendorOCRData {
+  vendor_type: 'PHYSICAL_PERSON' | 'COMPANY';
+  personal_id: string | null;
+  company_id: string | null;
+  name: string | null;
+  address: string | null;
+  identifier_valid: boolean;
+}
+
 export interface BuyingOpportunity {
   id: string;
   spz: string;

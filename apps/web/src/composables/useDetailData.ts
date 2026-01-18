@@ -1,6 +1,6 @@
 import { ref, computed, type Ref, type ComputedRef } from 'vue'
 import { supabase } from '@/composables/useSupabase'
-import type { BuyingOpportunity, Vehicle, Vendor, ValidationResult, VehicleOCRData, OcrExtraction } from '@/types'
+import type { BuyingOpportunity, Vehicle, Vendor, ValidationResult, VehicleOCRData, VendorOCRData, OcrExtraction } from '@/types'
 
 export interface UseDetailDataReturn {
   // State
@@ -12,6 +12,7 @@ export interface UseDetailDataReturn {
   validationResult: Ref<ValidationResult | null>
   ocrExtractions: Ref<OcrExtraction[]>
   vehicleOCRData: ComputedRef<VehicleOCRData | null>
+  vendorOCRData: ComputedRef<VendorOCRData | null>
 
   // Actions
   loadData: () => Promise<void>
@@ -209,6 +210,36 @@ export function useDetailData(opportunityId: string): UseDetailDataReturn {
     }
   })
 
+  /**
+   * Extract vendor-related OCR data from completed extractions
+   * Uses ORV for keeper info and VTP for owner IČO as fallback
+   *
+   * Maps from OCR schema field names to database-aligned field names
+   */
+  const vendorOCRData = computed<VendorOCRData | null>(() => {
+    if (ocrExtractions.value.length === 0) return null
+
+    // Find ORV and VTP extractions
+    const orv = ocrExtractions.value.find(e => e.document_type === 'ORV')
+    const vtp = ocrExtractions.value.find(e => e.document_type === 'VTP')
+
+    // Get extracted data objects
+    const orvData = orv?.extracted_data as Record<string, unknown> | null
+    const vtpData = vtp?.extracted_data as Record<string, unknown> | null
+
+    if (!orvData && !vtpData) return null
+
+    // Prefer ORV keeper data, fallback to VTP owner for IČO
+    return {
+      vendor_type: (orvData?.keeperVendorType as 'PHYSICAL_PERSON' | 'COMPANY') || 'PHYSICAL_PERSON',
+      personal_id: (orvData?.keeperPersonalId as string) || null,
+      company_id: (orvData?.keeperCompanyId as string) || (vtpData?.ownerIco as string) || null,
+      name: (orvData?.keeperName as string) || (vtpData?.ownerName as string) || null,
+      address: (orvData?.keeperAddress as string) || (vtpData?.ownerAddress as string) || null,
+      identifier_valid: (orvData?.keeperIdentifierValid as boolean) || false,
+    }
+  })
+
   return {
     loading,
     error,
@@ -218,6 +249,7 @@ export function useDetailData(opportunityId: string): UseDetailDataReturn {
     validationResult,
     ocrExtractions,
     vehicleOCRData,
+    vendorOCRData,
     loadData,
     setVehicle,
     setVendor,

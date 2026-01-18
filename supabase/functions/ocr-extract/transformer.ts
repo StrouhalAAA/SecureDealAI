@@ -8,6 +8,12 @@
 import type { ORVExtractionResult } from "./schemas/orv-schema.ts";
 import type { OPExtractionResult } from "./schemas/op-schema.ts";
 import type { VTPExtractionResult } from "./schemas/vtp-schema.ts";
+import {
+  parseKeeperNameIdentifier,
+  detectVendorType,
+  validateRodneCislo,
+  validateIco,
+} from "./vendor-parser.ts";
 
 // =============================================================================
 // EXTENDED VEHICLE DATA TYPES (Phase 7)
@@ -188,17 +194,87 @@ function normalizeSex(sex: string | undefined | null): "M" | "F" | string {
 // =============================================================================
 
 /**
+ * Extract vendor data from ORV keeper information
+ * Parses the keeper field to extract name, identifier, and vendor type
+ */
+function extractVendorDataFromORV(
+  keeperName: string | null | undefined,
+  keeperIdentifier: string | null | undefined
+): {
+  keeperVendorType: 'PHYSICAL_PERSON' | 'COMPANY';
+  keeperPersonalId: string | null;
+  keeperCompanyId: string | null;
+  keeperIdentifierValid: boolean;
+} {
+  // First try to use the explicitly extracted keeperIdentifier
+  let identifier = keeperIdentifier?.replace(/\D/g, '') || null;
+  let name = keeperName || '';
+
+  // If no explicit identifier, try parsing from keeperName format "NAME/IDENTIFIER"
+  if (!identifier && keeperName) {
+    const parsed = parseKeeperNameIdentifier(keeperName);
+    if (parsed.identifier) {
+      identifier = parsed.identifier;
+      name = parsed.name;
+    }
+  }
+
+  // Detect vendor type based on name patterns and identifier length
+  const detection = detectVendorType(name, identifier);
+
+  // Validate identifier based on detected type
+  let personalId: string | null = null;
+  let companyId: string | null = null;
+  let identifierValid = false;
+
+  if (identifier) {
+    if (detection.vendorType === 'COMPANY') {
+      const icoResult = validateIco(identifier);
+      if (icoResult.valid) {
+        companyId = icoResult.normalized;
+        identifierValid = true;
+      }
+    } else {
+      const rcResult = validateRodneCislo(identifier);
+      if (rcResult.valid) {
+        personalId = rcResult.normalized;
+        identifierValid = true;
+      }
+    }
+  }
+
+  return {
+    keeperVendorType: detection.vendorType,
+    keeperPersonalId: personalId,
+    keeperCompanyId: companyId,
+    keeperIdentifierValid: identifierValid,
+  };
+}
+
+/**
  * Transform raw ORV OCR data to normalized structure
  */
 export function transformORVData(
   raw: Record<string, unknown>
 ): ORVExtractionResult {
+  const keeperName = normalizeText(raw.keeperName as string);
+  const keeperIdentifier = normalizeOptionalText(raw.keeperIdentifier as string);
+
+  // Extract vendor data from keeper information
+  const vendorData = extractVendorDataFromORV(keeperName, keeperIdentifier);
+
   return {
     registrationPlateNumber: normalizeSpz(raw.registrationPlateNumber as string),
     vin: normalizeVin(raw.vin as string),
     firstRegistrationDate: normalizeDate(raw.firstRegistrationDate as string),
-    keeperName: normalizeText(raw.keeperName as string),
+    keeperName,
     keeperAddress: normalizeText(raw.keeperAddress as string),
+    keeperIdentifier,
+    // Vendor-related fields derived from keeper info
+    keeperVendorType: vendorData.keeperVendorType,
+    keeperPersonalId: vendorData.keeperPersonalId,
+    keeperCompanyId: vendorData.keeperCompanyId,
+    keeperIdentifierValid: vendorData.keeperIdentifierValid,
     make: normalizeOptionalText(raw.make as string),
     model: normalizeOptionalText(raw.model as string),
     makeTypeVariantVersion: normalizeOptionalText(

@@ -31,7 +31,7 @@
       </div>
     </fieldset>
 
-    <!-- OCR Data Warning Banner -->
+    <!-- OCR Data Warning Banner - Physical Person missing RC -->
     <div
       v-if="isOcrCreated && vendorType === 'PHYSICAL_PERSON' && !form.personal_id"
       class="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg"
@@ -51,6 +51,45 @@
       </div>
     </div>
 
+    <!-- OCR Data Warning Banner - Company missing ICO -->
+    <div
+      v-if="isOcrCreated && vendorType === 'COMPANY' && !form.company_id"
+      class="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg"
+      role="alert"
+    >
+      <div class="flex items-start gap-3">
+        <svg class="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        </svg>
+        <div>
+          <h4 class="font-medium text-yellow-800">Data z OCR - doplnte ICO</h4>
+          <p class="text-sm text-yellow-700 mt-1">
+            Dodavatel byl identifikovan jako pravnicka osoba z technickeho prukazu.
+            Pro dokonceni je nutne doplnit ICO.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- OCR Data Success Banner - Company ICO pre-filled -->
+    <div
+      v-if="isOcrCreated && vendorType === 'COMPANY' && form.company_id && !aresVerified"
+      class="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg"
+      role="status"
+    >
+      <div class="flex items-start gap-3">
+        <svg class="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <div>
+          <h4 class="font-medium text-blue-800">ICO nacteno z OCR</h4>
+          <p class="text-sm text-blue-700 mt-1">
+            ICO bylo automaticky extrahováno z dokumentu. Overeni v ARES probehne automaticky.
+          </p>
+        </div>
+      </div>
+    </div>
+
     <form @submit.prevent="saveAndContinue" novalidate>
       <!-- COMPANY FORM -->
       <template v-if="vendorType === 'COMPANY'">
@@ -58,6 +97,9 @@
         <div class="mb-4">
           <label :for="icoInputId" class="block text-sm font-medium text-gray-700 mb-1">
             ICO <span class="text-red-500" aria-label="povinna polozka">*</span>
+            <span v-if="isOcrCreated && form.company_id && autoFilled.company_id" class="text-blue-600 text-xs ml-2" aria-live="polite">
+              (z OCR)
+            </span>
           </label>
           <div class="flex flex-col sm:flex-row gap-2">
             <input
@@ -569,6 +611,8 @@ const autoFilled = ref({
   vat_id: false,
   address: false,
   bank_account: false,
+  company_id: false,
+  personal_id: false,
 });
 
 // Track if vendor was created from OCR
@@ -674,7 +718,7 @@ function onIcoInput() {
     aresMessage.value = '';
     aresVerified.value = false;
     aresVerifiedAt.value = null;
-    autoFilled.value = { name: false, vat_id: false, address: false, bank_account: false };
+    autoFilled.value = { name: false, vat_id: false, address: false, bank_account: false, company_id: false, personal_id: false };
     registeredBankAccounts.value = [];
     bankAccountSource.value = 'manual';
   }
@@ -866,7 +910,7 @@ watch(vendorType, async () => {
   aresMessage.value = '';
   aresVerified.value = false;
   aresVerifiedAt.value = null;
-  autoFilled.value = { name: false, vat_id: false, address: false, bank_account: false };
+  autoFilled.value = { name: false, vat_id: false, address: false, bank_account: false, company_id: false, personal_id: false };
   registeredBankAccounts.value = [];
   bankAccountSource.value = 'manual';
 
@@ -914,6 +958,8 @@ onMounted(async () => {
         vat_id: false,
         address: !!(props.existingVendor.address_street || props.existingVendor.address_city),
         bank_account: false,
+        company_id: !!props.existingVendor.company_id,
+        personal_id: !!props.existingVendor.personal_id,
       };
     }
 
@@ -943,6 +989,14 @@ onMounted(async () => {
   await nextTick();
   if (vendorType.value === 'COMPANY') {
     icoInputRef.value?.focus();
+
+    // Auto-trigger ARES lookup if company IČO was pre-filled from OCR
+    if (isOcrCreated.value && form.value.company_id && isValidIco.value && !aresVerified.value) {
+      // Small delay to ensure UI is ready
+      setTimeout(() => {
+        lookupAres();
+      }, 500);
+    }
   } else {
     personNameInputRef.value?.focus();
   }

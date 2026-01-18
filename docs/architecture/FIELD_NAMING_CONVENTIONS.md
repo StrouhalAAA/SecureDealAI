@@ -43,7 +43,12 @@ The application uses different naming conventions across layers due to:
 
 | Czech Document Field | OCR Schema | Database Column | Notes |
 |---------------------|------------|-----------------|-------|
-| C.1.1/C.1.2 PROVOZOVATEL | `keeperName` | `majitel` (vehicle) | Format: "NAME/ID" |
+| C.1.1/C.1.2 PROVOZOVATEL | `keeperName` | `majitel` (vehicle) / `name` (vendor) | Format: "NAME/ID" |
+| C.1.1/C.1.2 (identifier) | `keeperIdentifier` | `personal_id` or `company_id` (vendor) | Parsed from "NAME/ID" format |
+| (detected) | `keeperVendorType` | `vendor_type` (vendor) | 'PHYSICAL_PERSON' or 'COMPANY' |
+| (validated) | `keeperPersonalId` | `personal_id` (vendor) | Normalized Rodné číslo if FO |
+| (validated) | `keeperCompanyId` | `company_id` (vendor) | Normalized IČO if PO |
+| (validation status) | `keeperIdentifierValid` | - | Boolean: identifier passed validation |
 | C.1.3 ADRESA | `keeperAddress` | → vendor table | Street, postal, city |
 
 ---
@@ -189,7 +194,11 @@ The validation rules use explicit field paths that respect both naming conventio
 │ maxSpeed        → max_rychlost                                  │
 │ color           → barva                                         │
 │ vehicleType     → kategorie_vozidla                             │
-│ keeperName      → majitel (vehicle) / jmeno (vendor)           │
+│ keeperName      → majitel (vehicle) / name (vendor)            │
+│ keeperIdentifier → personal_id or company_id (vendor)          │
+│ keeperVendorType → vendor_type (vendor)                        │
+│ keeperPersonalId → personal_id (vendor)                        │
+│ keeperCompanyId  → company_id (vendor)                         │
 │ keeperAddress   → adresa (vendor)                               │
 │ make            → znacka                                        │
 │ model           → model (same)                                  │
