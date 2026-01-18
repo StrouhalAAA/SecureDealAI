@@ -147,24 +147,21 @@
         </p>
       </div>
 
-      <!-- Row 5: Engine + Power -->
+      <!-- Row 5: Fuel Type + Power -->
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
         <div>
-          <label for="motor-select" class="block text-sm font-medium text-gray-700 mb-1">
-            Motor
+          <label for="palivo-select" class="block text-sm font-medium text-gray-700 mb-1">
+            Palivo
           </label>
           <select
-            id="motor-select"
-            v-model="form.motor"
+            id="palivo-select"
+            v-model="form.palivo"
             class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           >
             <option value="">-- Vyberte --</option>
-            <option value="benzin">Benzin</option>
-            <option value="nafta">Nafta</option>
-            <option value="elektro">Elektro</option>
-            <option value="hybrid">Hybrid</option>
-            <option value="LPG">LPG</option>
-            <option value="CNG">CNG</option>
+            <option v-for="option in FUEL_TYPE_OPTIONS" :key="option.value" :value="option.value">
+              {{ option.label }}
+            </option>
           </select>
         </div>
         <div>
@@ -353,7 +350,7 @@ import { supabase } from '@/composables/useSupabase';
 import { useErrorHandler } from '@/composables/useErrorHandler';
 import LoadingButton from '@/components/shared/LoadingButton.vue';
 import type { Vehicle, VehicleOCRData } from '@/types';
-import { getFuelTypeLabel } from '@/types';
+import { getFuelTypeLabel, FUEL_TYPE_OPTIONS } from '@/types';
 
 const props = defineProps<{
   buyingOpportunityId: string;
@@ -393,7 +390,7 @@ const form = ref({
   rok_vyroby: null as number | null,
   datum_1_registrace: '',
   majitel: '',
-  motor: '',
+  palivo: '',
   vykon_kw: null as number | null,
   tachometer_km: null as number | null,
 });
@@ -493,7 +490,7 @@ async function saveAndContinue() {
       rok_vyroby: form.value.rok_vyroby,
       datum_1_registrace: form.value.datum_1_registrace || null,
       majitel: form.value.majitel.toUpperCase(),
-      motor: form.value.motor || null,
+      palivo: form.value.palivo || null,
       vykon_kw: form.value.vykon_kw,
       tachometer_km: form.value.tachometer_km,
     };
@@ -544,7 +541,7 @@ onMounted(async () => {
       rok_vyroby: props.existingVehicle.rok_vyroby ?? null,
       datum_1_registrace: props.existingVehicle.datum_1_registrace || '',
       majitel: props.existingVehicle.majitel || '',
-      motor: props.existingVehicle.motor || '',
+      palivo: props.existingVehicle.palivo || '',
       vykon_kw: props.existingVehicle.vykon_kw ?? null,
       tachometer_km: props.existingVehicle.tachometer_km ?? null,
     };
@@ -552,6 +549,11 @@ onMounted(async () => {
     spzTouched.value = true;
     vinTouched.value = true;
     majitelTouched.value = true;
+  }
+
+  // Auto-prefill palivo from OCR data if available and form field is empty
+  if (!form.value.palivo && props.ocrData?.palivo) {
+    form.value.palivo = props.ocrData.palivo;
   }
 
   // Auto-focus first editable input
