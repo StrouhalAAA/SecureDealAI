@@ -13,7 +13,6 @@ vi.mock('@/composables/useErrorHandler', () => ({
 }))
 
 // Mock Supabase
-const mockSupabaseFrom = vi.fn()
 vi.mock('@/composables/useSupabase', () => ({
   supabase: {
     from: () => ({
