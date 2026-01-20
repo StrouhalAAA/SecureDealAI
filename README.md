@@ -77,6 +77,7 @@ npm run supabase:functions:serve
 | `npm run test:backend` | Run backend tests only |
 | `npm run test:web` | Run frontend tests only |
 | `npm run test:e2e` | Run Playwright E2E tests |
+| `~/.deno/bin/deno run --allow-net supabase/tests/manual/test-ares-by-dic.ts <DIC>` | Manual ARES lookup by DIČ |
 | `supabase start` | Start local Supabase |
 | `supabase stop` | Stop local Supabase |
 | `supabase status` | Show local URLs and API keys |
