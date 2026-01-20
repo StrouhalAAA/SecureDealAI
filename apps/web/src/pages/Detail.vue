@@ -48,22 +48,35 @@
 
       <!-- Step Content -->
       <transition name="fade" mode="out-in">
+        <!-- Step 0: Contact -->
+        <ContactForm
+          v-if="nav.currentStep.value === 0"
+          :buying-opportunity-id="opportunityId"
+          :existing-contact="data.contact.value"
+          @saved="onContactSaved"
+          @next="nav.nextStep"
+          @back="goToDashboard"
+        />
+
         <!-- Step 1: Vehicle -->
         <VehicleForm
-          v-if="nav.currentStep.value === 0"
+          v-else-if="nav.currentStep.value === 1"
           :buying-opportunity-id="opportunityId"
           :initial-spz="data.opportunity.value?.spz"
           :existing-vehicle="data.vehicle.value"
           :ocr-data="data.vehicleOCRData.value"
           @saved="onVehicleSaved"
+          @back="nav.prevStep"
           @next="nav.nextStep"
         />
 
         <!-- Step 2: Vendor -->
         <VendorForm
-          v-else-if="nav.currentStep.value === 1"
+          v-else-if="nav.currentStep.value === 2"
           :buying-opportunity-id="opportunityId"
           :existing-vendor="data.vendor.value"
+          :contact="data.contact.value"
+          :contact-ocr-comparison="data.contactOcrComparison.value"
           @saved="onVendorSaved"
           @back="nav.prevStep"
           @next="nav.nextStep"
@@ -71,7 +84,7 @@
 
         <!-- Step 3: Documents -->
         <DocumentUpload
-          v-else-if="nav.currentStep.value === 2 && data.opportunity.value?.spz"
+          v-else-if="nav.currentStep.value === 3 && data.opportunity.value?.spz"
           :spz="data.opportunity.value.spz"
           :buying-opportunity-id="opportunityId"
           @back="nav.prevStep"
@@ -80,7 +93,7 @@
 
         <!-- Step 4: Results -->
         <ValidationResult
-          v-else-if="nav.currentStep.value === 3 && data.validationResult.value"
+          v-else-if="nav.currentStep.value === 4 && data.validationResult.value"
           :result="data.validationResult.value"
           @retry="handleRetry"
           @close="goToDashboard"
@@ -96,11 +109,12 @@ import { useRoute, useRouter } from 'vue-router'
 import { useStepNavigation } from '@/composables/useStepNavigation'
 import { useDetailData } from '@/composables/useDetailData'
 import StepProgress from '@/components/shared/StepProgress.vue'
+import ContactForm from '@/components/forms/ContactForm.vue'
 import VehicleForm from '@/components/forms/VehicleForm.vue'
 import VendorForm from '@/components/forms/VendorForm.vue'
 import DocumentUpload from '@/components/ocr/DocumentUpload.vue'
 import ValidationResult from '@/components/validation/ValidationResult.vue'
-import type { Vehicle, Vendor, ValidationResult as VR } from '@/types'
+import type { Contact, Vehicle, Vendor, ValidationResult as VR } from '@/types'
 
 const route = useRoute()
 const router = useRouter()
@@ -111,8 +125,9 @@ const opportunityId = computed(() => route.params.id as string)
 const entryMethod = computed(() => route.query.from as string | undefined)
 const ocrStatus = computed(() => route.query.ocr as string | undefined)
 
-// Step definitions
+// Step definitions - now includes Contact as first step
 const steps = [
+  { label: 'Kontakt' },
   { label: 'Vozidlo' },
   { label: 'Dodavatel' },
   { label: 'Dokumenty' },
@@ -127,11 +142,11 @@ const nav = useStepNavigation(steps)
 const startingStep = computed(() => {
   // If coming from upload with OCR completed, start at step 2 (Vendor)
   if (entryMethod.value === 'upload' && ocrStatus.value === 'completed') {
-    return 1; // Step 2: Vendor (0-indexed)
+    return 2; // Step 3: Vendor (0-indexed)
   }
   // If coming from manual entry, start at step 1 (Vehicle) to add remaining fields
   if (entryMethod.value === 'manual') {
-    return 0; // Step 1: Vehicle (0-indexed)
+    return 1; // Step 2: Vehicle (0-indexed)
   }
   // Otherwise use the suggested step from existing data
   return data.suggestedStartStep.value;
@@ -151,6 +166,10 @@ onMounted(() => {
 })
 
 // Event handlers
+function onContactSaved(c: Contact) {
+  data.setContact(c)
+}
+
 function onVehicleSaved(v: Vehicle) {
   data.setVehicle(v)
 }
@@ -161,13 +180,13 @@ function onVendorSaved(v: Vendor) {
 
 async function onValidated(result: VR) {
   data.setValidationResult(result)
-  nav.goToStep(3)
+  nav.goToStep(4)
   await data.updateOpportunityStatus(result.overall_status)
 }
 
 function handleRetry() {
   data.clearValidation()
-  nav.goToStep(2)
+  nav.goToStep(3)
 }
 
 function goToDashboard() {

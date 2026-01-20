@@ -90,6 +90,33 @@
       </div>
     </div>
 
+    <!-- Contact vs OCR Comparison Warning -->
+    <div
+      v-if="props.contactOcrComparison && !props.contactOcrComparison.matches"
+      class="mb-6 p-4 bg-orange-50 border border-orange-200 rounded-lg"
+      role="alert"
+    >
+      <div class="flex items-start gap-3">
+        <svg class="w-5 h-5 text-orange-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        </svg>
+        <div>
+          <h4 class="font-medium text-orange-800">Kontakt se lisi od Majitele/Provozovatele z dokumentu</h4>
+          <p class="text-sm text-orange-700 mt-1">
+            Udaje kontaktu se neshoduji s daty z technickeho prukazu. Overite prosim, ze dodavatel je spravny.
+          </p>
+          <div class="mt-2 text-sm text-orange-700">
+            <div v-for="diff in props.contactOcrComparison.differences" :key="diff.field" class="flex gap-2">
+              <span class="font-medium">{{ diff.field }}:</span>
+              <span>Kontakt: <span class="font-mono">{{ diff.contact || '(nevyplneno)' }}</span></span>
+              <span>vs</span>
+              <span>Dokument: <span class="font-mono">{{ diff.ocr || '(nevyplneno)' }}</span></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <form @submit.prevent="saveAndContinue" novalidate>
       <!-- COMPANY FORM -->
       <template v-if="vendorType === 'COMPANY'">
@@ -170,10 +197,22 @@
           </p>
         </div>
 
-        <!-- DIC -->
+        <!-- VAT Payer Toggle -->
         <div class="mb-4">
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              v-model="form.is_vat_payer"
+              class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+            />
+            <span class="text-sm font-medium text-gray-700">Platce DPH</span>
+          </label>
+        </div>
+
+        <!-- DIC (shown only when is_vat_payer is true) -->
+        <div v-if="form.is_vat_payer" class="mb-4">
           <label for="dic-input" class="block text-sm font-medium text-gray-700 mb-1">
-            DIC
+            DIC <span class="text-red-500" aria-label="povinna polozka">*</span>
             <span v-if="autoFilled.vat_id" class="text-green-600 text-xs ml-2" aria-live="polite">
               (vyplneno z ARES)
             </span>
@@ -184,11 +223,18 @@
             type="text"
             class="w-full px-4 py-2 border rounded-lg uppercase font-mono focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             :class="{
-              'border-gray-300': !autoFilled.vat_id,
+              'border-gray-300': !autoFilled.vat_id && !vatIdTouched,
               'bg-green-50 border-green-300': autoFilled.vat_id,
+              'border-red-500 bg-red-50': vatIdTouched && form.is_vat_payer && !form.vat_id,
             }"
             placeholder="CZxxxxxxxx"
+            required
+            :aria-invalid="vatIdTouched && form.is_vat_payer && !form.vat_id"
+            @blur="vatIdTouched = true"
           />
+          <p v-if="vatIdTouched && form.is_vat_payer && !form.vat_id" class="text-red-500 text-xs mt-1" role="alert">
+            DIC je povinne pro platce DPH
+          </p>
         </div>
       </template>
 
@@ -538,11 +584,14 @@ import { supabase } from '@/composables/useSupabase';
 import { useErrorHandler } from '@/composables/useErrorHandler';
 import AresStatus from '@/components/shared/AresStatus.vue';
 import LoadingButton from '@/components/shared/LoadingButton.vue';
-import type { Vendor, AresStatusType } from '@/types';
+import type { Vendor, AresStatusType, Contact } from '@/types';
+import type { ContactOcrComparison } from '@/composables/useDetailData';
 
 const props = defineProps<{
   buyingOpportunityId: string;
   existingVendor?: Vendor | null;
+  contact?: Contact | null;
+  contactOcrComparison?: ContactOcrComparison | null;
 }>();
 
 const emit = defineEmits<{
@@ -578,6 +627,7 @@ const vendorType = ref<'PHYSICAL_PERSON' | 'COMPANY'>('COMPANY');
 const form = ref({
   name: '',
   company_id: '',
+  is_vat_payer: false,
   vat_id: '',
   personal_id: '',
   date_of_birth: '',
@@ -597,6 +647,7 @@ const nameTouched = ref(false);
 const rcTouched = ref(false);
 const cityTouched = ref(false);
 const pscTouched = ref(false);
+const vatIdTouched = ref(false);
 
 // ARES state
 const aresLoading = ref(false);
@@ -681,11 +732,13 @@ const rcError = computed(() => {
 
 const isValid = computed(() => {
   if (vendorType.value === 'COMPANY') {
+    const vatValid = !form.value.is_vat_payer || (form.value.is_vat_payer && form.value.vat_id);
     return (
       isValidIco.value &&
       form.value.name &&
       form.value.address_city &&
-      form.value.address_postal_code
+      form.value.address_postal_code &&
+      vatValid
     );
   } else {
     return (
@@ -827,6 +880,9 @@ async function saveAndContinue() {
   pscTouched.value = true;
   if (vendorType.value === 'COMPANY') {
     icoTouched.value = true;
+    if (form.value.is_vat_payer) {
+      vatIdTouched.value = true;
+    }
   } else {
     rcTouched.value = true;
   }
@@ -842,7 +898,8 @@ async function saveAndContinue() {
       vendor_type: vendorType.value,
       name: form.value.name.toUpperCase(),
       company_id: vendorType.value === 'COMPANY' ? form.value.company_id : null,
-      vat_id: vendorType.value === 'COMPANY' ? form.value.vat_id || null : null,
+      is_vat_payer: vendorType.value === 'COMPANY' ? form.value.is_vat_payer : false,
+      vat_id: vendorType.value === 'COMPANY' && form.value.is_vat_payer ? form.value.vat_id || null : null,
       personal_id: vendorType.value === 'PHYSICAL_PERSON' ? form.value.personal_id : null,
       date_of_birth: vendorType.value === 'PHYSICAL_PERSON' && form.value.date_of_birth
         ? form.value.date_of_birth
@@ -899,6 +956,7 @@ async function saveAndContinue() {
 watch(vendorType, async () => {
   // Clear type-specific fields
   form.value.company_id = '';
+  form.value.is_vat_payer = false;
   form.value.vat_id = '';
   form.value.personal_id = '';
   form.value.date_of_birth = '';
@@ -917,6 +975,7 @@ watch(vendorType, async () => {
   // Reset touched state for type-specific fields
   icoTouched.value = false;
   rcTouched.value = false;
+  vatIdTouched.value = false;
 
   // Focus the first input of the new form type
   await nextTick();
@@ -936,6 +995,7 @@ onMounted(async () => {
     form.value = {
       name: props.existingVendor.name || '',
       company_id: props.existingVendor.company_id || '',
+      is_vat_payer: props.existingVendor.is_vat_payer || false,
       vat_id: props.existingVendor.vat_id || '',
       personal_id: props.existingVendor.personal_id || '',
       date_of_birth: props.existingVendor.date_of_birth || '',

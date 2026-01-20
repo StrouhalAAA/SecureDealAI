@@ -24,8 +24,8 @@ The current Detail page uses full-width forms designed for desktop viewing. Howe
 
 ## Solution Statement
 Create a two-panel layout on the Detail page:
-1. **Left panel (40% width)**: A narrower, mobile-like form that constrains the input experience to match mobile screens
-2. **Right panel (60% width)**: An iPhone-frame mockup showing a live preview of how the data would display in the native app
+1. **Left panel (2/3 width ~66%)**: A narrower, mobile-like form that constrains the input experience to match mobile screens
+2. **Right panel (1/3 width ~33%)**: An iPhone-frame mockup showing a live preview of how the data would display in the native app
 
 Key design principles:
 - The form panel should mimic mobile constraints (single column, stacked fields, larger touch targets)
@@ -97,7 +97,7 @@ IMPORTANT: Execute every step in order, top to bottom.
 
 ### Step 1: Create the Split Layout Container
 - Create `apps/web/src/components/layout/SplitFormLayout.vue`
-- Accept props for left/right panel widths (default 40%/60%)
+- Accept props for left/right panel widths (default 66%/33%)
 - Use CSS Grid or Flexbox for the split layout
 - Add responsive breakpoint to stack on screens < 1024px
 - Include a slot for left panel (form) and right panel (preview)
@@ -236,7 +236,7 @@ No database changes required. This is a purely frontend feature that:
 - Very small screens → Should hide preview and show form only
 
 ## Acceptance Criteria
-1. [ ] Detail page shows split layout by default with form on left (40%) and phone preview on right (60%)
+1. [ ] Detail page shows split layout by default with form on left (66%) and phone preview on right (33%)
 2. [ ] Phone mockup looks like a realistic iPhone with notch, status bar, and home indicator
 3. [ ] Vehicle data entered in form appears live in the phone preview
 4. [ ] Vendor data entered in form appears live in the phone preview

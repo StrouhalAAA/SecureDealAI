@@ -66,7 +66,7 @@ Use these files to implement the feature:
 
 ### New Files
 
-- `supabase/migrations/019_add_buying_type.sql` - Add buying_type column to buying_opportunities
+- `supabase/migrations/021_add_buying_type.sql` - Add buying_type column to buying_opportunities
 
 ## Implementation Plan
 
@@ -91,7 +91,7 @@ IMPORTANT: Execute every step in order, top to bottom.
 
 ### Step 1: Create Database Migration
 
-Create `supabase/migrations/019_add_buying_type.sql`:
+Create `supabase/migrations/021_add_buying_type.sql`:
 
 ```sql
 -- ============================================================================
@@ -307,7 +307,7 @@ Execute all validation commands to ensure no regressions.
 
 ## Database Changes
 
-### Migration: `019_add_buying_type.sql`
+### Migration: `021_add_buying_type.sql`
 
 ```sql
 -- Add buying_type column to buying_opportunities table
