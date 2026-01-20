@@ -315,7 +315,7 @@ describe('useDetailData', () => {
       expect(suggestedStartStep.value).toBe(0)
     })
 
-    it('suggestedStartStep returns 1 when only vehicle exists', async () => {
+    it('suggestedStartStep returns 2 when only vehicle exists', async () => {
       mockSupabase.from.mockImplementation((table: string) => {
         if (table === 'buying_opportunities') {
           return createMockQuery({ id: '123', spz: '5L94454' })
@@ -329,10 +329,12 @@ describe('useDetailData', () => {
       const { suggestedStartStep, loadData } = useDetailData('123')
       await loadData()
 
-      expect(suggestedStartStep.value).toBe(1)
+      // Steps: 0=Contact, 1=Vehicle, 2=Vendor, 3=Documents, 4=Validation
+      // Vehicle exists → suggest Vendor step (2)
+      expect(suggestedStartStep.value).toBe(2)
     })
 
-    it('suggestedStartStep returns 2 when vehicle and vendor exist', async () => {
+    it('suggestedStartStep returns 3 when vehicle and vendor exist', async () => {
       mockSupabase.from.mockImplementation((table: string) => {
         if (table === 'buying_opportunities') {
           return createMockQuery({ id: '123', spz: '5L94454' })
@@ -349,10 +351,12 @@ describe('useDetailData', () => {
       const { suggestedStartStep, loadData } = useDetailData('123')
       await loadData()
 
-      expect(suggestedStartStep.value).toBe(2)
+      // Steps: 0=Contact, 1=Vehicle, 2=Vendor, 3=Documents, 4=Validation
+      // Vendor exists → suggest Documents step (3)
+      expect(suggestedStartStep.value).toBe(3)
     })
 
-    it('suggestedStartStep returns 3 when validation exists', async () => {
+    it('suggestedStartStep returns 4 when validation exists', async () => {
       mockSupabase.from.mockImplementation((table: string) => {
         if (table === 'buying_opportunities') {
           return createMockQuery({ id: '123', spz: '5L94454' })
@@ -372,7 +376,9 @@ describe('useDetailData', () => {
       const { suggestedStartStep, loadData } = useDetailData('123')
       await loadData()
 
-      expect(suggestedStartStep.value).toBe(3)
+      // Steps: 0=Contact, 1=Vehicle, 2=Vendor, 3=Documents, 4=Validation
+      // Validation exists → show Validation step (4)
+      expect(suggestedStartStep.value).toBe(4)
     })
   })
 })
