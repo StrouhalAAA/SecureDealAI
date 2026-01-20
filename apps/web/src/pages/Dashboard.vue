@@ -14,7 +14,7 @@
     <div class="flex justify-between items-center mb-6">
       <h2 class="text-xl font-semibold text-gray-900">Příležitosti k nákupu</h2>
       <button
-        @click="openCreateModal"
+        @click="openNewOpportunity"
         class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
       >
         + Nová příležitost
@@ -129,12 +129,6 @@
         </div>
       </div>
 
-    <!-- Create Wizard Modal -->
-    <CreateOpportunityWizard
-      v-if="showCreateModal"
-      @close="showCreateModal = false"
-      @created="onOpportunityCreated"
-    />
   </div>
 </template>
 
@@ -143,7 +137,6 @@ import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { supabase } from '@/composables/useSupabase';
 import StatusBadge from '@/components/shared/StatusBadge.vue';
-import CreateOpportunityWizard, { type CreateResult } from '@/components/shared/CreateOpportunityWizard.vue';
 import type { BuyingOpportunity, BuyingOpportunityWithVendor } from '@/types';
 import { format } from 'date-fns';
 import { cs } from 'date-fns/locale';
@@ -154,7 +147,6 @@ const opportunities = ref<BuyingOpportunityWithVendor[]>([]);
 const loading = ref(true);
 const error = ref<string | null>(null);
 const searchQuery = ref('');
-const showCreateModal = ref(false);
 
 const pagination = ref({
   page: 1,
@@ -214,26 +206,8 @@ function openDetail(id: string) {
   router.push(`/opportunity/${id}`);
 }
 
-function openCreateModal() {
-  showCreateModal.value = true;
-}
-
-function onOpportunityCreated(result: CreateResult) {
-  showCreateModal.value = false;
-
-  // Navigate with query params to indicate entry method
-  const query: Record<string, string> = {
-    from: result.entryMethod,
-  };
-
-  if (result.entryMethod === 'upload' && result.ocrCompleted) {
-    query.ocr = 'completed';
-  }
-
-  router.push({
-    path: `/opportunity/${result.opportunity.id}`,
-    query,
-  });
+function openNewOpportunity() {
+  router.push('/new-opportunity');
 }
 
 function confirmDelete(opp: BuyingOpportunity) {

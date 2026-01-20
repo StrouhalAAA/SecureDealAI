@@ -1,8 +1,8 @@
 <template>
-  <div class="fixed inset-0 bg-white z-50 overflow-y-auto">
-    <div class="min-h-screen">
-      <!-- Header -->
-      <div class="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center z-10 max-w-4xl mx-auto">
+  <div class="min-h-screen bg-white">
+    <!-- Header -->
+    <div class="border-b">
+      <div class="max-w-4xl mx-auto px-6 py-4 flex justify-between items-center">
         <div class="flex items-center gap-2">
           <button
             v-if="canGoBack"
@@ -14,10 +14,10 @@
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
             </svg>
           </button>
-          <h2 class="text-xl font-bold">{{ stepTitle }}</h2>
+          <h1 class="text-xl font-bold">{{ stepTitle }}</h1>
         </div>
         <button
-          @click="$emit('close')"
+          @click="handleClose"
           class="p-1 hover:bg-gray-100 rounded"
           aria-label="Zavrit"
         >
@@ -26,9 +26,11 @@
           </svg>
         </button>
       </div>
+    </div>
 
-      <!-- Progress Steps -->
-      <div class="px-6 py-3 bg-gray-50 border-b max-w-4xl mx-auto">
+    <!-- Progress Steps -->
+    <div class="bg-gray-50 border-b">
+      <div class="max-w-4xl mx-auto px-6 py-3">
         <div class="flex items-center justify-between">
           <div
             v-for="(step, index) in progressSteps"
@@ -64,268 +66,270 @@
           </div>
         </div>
       </div>
+    </div>
 
-      <!-- Content -->
-      <div class="p-6 max-w-4xl mx-auto">
-        <!-- Step 1: Contact -->
-        <div v-if="currentStep === 'contact'">
-          <ContactForm
-            :buying-opportunity-id="tempOpportunityId"
-            :existing-contact="existingContact"
-            @saved="onContactSaved"
-            @next="goToVehicleChoice"
-            @back="$emit('close')"
-          />
-        </div>
+    <!-- Content -->
+    <div class="max-w-4xl mx-auto p-6">
+      <!-- Step 1: Contact -->
+      <div v-if="currentStep === 'contact'">
+        <ContactForm
+          :buying-opportunity-id="tempOpportunityId"
+          :existing-contact="existingContact"
+          @saved="onContactSaved"
+          @next="goToVehicleChoice"
+          @back="handleClose"
+        />
+      </div>
 
-        <!-- Step 2: Vehicle Choice -->
-        <div v-else-if="currentStep === 'choice'" class="space-y-4">
-          <p class="text-gray-600 text-center mb-6">
-            Vyberte zpusob pridani vozidla:
-          </p>
+      <!-- Step 2: Vehicle Choice -->
+      <div v-else-if="currentStep === 'choice'" class="space-y-4">
+        <p class="text-gray-600 text-center mb-6">
+          Vyberte zpusob pridani vozidla:
+        </p>
 
-          <!-- Upload ORV Option -->
-          <button
-            @click="selectVehicleEntry('upload-orv')"
-            class="w-full p-6 border-2 border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors text-left group"
-          >
-            <div class="flex items-start gap-4">
-              <div class="p-3 bg-blue-100 rounded-lg group-hover:bg-blue-200 transition-colors">
-                <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-              </div>
-              <div>
-                <h3 class="text-lg font-semibold text-gray-900">Nahrat ORV</h3>
-                <p class="text-sm text-gray-500 mt-1">
-                  Nahrajte maly technicky prukaz a data budou automaticky extrahována
-                </p>
-              </div>
-            </div>
-          </button>
-
-          <!-- Manual Entry Option -->
-          <button
-            @click="selectVehicleEntry('manual-entry')"
-            class="w-full p-6 border-2 border-gray-200 rounded-lg hover:border-green-500 hover:bg-green-50 transition-colors text-left group"
-          >
-            <div class="flex items-start gap-4">
-              <div class="p-3 bg-green-100 rounded-lg group-hover:bg-green-200 transition-colors">
-                <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                </svg>
-              </div>
-              <div>
-                <h3 class="text-lg font-semibold text-gray-900">Zadat rucne</h3>
-                <p class="text-sm text-gray-500 mt-1">
-                  Vyplnte data vozidla rucne bez nahrani dokumentu
-                </p>
-              </div>
-            </div>
-          </button>
-        </div>
-
-        <!-- Step 2a: Upload ORV -->
-        <div v-else-if="currentStep === 'upload-orv'" class="space-y-4">
-          <!-- SPZ Input -->
-          <div>
-            <label for="upload-spz" class="block text-sm font-medium text-gray-700 mb-1">
-              SPZ (registracni znacka) <span class="text-red-500">*</span>
-            </label>
-            <input
-              id="upload-spz"
-              v-model="spz"
-              type="text"
-              placeholder="napr. 5L94454"
-              class="w-full px-4 py-2 border rounded-lg uppercase font-mono"
-              :class="{
-                'border-gray-300': !spzError,
-                'border-red-500 bg-red-50': spzError,
-              }"
-              @blur="validateSpz"
-            />
-            <p v-if="spzError" class="text-red-500 text-xs mt-1">{{ spzError }}</p>
-          </div>
-
-          <!-- DropZone -->
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">
-              Nahrat ORV dokument <span class="text-red-500">*</span>
-            </label>
-            <DropZone
-              :file="uploadedFile"
-              :uploading="uploading"
-              :uploaded="!!ocrExtraction"
-              :error="uploadError"
-              accept=".pdf,.jpg,.jpeg,.png"
-              @file-selected="handleFileSelected"
-              @remove="removeFile"
-            />
-          </div>
-
-          <!-- OCR Status -->
-          <OcrStatus
-            v-if="ocrExtraction"
-            :extraction="ocrExtraction"
-            @retry="retryOcr"
-          />
-
-          <!-- Error -->
-          <div v-if="error" class="p-3 bg-red-50 text-red-700 rounded-lg">
-            {{ error }}
-          </div>
-
-          <!-- Submit Button -->
-          <div class="flex justify-between pt-4">
-            <button
-              @click="goBack"
-              class="px-4 py-2 border rounded-lg hover:bg-gray-50"
-            >
-              Zpet
-            </button>
-            <button
-              @click="createVehicleFromUpload"
-              :disabled="!canSubmitUpload || loading"
-              class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {{ loading ? 'Vytvarim...' : 'Pokracovat' }}
-            </button>
-          </div>
-        </div>
-
-        <!-- Step 2b: Manual Entry -->
-        <div v-else-if="currentStep === 'manual-entry'">
-          <QuickVehicleForm
-            :loading="loading"
-            :error="error"
-            @submit="createVehicleFromManual"
-            @cancel="goBack"
-          />
-        </div>
-
-        <!-- Step 3: Vendor Decision -->
-        <div v-else-if="currentStep === 'vendor-decision'" class="space-y-6">
-          <h3 class="text-lg font-semibold">Je dodavatel stejny jako kontakt?</h3>
-
-          <!-- Contact Summary -->
-          <div class="p-4 bg-gray-50 rounded-lg border border-gray-200">
-            <p class="text-sm text-gray-500 mb-1">Kontakt:</p>
-            <p class="font-medium text-lg">{{ contactDisplayName }}</p>
-            <p v-if="savedContact?.company_id" class="text-sm text-gray-600">
-              ICO: {{ savedContact.company_id }}
-            </p>
-          </div>
-
-          <!-- OCR Warning if owner differs from contact -->
-          <div
-            v-if="ocrMajitelDiffers"
-            class="p-4 bg-yellow-50 border border-yellow-200 rounded-lg"
-            role="alert"
-          >
-            <div class="flex items-start gap-3">
-              <svg class="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        <!-- Upload ORV Option -->
+        <button
+          @click="selectVehicleEntry('upload-orv')"
+          class="w-full p-6 border-2 border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors text-left group"
+        >
+          <div class="flex items-start gap-4">
+            <div class="p-3 bg-blue-100 rounded-lg group-hover:bg-blue-200 transition-colors">
+              <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
-              <div>
-                <h4 class="font-medium text-yellow-800">Majitel z OCR se lisi od kontaktu</h4>
-                <p class="text-sm text-yellow-700 mt-1">
-                  OCR Majitel: <strong>{{ ocrMajitelName }}</strong>
-                </p>
-              </div>
+            </div>
+            <div>
+              <h3 class="text-lg font-semibold text-gray-900">Nahrat ORV</h3>
+              <p class="text-sm text-gray-500 mt-1">
+                Nahrajte maly technicky prukaz a data budou automaticky extrahována
+              </p>
             </div>
           </div>
+        </button>
 
-          <!-- Decision Options -->
-          <div class="space-y-3">
-            <label
-              class="flex items-start gap-3 p-4 border-2 rounded-lg cursor-pointer transition-colors"
-              :class="{
-                'border-blue-500 bg-blue-50': vendorDecision === 'same',
-                'border-gray-200 hover:border-gray-300': vendorDecision !== 'same',
-              }"
-            >
-              <input
-                type="radio"
-                v-model="vendorDecision"
-                value="same"
-                class="mt-1 w-4 h-4 text-blue-600 focus:ring-blue-500"
-              />
-              <div>
-                <span class="font-medium">Ano - {{ contactDisplayName }} je prodavajici</span>
-                <p class="text-sm text-gray-500 mt-1">
-                  Data kontaktu budou pouzita jako data dodavatele
-                </p>
-              </div>
-            </label>
-
-            <label
-              class="flex items-start gap-3 p-4 border-2 rounded-lg cursor-pointer transition-colors"
-              :class="{
-                'border-blue-500 bg-blue-50': vendorDecision === 'different',
-                'border-gray-200 hover:border-gray-300': vendorDecision !== 'different',
-              }"
-            >
-              <input
-                type="radio"
-                v-model="vendorDecision"
-                value="different"
-                class="mt-1 w-4 h-4 text-blue-600 focus:ring-blue-500"
-              />
-              <div>
-                <span class="font-medium">Ne - Prodavajici je jiny subjekt</span>
-                <p class="text-sm text-gray-500 mt-1">
-                  Muzete zadat dodavatele jako fyzickou osobu, OSVC nebo firmu
-                </p>
-              </div>
-            </label>
+        <!-- Manual Entry Option -->
+        <button
+          @click="selectVehicleEntry('manual-entry')"
+          class="w-full p-6 border-2 border-gray-200 rounded-lg hover:border-green-500 hover:bg-green-50 transition-colors text-left group"
+        >
+          <div class="flex items-start gap-4">
+            <div class="p-3 bg-green-100 rounded-lg group-hover:bg-green-200 transition-colors">
+              <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+            </div>
+            <div>
+              <h3 class="text-lg font-semibold text-gray-900">Zadat rucne</h3>
+              <p class="text-sm text-gray-500 mt-1">
+                Vyplnte data vozidla rucne bez nahrani dokumentu
+              </p>
+            </div>
           </div>
+        </button>
+      </div>
 
-          <!-- Buttons -->
-          <div class="flex justify-between pt-4">
-            <button
-              @click="goBack"
-              class="px-4 py-2 border rounded-lg hover:bg-gray-50"
-            >
-              Zpet
-            </button>
-            <button
-              @click="handleVendorDecision"
-              :disabled="!vendorDecision || loading"
-              class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {{ loading ? 'Zpracovavam...' : 'Pokracovat' }}
-            </button>
-          </div>
+      <!-- Step 2a: Upload ORV -->
+      <div v-else-if="currentStep === 'upload-orv'" class="space-y-4">
+        <!-- SPZ Input -->
+        <div>
+          <label for="upload-spz" class="block text-sm font-medium text-gray-700 mb-1">
+            SPZ (registracni znacka) <span class="text-red-500">*</span>
+          </label>
+          <input
+            id="upload-spz"
+            v-model="spz"
+            type="text"
+            placeholder="napr. 5L94454"
+            class="w-full px-4 py-2 border rounded-lg uppercase font-mono"
+            :class="{
+              'border-gray-300': !spzError,
+              'border-red-500 bg-red-50': spzError,
+            }"
+            @blur="validateSpz"
+          />
+          <p v-if="spzError" class="text-red-500 text-xs mt-1">{{ spzError }}</p>
         </div>
 
-        <!-- Step 3a: Vendor Form (when different) -->
-        <div v-else-if="currentStep === 'vendor-form'">
-          <VendorForm
-            :buying-opportunity-id="createdOpportunityId!"
-            :existing-vendor="existingVendor"
-            @saved="onVendorSaved"
-            @next="completeWizard"
-            @back="goBack"
+        <!-- DropZone -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">
+            Nahrat ORV dokument <span class="text-red-500">*</span>
+          </label>
+          <DropZone
+            :file="uploadedFile"
+            :uploading="uploading"
+            :uploaded="!!ocrExtraction"
+            :error="uploadError"
+            accept=".pdf,.jpg,.jpeg,.png"
+            @file-selected="handleFileSelected"
+            @remove="removeFile"
           />
         </div>
+
+        <!-- OCR Status -->
+        <OcrStatus
+          v-if="ocrExtraction"
+          :extraction="ocrExtraction"
+          @retry="retryOcr"
+        />
+
+        <!-- Error -->
+        <div v-if="error" class="p-3 bg-red-50 text-red-700 rounded-lg">
+          {{ error }}
+        </div>
+
+        <!-- Submit Button -->
+        <div class="flex justify-between pt-4">
+          <button
+            @click="goBack"
+            class="px-4 py-2 border rounded-lg hover:bg-gray-50"
+          >
+            Zpet
+          </button>
+          <button
+            @click="createVehicleFromUpload"
+            :disabled="!canSubmitUpload || loading"
+            class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {{ loading ? 'Vytvarim...' : 'Pokracovat' }}
+          </button>
+        </div>
+      </div>
+
+      <!-- Step 2b: Manual Entry -->
+      <div v-else-if="currentStep === 'manual-entry'">
+        <QuickVehicleForm
+          :loading="loading"
+          :error="error"
+          @submit="createVehicleFromManual"
+          @cancel="goBack"
+        />
+      </div>
+
+      <!-- Step 3: Vendor Decision -->
+      <div v-else-if="currentStep === 'vendor-decision'" class="space-y-6">
+        <h3 class="text-lg font-semibold">Je dodavatel stejny jako kontakt?</h3>
+
+        <!-- Contact Summary -->
+        <div class="p-4 bg-gray-50 rounded-lg border border-gray-200">
+          <p class="text-sm text-gray-500 mb-1">Kontakt:</p>
+          <p class="font-medium text-lg">{{ contactDisplayName }}</p>
+          <p v-if="savedContact?.company_id" class="text-sm text-gray-600">
+            ICO: {{ savedContact.company_id }}
+          </p>
+        </div>
+
+        <!-- OCR Warning if owner differs from contact -->
+        <div
+          v-if="ocrMajitelDiffers"
+          class="p-4 bg-yellow-50 border border-yellow-200 rounded-lg"
+          role="alert"
+        >
+          <div class="flex items-start gap-3">
+            <svg class="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <div>
+              <h4 class="font-medium text-yellow-800">Majitel z OCR se lisi od kontaktu</h4>
+              <p class="text-sm text-yellow-700 mt-1">
+                OCR Majitel: <strong>{{ ocrMajitelName }}</strong>
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Decision Options -->
+        <div class="space-y-3">
+          <label
+            class="flex items-start gap-3 p-4 border-2 rounded-lg cursor-pointer transition-colors"
+            :class="{
+              'border-blue-500 bg-blue-50': vendorDecision === 'same',
+              'border-gray-200 hover:border-gray-300': vendorDecision !== 'same',
+            }"
+          >
+            <input
+              type="radio"
+              v-model="vendorDecision"
+              value="same"
+              class="mt-1 w-4 h-4 text-blue-600 focus:ring-blue-500"
+            />
+            <div>
+              <span class="font-medium">Ano - {{ contactDisplayName }} je prodavajici</span>
+              <p class="text-sm text-gray-500 mt-1">
+                Data kontaktu budou pouzita jako data dodavatele
+              </p>
+            </div>
+          </label>
+
+          <label
+            class="flex items-start gap-3 p-4 border-2 rounded-lg cursor-pointer transition-colors"
+            :class="{
+              'border-blue-500 bg-blue-50': vendorDecision === 'different',
+              'border-gray-200 hover:border-gray-300': vendorDecision !== 'different',
+            }"
+          >
+            <input
+              type="radio"
+              v-model="vendorDecision"
+              value="different"
+              class="mt-1 w-4 h-4 text-blue-600 focus:ring-blue-500"
+            />
+            <div>
+              <span class="font-medium">Ne - Prodavajici je jiny subjekt</span>
+              <p class="text-sm text-gray-500 mt-1">
+                Muzete zadat dodavatele jako fyzickou osobu, OSVC nebo firmu
+              </p>
+            </div>
+          </label>
+        </div>
+
+        <!-- Buttons -->
+        <div class="flex justify-between pt-4">
+          <button
+            @click="goBack"
+            class="px-4 py-2 border rounded-lg hover:bg-gray-50"
+          >
+            Zpet
+          </button>
+          <button
+            @click="handleVendorDecision"
+            :disabled="!vendorDecision || loading"
+            class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {{ loading ? 'Zpracovavam...' : 'Pokracovat' }}
+          </button>
+        </div>
+      </div>
+
+      <!-- Step 3a: Vendor Form (when different) -->
+      <div v-else-if="currentStep === 'vendor-form'">
+        <VendorForm
+          :buying-opportunity-id="createdOpportunityId!"
+          :existing-vendor="existingVendor"
+          @saved="onVendorSaved"
+          @next="completeWizard"
+          @back="goBack"
+        />
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
 import { supabase } from '@/composables/useSupabase';
 import { useErrorHandler } from '@/composables/useErrorHandler';
 import DropZone from '@/components/ocr/DropZone.vue';
 import OcrStatus from '@/components/ocr/OcrStatus.vue';
-import QuickVehicleForm from './QuickVehicleForm.vue';
+import QuickVehicleForm from '@/components/shared/QuickVehicleForm.vue';
 import ContactForm from '@/components/forms/ContactForm.vue';
 import VendorForm from '@/components/forms/VendorForm.vue';
 import { extractPowerKw } from '@/utils/addressParser';
-import type { BuyingOpportunity, OcrExtraction, Contact, Vendor } from '@/types';
+import type { OcrExtraction, Contact, Vendor } from '@/types';
 import { getContactDisplayName } from '@/types/contact';
 
+const router = useRouter();
 const { handleError } = useErrorHandler();
 
 type WizardStep =
@@ -335,17 +339,6 @@ type WizardStep =
   | 'manual-entry'
   | 'vendor-decision'
   | 'vendor-form';
-
-export interface CreateResult {
-  opportunity: BuyingOpportunity;
-  entryMethod: 'upload' | 'manual';
-  ocrCompleted: boolean;
-}
-
-const emit = defineEmits<{
-  close: [];
-  created: [data: CreateResult];
-}>();
 
 // Step state
 const currentStep = ref<WizardStep>('contact');
@@ -451,7 +444,6 @@ const ocrMajitelDiffers = computed(() => {
   const contactName = contactDisplayName.value.toUpperCase();
   const ocrName = ocrMajitelName.value.toUpperCase();
 
-  // Simple comparison - they differ if names don't match
   return contactName !== ocrName && !ocrName.includes(contactName) && !contactName.includes(ocrName);
 });
 
@@ -467,7 +459,6 @@ function goBack() {
     currentStep.value = previousStep;
     error.value = null;
 
-    // Reset some state when going back
     if (previousStep === 'choice') {
       uploadedFile.value = null;
       ocrExtraction.value = null;
@@ -479,10 +470,13 @@ function goBack() {
   }
 }
 
+function handleClose() {
+  router.push('/');
+}
+
 // Contact step handlers
 function onContactSaved(contact: Contact) {
   savedContact.value = contact;
-  // The opportunity is created when the contact is saved (via buying_opportunity_id)
   createdOpportunityId.value = contact.buying_opportunity_id;
 }
 
@@ -616,7 +610,6 @@ async function createVehicleFromUpload() {
   error.value = null;
 
   try {
-    // Update buying opportunity with SPZ
     const { error: updateError } = await supabase
       .from('buying_opportunities')
       .update({ spz: spz.value.toUpperCase() })
@@ -624,7 +617,6 @@ async function createVehicleFromUpload() {
 
     if (updateError) throw updateError;
 
-    // Create vehicle from OCR data
     const ocrData = ocrExtraction.value?.extracted_data as Record<string, unknown> | null;
     if (ocrData) {
       const keeperDisplayName = (ocrData.keeperParsedName as string) || (ocrData.keeperName as string) || null;
@@ -650,10 +642,9 @@ async function createVehicleFromUpload() {
       if (vehicleError) throw vehicleError;
     }
 
-    // Move to vendor decision step
     pushStep('vendor-decision');
   } catch (e) {
-    error.value = handleError(e, 'CreateOpportunityWizard.createVehicleFromUpload');
+    error.value = handleError(e, 'NewOpportunity.createVehicleFromUpload');
   } finally {
     loading.value = false;
   }
@@ -674,7 +665,6 @@ async function createVehicleFromManual(formData: ManualFormData) {
   error.value = null;
 
   try {
-    // Update buying opportunity with SPZ
     const { error: updateError } = await supabase
       .from('buying_opportunities')
       .update({ spz: formData.spz.toUpperCase() })
@@ -682,7 +672,6 @@ async function createVehicleFromManual(formData: ManualFormData) {
 
     if (updateError) throw updateError;
 
-    // Create vehicle with manual data
     const { error: vehicleError } = await supabase.from('vehicles').insert({
       buying_opportunity_id: createdOpportunityId.value,
       spz: formData.spz.toUpperCase(),
@@ -695,10 +684,9 @@ async function createVehicleFromManual(formData: ManualFormData) {
 
     if (vehicleError) throw vehicleError;
 
-    // Move to vendor decision step
     pushStep('vendor-decision');
   } catch (e) {
-    error.value = handleError(e, 'CreateOpportunityWizard.createVehicleFromManual');
+    error.value = handleError(e, 'NewOpportunity.createVehicleFromManual');
   } finally {
     loading.value = false;
   }
@@ -713,21 +701,18 @@ async function handleVendorDecision() {
 
   try {
     if (vendorDecision.value === 'same') {
-      // Copy contact data to vendor using the database function
       const { error: copyError } = await supabase.rpc('copy_contact_to_vendor', {
         p_contact_id: savedContact.value.id,
       });
 
       if (copyError) throw copyError;
 
-      // Complete the wizard
       completeWizard();
     } else {
-      // Go to vendor form for different vendor entry
       pushStep('vendor-form');
     }
   } catch (e) {
-    error.value = handleError(e, 'CreateOpportunityWizard.handleVendorDecision');
+    error.value = handleError(e, 'NewOpportunity.handleVendorDecision');
   } finally {
     loading.value = false;
   }
@@ -737,33 +722,26 @@ function onVendorSaved(vendor: Vendor) {
   existingVendor.value = vendor;
 }
 
-async function completeWizard() {
+function completeWizard() {
   if (!createdOpportunityId.value) return;
 
-  // Fetch the created opportunity
-  const { data: opportunity, error: fetchError } = await supabase
-    .from('buying_opportunities')
-    .select('*')
-    .eq('id', createdOpportunityId.value)
-    .single();
+  const query: Record<string, string> = {
+    from: entryMethod.value,
+  };
 
-  if (fetchError) {
-    error.value = handleError(fetchError, 'CreateOpportunityWizard.completeWizard');
-    return;
+  if (entryMethod.value === 'upload' && ocrExtraction.value?.ocr_status === 'COMPLETED') {
+    query.ocr = 'completed';
   }
 
-  emit('created', {
-    opportunity,
-    entryMethod: entryMethod.value,
-    ocrCompleted: ocrExtraction.value?.ocr_status === 'COMPLETED',
+  router.push({
+    path: `/opportunity/${createdOpportunityId.value}`,
+    query,
   });
 }
 
-// Initialize: Create temporary buying opportunity for contact to reference
+// Initialize: Create temporary buying opportunity
 async function initializeOpportunity() {
   try {
-    // Create a placeholder buying opportunity
-    // SPZ will be updated in the vehicle step
     const placeholderSpz = `TEMP-${Date.now()}`;
 
     const { data, error: createError } = await supabase
@@ -777,10 +755,11 @@ async function initializeOpportunity() {
     tempOpportunityId.value = data.id;
     createdOpportunityId.value = data.id;
   } catch (e) {
-    error.value = handleError(e, 'CreateOpportunityWizard.initializeOpportunity');
+    error.value = handleError(e, 'NewOpportunity.initializeOpportunity');
   }
 }
 
-// Initialize on mount
-initializeOpportunity();
+onMounted(() => {
+  initializeOpportunity();
+});
 </script>

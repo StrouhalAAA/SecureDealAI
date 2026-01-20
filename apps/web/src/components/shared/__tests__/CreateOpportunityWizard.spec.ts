@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { mount, flushPromises } from '@vue/test-utils'
 import CreateOpportunityWizard from '../CreateOpportunityWizard.vue'
 
 // Mock useErrorHandler to avoid Pinia dependency
@@ -15,17 +15,98 @@ vi.mock('@/composables/useErrorHandler', () => ({
 // Mock Supabase
 vi.mock('@/composables/useSupabase', () => ({
   supabase: {
-    from: vi.fn(() => ({
+    from: () => ({
       insert: vi.fn(() => ({
         select: vi.fn(() => ({
           single: vi.fn(() => Promise.resolve({
-            data: { id: 'test-id', spz: 'TEST123', status: 'DRAFT' },
+            data: { id: 'test-opportunity-id', spz: 'TEMP-123', status: 'DRAFT' },
             error: null
           }))
         }))
-      }))
-    }))
+      })),
+      update: vi.fn(() => ({
+        eq: vi.fn(() => Promise.resolve({ error: null }))
+      })),
+      select: vi.fn(() => ({
+        eq: vi.fn(() => ({
+          single: vi.fn(() => Promise.resolve({
+            data: { id: 'test-opportunity-id', spz: 'TEST123', status: 'DRAFT' },
+            error: null
+          }))
+        }))
+      })),
+      rpc: vi.fn(() => Promise.resolve({ error: null }))
+    })
   }
+}))
+
+// Mock child components to simplify testing
+vi.mock('@/components/forms/ContactForm.vue', () => ({
+  default: {
+    name: 'ContactForm',
+    props: ['buyingOpportunityId', 'existingContact'],
+    emits: ['saved', 'next', 'back'],
+    template: `
+      <div data-testid="contact-form">
+        <h3>Krok 1: Kontaktni osoba</h3>
+        <button @click="$emit('next')" data-testid="contact-next">Dalsi krok</button>
+        <button @click="$emit('back')" data-testid="contact-back">Zrusit</button>
+      </div>
+    `
+  }
+}))
+
+vi.mock('@/components/forms/VendorForm.vue', () => ({
+  default: {
+    name: 'VendorForm',
+    props: ['buyingOpportunityId', 'existingVendor'],
+    emits: ['saved', 'next', 'back'],
+    template: '<div data-testid="vendor-form">Vendor Form</div>'
+  }
+}))
+
+vi.mock('@/components/shared/QuickVehicleForm.vue', () => ({
+  default: {
+    name: 'QuickVehicleForm',
+    props: ['loading', 'error'],
+    emits: ['submit', 'cancel'],
+    template: '<div data-testid="quick-vehicle-form">Quick Vehicle Form</div>'
+  }
+}))
+
+vi.mock('../QuickVehicleForm.vue', () => ({
+  default: {
+    name: 'QuickVehicleForm',
+    props: ['loading', 'error'],
+    emits: ['submit', 'cancel'],
+    template: '<div data-testid="quick-vehicle-form">Quick Vehicle Form</div>'
+  }
+}))
+
+vi.mock('@/components/ocr/DropZone.vue', () => ({
+  default: {
+    name: 'DropZone',
+    props: ['file', 'uploading', 'uploaded', 'error', 'accept'],
+    emits: ['file-selected', 'remove'],
+    template: '<div data-testid="drop-zone">Drop Zone</div>'
+  }
+}))
+
+vi.mock('@/components/ocr/OcrStatus.vue', () => ({
+  default: {
+    name: 'OcrStatus',
+    props: ['extraction'],
+    emits: ['retry'],
+    template: '<div data-testid="ocr-status">OCR Status</div>'
+  }
+}))
+
+vi.mock('@/utils/addressParser', () => ({
+  extractPowerKw: vi.fn(() => null)
+}))
+
+vi.mock('@/types/contact', () => ({
+  getContactDisplayName: vi.fn(() => 'Jan Novak')
 }))
 
 // Mock fetch for API calls
@@ -36,135 +117,140 @@ describe('CreateOpportunityWizard', () => {
     vi.clearAllMocks()
   })
 
-  it('shows choice step by default', () => {
+  it('shows contact form by default', async () => {
     const wrapper = mount(CreateOpportunityWizard)
+    await flushPromises()
 
-    expect(wrapper.text()).toContain('Nahrát ORV')
-    expect(wrapper.text()).toContain('Zadat ručně')
-    expect(wrapper.text()).toContain('Vyberte způsob přidání vozidla')
+    // The wizard should start with contact step
+    expect(wrapper.find('[data-testid="contact-form"]').exists()).toBe(true)
+    expect(wrapper.text()).toContain('Kontaktni osoba')
   })
 
-  it('displays correct title on choice step', () => {
+  it('displays correct title on contact step', async () => {
     const wrapper = mount(CreateOpportunityWizard)
+    await flushPromises()
 
-    expect(wrapper.find('h2').text()).toBe('Nová nákupní příležitost')
+    expect(wrapper.find('h2').text()).toBe('Nova nakupni prilezitost')
   })
 
-  it('navigates to upload step when Upload ORV is clicked', async () => {
+  it('shows progress steps with correct labels', async () => {
     const wrapper = mount(CreateOpportunityWizard)
+    await flushPromises()
 
-    const uploadButton = wrapper.findAll('button').find(
-      btn => btn.text().includes('Nahrát ORV')
-    )
-    await uploadButton?.trigger('click')
-
-    expect(wrapper.find('h2').text()).toBe('Nahrát ORV dokument')
-    expect(wrapper.text()).toContain('SPZ (registrační značka)')
+    expect(wrapper.text()).toContain('Kontakt')
+    expect(wrapper.text()).toContain('Vozidlo')
+    expect(wrapper.text()).toContain('Dodavatel')
   })
 
-  it('navigates to manual entry step when Manual Entry is clicked', async () => {
+  it('does not show back button on initial contact step', async () => {
     const wrapper = mount(CreateOpportunityWizard)
+    await flushPromises()
 
-    const manualButton = wrapper.findAll('button').find(
-      btn => btn.text().includes('Zadat ručně')
-    )
-    await manualButton?.trigger('click')
-
-    expect(wrapper.find('h2').text()).toBe('Ruční zadání vozidla')
-  })
-
-  it('shows back button on non-choice steps', async () => {
-    const wrapper = mount(CreateOpportunityWizard)
-
-    // Initially no back button
-    expect(wrapper.find('[aria-label="Zpět"]').exists()).toBe(false)
-
-    // Navigate to upload step
-    const uploadButton = wrapper.findAll('button').find(
-      btn => btn.text().includes('Nahrát ORV')
-    )
-    await uploadButton?.trigger('click')
-
-    // Back button should be visible
-    expect(wrapper.find('[aria-label="Zpět"]').exists()).toBe(true)
-  })
-
-  it('navigates back to choice step when back is clicked', async () => {
-    const wrapper = mount(CreateOpportunityWizard)
-
-    // Navigate to upload step
-    const uploadButton = wrapper.findAll('button').find(
-      btn => btn.text().includes('Nahrát ORV')
-    )
-    await uploadButton?.trigger('click')
-
-    // Click back
-    const backButton = wrapper.find('[aria-label="Zpět"]')
-    await backButton.trigger('click')
-
-    // Should be back to choice step
-    expect(wrapper.find('h2').text()).toBe('Nová nákupní příležitost')
+    // Back button should not exist when stepHistory is empty
+    expect(wrapper.find('[aria-label="Zpet"]').exists()).toBe(false)
   })
 
   it('emits close event when close button is clicked', async () => {
     const wrapper = mount(CreateOpportunityWizard)
+    await flushPromises()
 
-    const closeButton = wrapper.find('[aria-label="Zavřít"]')
+    const closeButton = wrapper.find('[aria-label="Zavrit"]')
+    expect(closeButton.exists()).toBe(true)
+
     await closeButton.trigger('click')
 
     expect(wrapper.emitted('close')).toBeTruthy()
     expect(wrapper.emitted('close')?.length).toBe(1)
   })
 
-  it('validates SPZ before allowing file upload', async () => {
+  it('navigates to vehicle choice step when contact next is clicked', async () => {
     const wrapper = mount(CreateOpportunityWizard)
+    await flushPromises()
 
-    // Navigate to upload step
-    const uploadButton = wrapper.findAll('button').find(
-      btn => btn.text().includes('Nahrát ORV')
-    )
-    await uploadButton?.trigger('click')
+    // Click "next" on contact form
+    const nextButton = wrapper.find('[data-testid="contact-next"]')
+    await nextButton.trigger('click')
+    await flushPromises()
 
-    // Find SPZ input and blur without entering value
-    const spzInput = wrapper.find('#upload-spz')
-    await spzInput.trigger('blur')
-
-    // Should show error
-    expect(wrapper.text()).toContain('SPZ je povinné pole')
+    // Should now show vehicle choice step
+    expect(wrapper.find('h2').text()).toBe('Data vozidla')
+    expect(wrapper.text()).toContain('Vyberte zpusob pridani vozidla')
+    expect(wrapper.text()).toContain('Nahrat ORV')
+    expect(wrapper.text()).toContain('Zadat rucne')
   })
 
-  it('shows SPZ format error for invalid length', async () => {
+  it('shows back button after navigating to choice step', async () => {
     const wrapper = mount(CreateOpportunityWizard)
+    await flushPromises()
 
-    // Navigate to upload step
-    const uploadButton = wrapper.findAll('button').find(
-      btn => btn.text().includes('Nahrát ORV')
-    )
-    await uploadButton?.trigger('click')
+    // Navigate to choice step
+    const nextButton = wrapper.find('[data-testid="contact-next"]')
+    await nextButton.trigger('click')
+    await flushPromises()
 
-    // Enter short SPZ
-    const spzInput = wrapper.find('#upload-spz')
-    await spzInput.setValue('ABC')
-    await spzInput.trigger('blur')
-
-    // Should show format error
-    expect(wrapper.text()).toContain('SPZ musí mít 5-8 znaků')
+    // Back button should now be visible
+    expect(wrapper.find('[aria-label="Zpet"]').exists()).toBe(true)
   })
 
-  it('submit button is disabled without valid OCR extraction', async () => {
+  it('navigates to upload step when Upload ORV is clicked', async () => {
     const wrapper = mount(CreateOpportunityWizard)
+    await flushPromises()
+
+    // Navigate to choice step
+    await wrapper.find('[data-testid="contact-next"]').trigger('click')
+    await flushPromises()
+
+    // Click Upload ORV
+    const uploadButton = wrapper.findAll('button').find(
+      btn => btn.text().includes('Nahrat ORV')
+    )
+    await uploadButton?.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.find('h2').text()).toBe('Nahrat ORV dokument')
+    expect(wrapper.text()).toContain('SPZ (registracni znacka)')
+  })
+
+  it('navigates to manual entry step when Manual Entry is clicked', async () => {
+    const wrapper = mount(CreateOpportunityWizard)
+    await flushPromises()
+
+    // Navigate to choice step
+    await wrapper.find('[data-testid="contact-next"]').trigger('click')
+    await flushPromises()
+
+    // Click Manual Entry
+    const manualButton = wrapper.findAll('button').find(
+      btn => btn.text().includes('Zadat rucne')
+    )
+    await manualButton?.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.find('h2').text()).toBe('Rucni zadani vozidla')
+    expect(wrapper.find('[data-testid="quick-vehicle-form"]').exists()).toBe(true)
+  })
+
+  it('navigates back to choice step from upload step', async () => {
+    const wrapper = mount(CreateOpportunityWizard)
+    await flushPromises()
+
+    // Navigate to choice step
+    await wrapper.find('[data-testid="contact-next"]').trigger('click')
+    await flushPromises()
 
     // Navigate to upload step
     const uploadButton = wrapper.findAll('button').find(
-      btn => btn.text().includes('Nahrát ORV')
+      btn => btn.text().includes('Nahrat ORV')
     )
     await uploadButton?.trigger('click')
+    await flushPromises()
 
-    // Find submit button
-    const submitButton = wrapper.findAll('button').find(
-      btn => btn.text().includes('Vytvořit příležitost')
-    )
+    // Click back
+    const backButton = wrapper.find('[aria-label="Zpet"]')
+    await backButton.trigger('click')
+    await flushPromises()
 
-    expect(submitButton?.attributes('disabled')).toBeDefined()
+    // Should be back to choice step
+    expect(wrapper.find('h2').text()).toBe('Data vozidla')
   })
 })

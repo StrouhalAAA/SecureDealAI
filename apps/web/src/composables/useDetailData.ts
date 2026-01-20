@@ -1,12 +1,25 @@
 import { ref, computed, type Ref, type ComputedRef } from 'vue'
 import { supabase } from '@/composables/useSupabase'
-import type { BuyingOpportunity, Vehicle, Vendor, ValidationResult, VehicleOCRData, VendorOCRData, OcrExtraction } from '@/types'
+import type { BuyingOpportunity, Vehicle, Vendor, ValidationResult, VehicleOCRData, VendorOCRData, OcrExtraction, Contact } from '@/types'
+
+/**
+ * Contact comparison result with OCR Majitel/Provozovatel data
+ */
+export interface ContactOcrComparison {
+  matches: boolean
+  differences: {
+    field: string
+    contact: string | null
+    ocr: string | null
+  }[]
+}
 
 export interface UseDetailDataReturn {
   // State
   loading: Ref<boolean>
   error: Ref<string | null>
   opportunity: Ref<BuyingOpportunity | null>
+  contact: Ref<Contact | null>
   vehicle: Ref<Vehicle | null>
   vendor: Ref<Vendor | null>
   validationResult: Ref<ValidationResult | null>
@@ -16,6 +29,7 @@ export interface UseDetailDataReturn {
 
   // Actions
   loadData: () => Promise<void>
+  setContact: (c: Contact) => void
   setVehicle: (v: Vehicle) => void
   setVendor: (v: Vendor) => void
   setValidationResult: (r: ValidationResult) => void
@@ -23,10 +37,12 @@ export interface UseDetailDataReturn {
   clearValidation: () => void
 
   // Computed
+  hasContact: ComputedRef<boolean>
   hasVehicle: ComputedRef<boolean>
   hasVendor: ComputedRef<boolean>
   hasValidation: ComputedRef<boolean>
   suggestedStartStep: ComputedRef<number>
+  contactOcrComparison: ComputedRef<ContactOcrComparison | null>
 }
 
 export function useDetailData(opportunityId: string): UseDetailDataReturn {
@@ -34,6 +50,7 @@ export function useDetailData(opportunityId: string): UseDetailDataReturn {
   const error = ref<string | null>(null)
 
   const opportunity = ref<BuyingOpportunity | null>(null)
+  const contact = ref<Contact | null>(null)
   const vehicle = ref<Vehicle | null>(null)
   const vendor = ref<Vendor | null>(null)
   const validationResult = ref<ValidationResult | null>(null)
@@ -53,6 +70,14 @@ export function useDetailData(opportunityId: string): UseDetailDataReturn {
 
       if (oppError) throw oppError
       opportunity.value = oppData
+
+      // Load contact (may not exist)
+      const { data: contactData } = await supabase
+        .from('contacts')
+        .select('*')
+        .eq('buying_opportunity_id', opportunityId)
+        .single()
+      contact.value = contactData
 
       // Load vehicle (may not exist)
       const { data: vehicleData } = await supabase
@@ -98,6 +123,10 @@ export function useDetailData(opportunityId: string): UseDetailDataReturn {
     }
   }
 
+  function setContact(c: Contact): void {
+    contact.value = c
+  }
+
   function setVehicle(v: Vehicle): void {
     vehicle.value = v
   }
@@ -128,14 +157,18 @@ export function useDetailData(opportunityId: string): UseDetailDataReturn {
   }
 
   // Computed properties
+  const hasContact = computed(() => contact.value !== null)
   const hasVehicle = computed(() => vehicle.value !== null)
   const hasVendor = computed(() => vendor.value !== null)
   const hasValidation = computed(() => validationResult.value !== null)
 
   const suggestedStartStep = computed(() => {
-    if (validationResult.value) return 3
-    if (vendor.value) return 2
-    if (vehicle.value) return 1
+    // New flow: Contact -> Vehicle -> Vendor -> Documents -> Validation
+    // Steps: 0=Contact, 1=Vehicle, 2=Vendor, 3=Documents, 4=Validation
+    if (validationResult.value) return 4
+    if (vendor.value) return 3
+    if (vehicle.value) return 2
+    if (contact.value) return 1
     return 0
   })
 
@@ -241,10 +274,74 @@ export function useDetailData(opportunityId: string): UseDetailDataReturn {
     }
   })
 
+  /**
+   * Compare contact data with OCR Majitel/Provozovatel data
+   * Used to warn user when contact differs from document owner/keeper
+   */
+  const contactOcrComparison = computed<ContactOcrComparison | null>(() => {
+    if (!contact.value || !vendorOCRData.value) return null
+
+    const differences: ContactOcrComparison['differences'] = []
+
+    // Helper to normalize strings for comparison (uppercase, remove diacritics, trim)
+    const normalize = (str: string | null | undefined): string => {
+      if (!str) return ''
+      return str
+        .toUpperCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .trim()
+    }
+
+    // Get contact name based on type
+    let contactName: string | null = null
+    if (contact.value.contact_type === 'PHYSICAL_PERSON') {
+      contactName = `${contact.value.first_name || ''} ${contact.value.last_name || ''}`.trim()
+    } else {
+      contactName = contact.value.company_name
+    }
+
+    // Get contact identifier based on type
+    let contactIdentifier: string | null = null
+    if (contact.value.contact_type === 'PHYSICAL_PERSON') {
+      contactIdentifier = contact.value.personal_id
+    } else {
+      contactIdentifier = contact.value.company_id
+    }
+
+    // Compare name
+    const ocrName = vendorOCRData.value.name
+    if (normalize(contactName) !== normalize(ocrName)) {
+      differences.push({
+        field: 'Jmeno/Nazev',
+        contact: contactName,
+        ocr: ocrName,
+      })
+    }
+
+    // Compare identifier (IČO or RČ)
+    const ocrIdentifier = vendorOCRData.value.vendor_type === 'PHYSICAL_PERSON'
+      ? vendorOCRData.value.personal_id
+      : vendorOCRData.value.company_id
+    if (normalize(contactIdentifier) !== normalize(ocrIdentifier)) {
+      differences.push({
+        field: vendorOCRData.value.vendor_type === 'PHYSICAL_PERSON' ? 'Rodne cislo' : 'ICO',
+        contact: contactIdentifier,
+        ocr: ocrIdentifier,
+      })
+    }
+
+    return {
+      matches: differences.length === 0,
+      differences,
+    }
+  })
+
   return {
     loading,
     error,
     opportunity,
+    contact,
     vehicle,
     vendor,
     validationResult,
@@ -252,14 +349,17 @@ export function useDetailData(opportunityId: string): UseDetailDataReturn {
     vehicleOCRData,
     vendorOCRData,
     loadData,
+    setContact,
     setVehicle,
     setVendor,
     setValidationResult,
     updateOpportunityStatus,
     clearValidation,
+    hasContact,
     hasVehicle,
     hasVendor,
     hasValidation,
     suggestedStartStep,
+    contactOcrComparison,
   }
 }

@@ -2,6 +2,17 @@
 export type { Vehicle, VehicleFormInput, VehicleOCRData } from './vehicle';
 export { FUEL_TYPE_OPTIONS, VEHICLE_CATEGORY_OPTIONS, getFuelTypeLabel, getVehicleCategoryLabel } from './vehicle';
 
+// Re-export contact types from dedicated module
+export type {
+  ContactType,
+  ContactPerson,
+  Contact,
+  CreateContactInput,
+  UpdateContactInput,
+  ContactFormState,
+} from './contact';
+export { CONTACT_TYPE_LABELS, getContactDisplayName, getContactIdentifier } from './contact';
+
 /**
  * Vendor OCR Data extracted from ORV/VTP documents
  * Used for pre-filling vendor forms with OCR-extracted identity information
@@ -38,6 +49,7 @@ export interface Vendor {
   name: string;
   personal_id: string | null;
   company_id: string | null;
+  is_vat_payer: boolean;
   vat_id: string | null;
   address_street: string | null;
   address_city: string | null;

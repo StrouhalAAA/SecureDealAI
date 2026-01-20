@@ -73,6 +73,7 @@ EXACT, FUZZY (Levenshtein), CONTAINS, REGEX, NUMERIC_TOLERANCE, DATE_TOLERANCE, 
 - `docs/architecture/RULE_MANAGEMENT_API.md` - REST API specifications
 - `docs/architecture/DB_SCHEMA_DYNAMIC_RULES.sql` - PostgreSQL schema
 - `docs/architecture/FIELD_NAMING_CONVENTIONS.md` - **OCR ↔ Database field mapping**
+- `docs/testing/MANUAL_API_TESTING.md` - **Manual ARES/ADIS testing scripts**
 
 ## Field Naming Conventions (IMPORTANT)
 
