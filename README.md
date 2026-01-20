@@ -133,6 +133,7 @@ SecureDealAI/
 ## Documentation
 
 - [Implementation Tracker](docs/implementation/00_IMPLEMENTATION_TRACKER.md)
+- [Manual API Testing](docs/testing/MANUAL_API_TESTING.md) - Scripts for testing ARES/ADIS APIs
 - [CLAUDE.md](CLAUDE.md) - AI assistant context
 
 ## License
