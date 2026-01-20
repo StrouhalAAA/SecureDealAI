@@ -22,6 +22,49 @@ feature_description: $ARGUMENTS
 - Reference existing documentation in `docs/architecture/` for context.
 - Start your research by reading `CLAUDE.md` and `README.md`.
 
+## Sub-Agent Research (Conditional)
+
+When the feature involves **significant database work**, invoke the `supabase-expert` agent to ensure high-quality database design. Use your judgment based on these criteria:
+
+### When to Invoke `supabase-expert`
+
+**DO invoke** when the feature requires:
+- New database tables or significant schema changes
+- Row Level Security (RLS) policies
+- Complex PostgreSQL queries or functions
+- Database migrations with data transformations
+- Edge Function database interactions
+- Performance-sensitive queries or indexing decisions
+
+**DON'T invoke** for:
+- Simple column additions to existing tables
+- Frontend-only changes
+- Minor Edge Function updates without DB changes
+- Configuration or documentation changes
+
+### How to Use Sub-Agent Research
+
+1. **Invoke the agent** with a focused prompt describing the database requirements:
+   ```
+   Use Task tool with subagent_type="supabase-expert":
+   "Analyze database requirements for [feature]. Need schema design for [tables],
+   RLS policies for [access patterns], and migration strategy.
+   Project uses: PostgreSQL, Supabase Edge Functions, existing tables: [list relevant tables]."
+   ```
+
+2. **Integrate findings** into your plan:
+   - Add schema recommendations to the "Database Changes" section
+   - Include RLS policy code in implementation steps
+   - Note any performance considerations or indexing recommendations
+   - Reference the agent's security suggestions
+
+3. **Document the research** in the plan's Notes section:
+   ```
+   ## Notes
+   - Database design reviewed by supabase-expert agent
+   - Key recommendations: [summarize main points]
+   ```
+
 ## Relevant Files
 
 Focus on the following files:
@@ -79,6 +122,19 @@ IMPORTANT: Execute every step in order, top to bottom.
 
 ## Database Changes
 <if applicable, describe schema changes, migrations, RLS policies>
+<if supabase-expert agent was consulted, include its recommendations here>
+
+### Schema Changes
+<list new tables, columns, or modifications>
+
+### Migrations
+<SQL migration code or reference to migration file>
+
+### RLS Policies
+<Row Level Security policies if needed>
+
+### Indexes & Performance
+<any indexing recommendations or performance considerations>
 
 ## Testing Strategy
 
