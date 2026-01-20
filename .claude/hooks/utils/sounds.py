@@ -16,7 +16,7 @@ import sys
 # macOS system sounds paths
 SOUNDS = {
     "attention": "/System/Library/Sounds/Ping.aiff",      # User attention needed
-    "completion": "/System/Library/Sounds/Glass.aiff",    # Task completed
+    "completion": "/System/Library/Sounds/Funk.aiff",     # Task completed
     "error": "/System/Library/Sounds/Basso.aiff",         # Error occurred
     "success": "/System/Library/Sounds/Hero.aiff",        # Success/victory
 }
