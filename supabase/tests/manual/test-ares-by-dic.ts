@@ -123,6 +123,11 @@ function transformAresResponse(ares: Record<string, unknown>): AresCompanyData {
     }
   }
 
+  // Determine active status from seznamRegistraci.stavZdrojeRos
+  const seznamRegistraci = ares.seznamRegistraci as Record<string, string> | undefined;
+  const rosStatus = seznamRegistraci?.stavZdrojeRos;
+  const isActive = rosStatus === 'AKTIVNI' || rosStatus === 'AKTIVNÍ';
+
   return {
     ico: ares.ico as string,
     name: ares.obchodniJmeno as string,
@@ -136,7 +141,7 @@ function transformAresResponse(ares: Record<string, unknown>): AresCompanyData {
     legal_form: (ares.pravniForma as string) || null,
     date_founded: (ares.datumVzniku as string) || null,
     date_terminated: (ares.datumZaniku as string) || null,
-    is_active: (ares.stavSubjektu as string) === 'AKTIVNÍ',
+    is_active: isActive,
   };
 }
 

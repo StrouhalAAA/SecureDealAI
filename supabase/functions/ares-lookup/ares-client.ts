@@ -42,7 +42,17 @@ export interface AresRawResponse {
   pravniForma?: string;
   datumVzniku?: string;
   datumZaniku?: string;
+  /** @deprecated This field is not returned by the current ARES API */
   stavSubjektu?: string;
+  /** Registry statuses - use stavZdrojeRos for active status */
+  seznamRegistraci?: {
+    stavZdrojeRos?: string;
+    stavZdrojeVr?: string;
+    stavZdrojeRes?: string;
+    stavZdrojeRzp?: string;
+    stavZdrojeDph?: string;
+    [key: string]: string | undefined;
+  };
 }
 
 /**
@@ -155,6 +165,11 @@ export function transformAresResponse(ares: AresRawResponse): AresCompanyData {
     city = `${city} - ${sidlo.nazevCastiObce}`;
   }
 
+  // Determine active status from seznamRegistraci.stavZdrojeRos
+  // AKTIVNI = active, VYMAZANY/NEEXISTUJICI = inactive
+  const rosStatus = ares.seznamRegistraci?.stavZdrojeRos;
+  const isActive = rosStatus === 'AKTIVNI' || rosStatus === 'AKTIVNÍ';
+
   return {
     ico: ares.ico,
     name: ares.obchodniJmeno,
@@ -167,6 +182,6 @@ export function transformAresResponse(ares: AresRawResponse): AresCompanyData {
     },
     legal_form: ares.pravniForma || '',
     date_founded: ares.datumVzniku || '',
-    is_active: ares.stavSubjektu === 'AKTIVNÍ' || ares.stavSubjektu === 'AKTIVNI',
+    is_active: isActive,
   };
 }
