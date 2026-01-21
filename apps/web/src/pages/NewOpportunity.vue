@@ -380,7 +380,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { supabase } from '@/composables/useSupabase';
 import { useErrorHandler } from '@/composables/useErrorHandler';
