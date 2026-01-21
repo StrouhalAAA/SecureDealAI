@@ -4,7 +4,7 @@
  */
 
 import { createClient, SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { ValidationRule, ValidationRuleRow } from './types.ts';
+import { ValidationRule, ValidationRuleRow, VendorType, BuyingType } from './types.ts';
 
 // =============================================================================
 // SUPABASE CLIENT
@@ -127,6 +127,46 @@ export async function loadActiveRules(): Promise<ValidationRule[]> {
   console.log(`[RulesLoader] Loaded ${enabledRules.length} active rules (hash: ${hash.substring(0, 8)})`);
 
   return enabledRules;
+}
+
+/**
+ * Load active rules filtered by vendor type and buying type
+ * Rules without applicableToBuyingType are treated as universal (apply to all types)
+ */
+export async function loadActiveRulesFiltered(
+  vendorType?: VendorType,
+  buyingType: BuyingType = 'BRANCH'
+): Promise<ValidationRule[]> {
+  const allRules = await loadActiveRules();
+
+  const filteredRules = allRules.filter(rule => {
+    // Filter by buying type
+    const applicableToBuyingType = rule.metadata?.applicableToBuyingType;
+    if (applicableToBuyingType && applicableToBuyingType.length > 0) {
+      if (!applicableToBuyingType.includes(buyingType)) {
+        return false;
+      }
+    }
+
+    // Filter by vendor type (if specified)
+    if (vendorType) {
+      const applicableTo = rule.metadata?.applicableTo;
+      if (applicableTo && applicableTo.length > 0) {
+        if (!applicableTo.includes(vendorType)) {
+          return false;
+        }
+      }
+    }
+
+    return true;
+  });
+
+  console.log(
+    `[RulesLoader] Filtered ${filteredRules.length}/${allRules.length} rules for ` +
+    `buying_type=${buyingType}, vendor_type=${vendorType ?? 'any'}`
+  );
+
+  return filteredRules;
 }
 
 /**

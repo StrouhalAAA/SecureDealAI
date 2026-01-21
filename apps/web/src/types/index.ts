@@ -30,6 +30,7 @@ export interface BuyingOpportunity {
   id: string;
   spz: string;
   status: 'DRAFT' | 'PENDING' | 'VALIDATED' | 'REJECTED';
+  buying_type: 'BRANCH' | 'MOBILE_BUYING';
   created_at: string;
   updated_at: string;
 }

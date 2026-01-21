@@ -73,6 +73,7 @@ async function loadValidationData(
     .select(`
       id,
       spz,
+      buying_type,
       vehicles (*),
       vendors (*)
     `)
@@ -160,6 +161,11 @@ async function loadValidationData(
   }
 
   const inputData: ValidationInputData = {
+    buying_opportunity: {
+      id: opportunity.id,
+      spz: opportunity.spz,
+      buying_type: opportunity.buying_type ?? 'BRANCH',
+    },
     vehicle: vehicle ?? undefined,
     vendor: vendor ?? undefined,
     ocr_orv: ocrOrv ?? undefined,
@@ -171,6 +177,7 @@ async function loadValidationData(
   };
 
   console.log(`[DataLoader] Data loaded successfully`);
+  console.log(`[DataLoader] - Buying Type: ${inputData.buying_opportunity?.buying_type}`);
   console.log(`[DataLoader] - Vehicle: ${inputData.vehicle ? 'yes' : 'no'}`);
   console.log(`[DataLoader] - Vendor: ${inputData.vendor ? `${inputData.vendor.vendor_type}` : 'no'}`);
   console.log(`[DataLoader] - OCR ORV: ${inputData.ocr_orv ? 'yes' : 'no'}`);

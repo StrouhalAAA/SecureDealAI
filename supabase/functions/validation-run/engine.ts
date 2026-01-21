@@ -19,7 +19,7 @@ import {
 } from './types.ts';
 import { applyTransforms } from './transforms.ts';
 import { compare, ComparisonResult } from './comparators.ts';
-import { loadActiveRules, getRulesSnapshotHash } from './rules-loader.ts';
+import { loadActiveRulesFiltered, getRulesSnapshotHash } from './rules-loader.ts';
 
 // =============================================================================
 // ENGINE STATE
@@ -352,8 +352,10 @@ export class ValidationEngine {
       },
     };
 
-    // Load active rules
-    const rules = await loadActiveRules();
+    // Load active rules filtered by buying_type and vendor_type
+    const buyingType = inputData.buying_opportunity?.buying_type ?? 'BRANCH';
+    const vendorType = inputData.vendor?.vendor_type;
+    const rules = await loadActiveRulesFiltered(vendorType, buyingType);
     const rulesSnapshotHash = await getRulesSnapshotHash();
 
     console.log(`[Engine] Executing ${rules.length} rules...`);
