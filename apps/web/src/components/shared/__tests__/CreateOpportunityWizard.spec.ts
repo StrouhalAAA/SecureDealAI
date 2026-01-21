@@ -117,11 +117,34 @@ describe('CreateOpportunityWizard', () => {
     vi.clearAllMocks()
   })
 
-  it('shows contact form by default', async () => {
+  // Helper to navigate past deal-type step to contact step
+  async function navigateToContactStep(wrapper: ReturnType<typeof mount>) {
+    // Click "Pobocka" button to select deal type
+    const branchButton = wrapper.findAll('button').find(
+      btn => btn.text().includes('Pobocka')
+    )
+    await branchButton?.trigger('click')
+    await flushPromises()
+  }
+
+  it('shows deal type selection by default', async () => {
     const wrapper = mount(CreateOpportunityWizard)
     await flushPromises()
 
-    // The wizard should start with contact step
+    // The wizard should start with deal-type step
+    expect(wrapper.find('h2').text()).toBe('Typ vykupu')
+    expect(wrapper.text()).toContain('Vyberte typ vykupu')
+    expect(wrapper.text()).toContain('Pobocka')
+    expect(wrapper.text()).toContain('Mobilni vykup')
+  })
+
+  it('navigates to contact step when deal type is selected', async () => {
+    const wrapper = mount(CreateOpportunityWizard)
+    await flushPromises()
+
+    await navigateToContactStep(wrapper)
+
+    // Should now show contact form
     expect(wrapper.find('[data-testid="contact-form"]').exists()).toBe(true)
     expect(wrapper.text()).toContain('Kontaktni osoba')
   })
@@ -130,6 +153,8 @@ describe('CreateOpportunityWizard', () => {
     const wrapper = mount(CreateOpportunityWizard)
     await flushPromises()
 
+    await navigateToContactStep(wrapper)
+
     expect(wrapper.find('h2').text()).toBe('Nova nakupni prilezitost')
   })
 
@@ -137,12 +162,13 @@ describe('CreateOpportunityWizard', () => {
     const wrapper = mount(CreateOpportunityWizard)
     await flushPromises()
 
+    expect(wrapper.text()).toContain('Typ')
     expect(wrapper.text()).toContain('Kontakt')
     expect(wrapper.text()).toContain('Vozidlo')
     expect(wrapper.text()).toContain('Dodavatel')
   })
 
-  it('does not show back button on initial contact step', async () => {
+  it('does not show back button on initial deal-type step', async () => {
     const wrapper = mount(CreateOpportunityWizard)
     await flushPromises()
 
@@ -167,6 +193,9 @@ describe('CreateOpportunityWizard', () => {
     const wrapper = mount(CreateOpportunityWizard)
     await flushPromises()
 
+    // Navigate to contact step first
+    await navigateToContactStep(wrapper)
+
     // Click "next" on contact form
     const nextButton = wrapper.find('[data-testid="contact-next"]')
     await nextButton.trigger('click')
@@ -179,14 +208,12 @@ describe('CreateOpportunityWizard', () => {
     expect(wrapper.text()).toContain('Zadat rucne')
   })
 
-  it('shows back button after navigating to choice step', async () => {
+  it('shows back button after navigating to contact step', async () => {
     const wrapper = mount(CreateOpportunityWizard)
     await flushPromises()
 
-    // Navigate to choice step
-    const nextButton = wrapper.find('[data-testid="contact-next"]')
-    await nextButton.trigger('click')
-    await flushPromises()
+    // Navigate to contact step
+    await navigateToContactStep(wrapper)
 
     // Back button should now be visible
     expect(wrapper.find('[aria-label="Zpet"]').exists()).toBe(true)
@@ -196,7 +223,8 @@ describe('CreateOpportunityWizard', () => {
     const wrapper = mount(CreateOpportunityWizard)
     await flushPromises()
 
-    // Navigate to choice step
+    // Navigate to contact step then choice step
+    await navigateToContactStep(wrapper)
     await wrapper.find('[data-testid="contact-next"]').trigger('click')
     await flushPromises()
 
@@ -215,7 +243,8 @@ describe('CreateOpportunityWizard', () => {
     const wrapper = mount(CreateOpportunityWizard)
     await flushPromises()
 
-    // Navigate to choice step
+    // Navigate to contact step then choice step
+    await navigateToContactStep(wrapper)
     await wrapper.find('[data-testid="contact-next"]').trigger('click')
     await flushPromises()
 
@@ -234,7 +263,8 @@ describe('CreateOpportunityWizard', () => {
     const wrapper = mount(CreateOpportunityWizard)
     await flushPromises()
 
-    // Navigate to choice step
+    // Navigate to contact step then choice step
+    await navigateToContactStep(wrapper)
     await wrapper.find('[data-testid="contact-next"]').trigger('click')
     await flushPromises()
 
