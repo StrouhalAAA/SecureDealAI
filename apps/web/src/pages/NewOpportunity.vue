@@ -548,8 +548,10 @@ function handleClose() {
 // Deal type step handler
 async function selectDealType(type: 'BRANCH' | 'MOBILE_BUYING') {
   buyingType.value = type;
-  await initializeOpportunity();
-  pushStep('contact');
+  const success = await initializeOpportunity();
+  if (success) {
+    pushStep('contact');
+  }
 }
 
 // Contact step handlers
@@ -818,7 +820,7 @@ function completeWizard() {
 }
 
 // Initialize: Create temporary buying opportunity with buying_type
-async function initializeOpportunity() {
+async function initializeOpportunity(): Promise<boolean> {
   try {
     const placeholderSpz = `TEMP-${Date.now()}`;
 
@@ -835,8 +837,10 @@ async function initializeOpportunity() {
 
     tempOpportunityId.value = data.id;
     createdOpportunityId.value = data.id;
+    return true;
   } catch (e) {
     error.value = handleError(e, 'NewOpportunity.initializeOpportunity');
+    return false;
   }
 }
 
