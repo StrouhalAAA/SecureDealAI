@@ -99,7 +99,7 @@ test.describe.skip('Validation Flow', () => {
     await page.goto('/');
 
     // Open create modal and wait for it to appear
-    await page.getByRole('button', { name: /Nová příležitost|Nova prilezitost/i }).click();
+    await page.getByRole('button', { name: /Nová výkupní příležitost|Nova vykupni prilezitost/i }).click();
     await expect(page.getByRole('heading', { name: /Nová nákupní příležitost/i })).toBeVisible();
 
     // Fill SPZ and submit (match dashboard test approach exactly)
@@ -186,7 +186,7 @@ test.describe.skip('Validation Flow', () => {
     await page.goto('/');
 
     // Create opportunity
-    await page.getByRole('button', { name: /Nová příležitost|Nova prilezitost/i }).click();
+    await page.getByRole('button', { name: /Nová výkupní příležitost|Nova vykupni prilezitost/i }).click();
     await page.getByPlaceholder('např. 5L94454').fill(testSpz);
     await page.getByRole('button', { name: /Vytvořit/i }).click();
 
@@ -227,7 +227,7 @@ test.describe.skip('Validation Flow', () => {
     await page.goto('/');
 
     // Create opportunity
-    await page.getByRole('button', { name: /Nová příležitost|Nova prilezitost/i }).click();
+    await page.getByRole('button', { name: /Nová výkupní příležitost|Nova vykupni prilezitost/i }).click();
     await page.getByPlaceholder('např. 5L94454').fill(testSpz);
     await page.getByRole('button', { name: /Vytvořit/i }).click();
 
@@ -245,7 +245,7 @@ test.describe.skip('Validation Flow', () => {
     await page.goto('/');
 
     // Create opportunity
-    await page.getByRole('button', { name: /Nová příležitost|Nova prilezitost/i }).click();
+    await page.getByRole('button', { name: /Nová výkupní příležitost|Nova vykupni prilezitost/i }).click();
     await page.getByPlaceholder('např. 5L94454').fill(testSpz);
     await page.getByRole('button', { name: /Vytvořit/i }).click();
 
@@ -274,7 +274,7 @@ test.describe.skip('Validation Flow', () => {
     await page.goto('/');
 
     // Create opportunity
-    await page.getByRole('button', { name: /Nová příležitost|Nova prilezitost/i }).click();
+    await page.getByRole('button', { name: /Nová výkupní příležitost|Nova vykupni prilezitost/i }).click();
     await page.getByPlaceholder('např. 5L94454').fill(testSpz);
     await page.getByRole('button', { name: /Vytvořit/i }).click();
 
@@ -306,7 +306,7 @@ test.describe.skip('Validation Flow', () => {
     await page.goto('/');
 
     // Create opportunity
-    await page.getByRole('button', { name: /Nová příležitost|Nova prilezitost/i }).click();
+    await page.getByRole('button', { name: /Nová výkupní příležitost|Nova vykupni prilezitost/i }).click();
     await page.getByPlaceholder('např. 5L94454').fill(testSpz);
     await page.getByRole('button', { name: /Vytvořit/i }).click();
 

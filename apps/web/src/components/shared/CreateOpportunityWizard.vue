@@ -8,7 +8,7 @@
             v-if="canGoBack"
             @click="goBack"
             class="p-1 hover:bg-gray-100 rounded"
-            aria-label="Zpet"
+            aria-label="Zpět"
           >
             <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
@@ -19,7 +19,7 @@
         <button
           @click="$emit('close')"
           class="p-1 hover:bg-gray-100 rounded"
-          aria-label="Zavrit"
+          aria-label="Zavřít"
         >
           <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -70,7 +70,7 @@
         <!-- Step 0: Deal Type Selection -->
         <div v-if="currentStep === 'deal-type'" class="space-y-4">
           <p class="text-gray-600 text-center mb-6">
-            Vyberte typ vykupu:
+            Vyberte typ výkupu:
           </p>
 
           <!-- Branch Option -->
@@ -85,9 +85,9 @@
                 </svg>
               </div>
               <div>
-                <h3 class="text-lg font-semibold text-gray-900">Pobocka</h3>
+                <h3 class="text-lg font-semibold text-gray-900">Pobočka</h3>
                 <p class="text-sm text-gray-500 mt-1">
-                  Vykup na pobocce
+                  Výkup na pobočce
                 </p>
               </div>
             </div>
@@ -106,9 +106,9 @@
                 </svg>
               </div>
               <div>
-                <h3 class="text-lg font-semibold text-gray-900">Mobilni vykup</h3>
+                <h3 class="text-lg font-semibold text-gray-900">Mobilní výkup</h3>
                 <p class="text-sm text-gray-500 mt-1">
-                  Vykup u zakaznika
+                  Výkup u zákazníka
                 </p>
               </div>
             </div>
@@ -129,7 +129,7 @@
         <!-- Step 2: Vehicle Choice -->
         <div v-else-if="currentStep === 'choice'" class="space-y-4">
           <p class="text-gray-600 text-center mb-6">
-            Vyberte zpusob pridani vozidla:
+            Vyberte způsob přidání vozidla:
           </p>
 
           <!-- Upload ORV Option -->
@@ -144,9 +144,9 @@
                 </svg>
               </div>
               <div>
-                <h3 class="text-lg font-semibold text-gray-900">Nahrat ORV</h3>
+                <h3 class="text-lg font-semibold text-gray-900">Nahrát ORV</h3>
                 <p class="text-sm text-gray-500 mt-1">
-                  Nahrajte maly technicky prukaz a data budou automaticky extrahována
+                  Nahrajte malý technický průkaz a data budou automaticky extrahována
                 </p>
               </div>
             </div>
@@ -164,9 +164,9 @@
                 </svg>
               </div>
               <div>
-                <h3 class="text-lg font-semibold text-gray-900">Zadat rucne</h3>
+                <h3 class="text-lg font-semibold text-gray-900">Zadat ručně</h3>
                 <p class="text-sm text-gray-500 mt-1">
-                  Vyplnte data vozidla rucne bez nahrani dokumentu
+                  Vyplňte data vozidla ručně bez nahrání dokumentu
                 </p>
               </div>
             </div>
@@ -178,7 +178,7 @@
           <!-- DropZone - First, upload the document -->
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-2">
-              Nahrat ORV dokument <span class="text-red-500">*</span>
+              Nahrát ORV dokument <span class="text-red-500">*</span>
             </label>
             <DropZone
               :file="uploadedFile"
@@ -201,7 +201,7 @@
           <!-- SPZ Display/Input - Show after OCR or for manual fallback -->
           <div v-if="ocrExtraction?.ocr_status === 'COMPLETED' || ocrSpzExtractionFailed">
             <label for="upload-spz" class="block text-sm font-medium text-gray-700 mb-1">
-              SPZ (registracni znacka) <span class="text-red-500">*</span>
+              SPZ (registrační značka) <span class="text-red-500">*</span>
             </label>
             <!-- Show extracted SPZ with edit option -->
             <div v-if="extractedSpz && !editingSpz" class="flex items-center gap-2">
@@ -250,14 +250,14 @@
               @click="goBack"
               class="px-4 py-2 border rounded-lg hover:bg-gray-50"
             >
-              Zpet
+              Zpět
             </button>
             <button
               @click="createVehicleFromUpload"
               :disabled="!canSubmitUpload || loading"
               class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {{ loading ? 'Vytvarim...' : 'Pokracovat' }}
+              {{ loading ? 'Vytvářím...' : 'Pokračovat' }}
             </button>
           </div>
         </div>
@@ -274,7 +274,7 @@
 
         <!-- Step 3: Vendor Decision -->
         <div v-else-if="currentStep === 'vendor-decision'" class="space-y-6">
-          <h3 class="text-lg font-semibold">Je dodavatel stejny jako kontakt?</h3>
+          <h3 class="text-lg font-semibold">Je dodavatel stejný jako kontakt?</h3>
 
           <!-- Contact Summary -->
           <div class="p-4 bg-gray-50 rounded-lg border border-gray-200">
@@ -296,7 +296,7 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
               </svg>
               <div>
-                <h4 class="font-medium text-yellow-800">Majitel z OCR se lisi od kontaktu</h4>
+                <h4 class="font-medium text-yellow-800">Majitel z OCR se liší od kontaktu</h4>
                 <p class="text-sm text-yellow-700 mt-1">
                   OCR Majitel: <strong>{{ ocrMajitelName }}</strong>
                 </p>
@@ -320,9 +320,9 @@
                 class="mt-1 w-4 h-4 text-blue-600 focus:ring-blue-500"
               />
               <div>
-                <span class="font-medium">Ano - {{ contactDisplayName }} je prodavajici</span>
+                <span class="font-medium">Ano - {{ contactDisplayName }} je prodávající</span>
                 <p class="text-sm text-gray-500 mt-1">
-                  Data kontaktu budou pouzita jako data dodavatele
+                  Data kontaktu budou použita jako data dodavatele
                 </p>
               </div>
             </label>
@@ -341,9 +341,9 @@
                 class="mt-1 w-4 h-4 text-blue-600 focus:ring-blue-500"
               />
               <div>
-                <span class="font-medium">Ne - Prodavajici je jiny subjekt</span>
+                <span class="font-medium">Ne - Prodávající je jiný subjekt</span>
                 <p class="text-sm text-gray-500 mt-1">
-                  Muzete zadat dodavatele jako fyzickou osobu, OSVC nebo firmu
+                  Můžete zadat dodavatele jako fyzickou osobu, OSVČ nebo firmu
                 </p>
               </div>
             </label>
@@ -355,14 +355,14 @@
               @click="goBack"
               class="px-4 py-2 border rounded-lg hover:bg-gray-50"
             >
-              Zpet
+              Zpět
             </button>
             <button
               @click="handleVendorDecision"
               :disabled="!vendorDecision || loading"
               class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {{ loading ? 'Zpracovavam...' : 'Pokracovat' }}
+              {{ loading ? 'Zpracovávám...' : 'Pokračovat' }}
             </button>
           </div>
         </div>
@@ -484,21 +484,21 @@ const canGoBack = computed(() => {
 const stepTitle = computed(() => {
   switch (currentStep.value) {
     case 'deal-type':
-      return 'Typ vykupu';
+      return 'Typ výkupu';
     case 'contact':
-      return 'Nova nakupni prilezitost';
+      return 'Nová nákupní příležitost';
     case 'choice':
       return 'Data vozidla';
     case 'upload-orv':
-      return 'Nahrat ORV dokument';
+      return 'Nahrát ORV dokument';
     case 'manual-entry':
-      return 'Rucni zadani vozidla';
+      return 'Ruční zadání vozidla';
     case 'vendor-decision':
       return 'Dodavatel';
     case 'vendor-form':
       return 'Data dodavatele';
     default:
-      return 'Nova nakupni prilezitost';
+      return 'Nová nákupní příležitost';
   }
 });
 
@@ -594,11 +594,11 @@ function selectVehicleEntry(method: 'upload-orv' | 'manual-entry') {
 
 function validateSpz() {
   if (!spz.value) {
-    spzError.value = 'SPZ je povinne pole';
+    spzError.value = 'SPZ je povinné pole';
     return false;
   }
   if (spz.value.length < 5 || spz.value.length > 8) {
-    spzError.value = 'SPZ musi mit 5-8 znaku';
+    spzError.value = 'SPZ musí mít 5-8 znaků';
     return false;
   }
   spzError.value = null;
@@ -633,7 +633,7 @@ async function handleFileSelected(file: File) {
 
     if (!uploadResponse.ok) {
       const err = await uploadResponse.json();
-      throw new Error(err.message || 'Chyba nahravani');
+      throw new Error(err.message || 'Chyba nahrávání');
     }
 
     const extraction = await uploadResponse.json();
@@ -669,7 +669,7 @@ async function handleFileSelected(file: File) {
       }
     }
   } catch (e) {
-    uploadError.value = e instanceof Error ? e.message : 'Chyba nahravani';
+    uploadError.value = e instanceof Error ? e.message : 'Chyba nahrávání';
   } finally {
     uploading.value = false;
   }

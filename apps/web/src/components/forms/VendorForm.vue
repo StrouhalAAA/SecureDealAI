@@ -16,7 +16,7 @@
             class="mr-2 w-4 h-4 text-blue-600 focus:ring-blue-500"
             name="vendor-type"
           />
-          <span>Fyzicka osoba</span>
+          <span>Fyzická osoba</span>
         </label>
         <label class="flex items-center cursor-pointer hover:bg-gray-50 p-2 rounded-lg transition-colors">
           <input
@@ -26,7 +26,7 @@
             class="mr-2 w-4 h-4 text-blue-600 focus:ring-blue-500"
             name="vendor-type"
           />
-          <span>Pravnicka osoba</span>
+          <span>Právnická osoba</span>
         </label>
       </div>
     </fieldset>
@@ -42,10 +42,10 @@
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
         </svg>
         <div>
-          <h4 class="font-medium text-yellow-800">Data z OCR - doplnte rodne cislo</h4>
+          <h4 class="font-medium text-yellow-800">Data z OCR - doplňte rodné číslo</h4>
           <p class="text-sm text-yellow-700 mt-1">
-            Udaje dodavatele byly automaticky nacteny z technickeho prukazu.
-            Pro dokonceni je nutne doplnit rodne cislo.
+            Údaje dodavatele byly automaticky načteny z technického průkazu.
+            Pro dokončení je nutné doplnit rodné číslo.
           </p>
         </div>
       </div>
@@ -62,10 +62,10 @@
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
         </svg>
         <div>
-          <h4 class="font-medium text-yellow-800">Data z OCR - doplnte ICO</h4>
+          <h4 class="font-medium text-yellow-800">Data z OCR - doplňte IČO</h4>
           <p class="text-sm text-yellow-700 mt-1">
-            Dodavatel byl identifikovan jako pravnicka osoba z technickeho prukazu.
-            Pro dokonceni je nutne doplnit ICO.
+            Dodavatel byl identifikován jako právnická osoba z technického průkazu.
+            Pro dokončení je nutné doplnit IČO.
           </p>
         </div>
       </div>
@@ -82,9 +82,9 @@
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
         <div>
-          <h4 class="font-medium text-blue-800">ICO nacteno z OCR</h4>
+          <h4 class="font-medium text-blue-800">IČO načteno z OCR</h4>
           <p class="text-sm text-blue-700 mt-1">
-            ICO bylo automaticky extrahováno z dokumentu. Overeni v ARES probehne automaticky.
+            IČO bylo automaticky extrahováno z dokumentu. Ověření v ARES proběhne automaticky.
           </p>
         </div>
       </div>
@@ -101,9 +101,9 @@
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
         </svg>
         <div>
-          <h4 class="font-medium text-orange-800">Kontakt se lisi od Majitele/Provozovatele z dokumentu</h4>
+          <h4 class="font-medium text-orange-800">Kontakt se liší od Majitele/Provozovatele z dokumentu</h4>
           <p class="text-sm text-orange-700 mt-1">
-            Udaje kontaktu se neshoduji s daty z technickeho prukazu. Overite prosim, ze dodavatel je spravny.
+            Údaje kontaktu se neshodují s daty z technického průkazu. Ověřte prosím, že dodavatel je správný.
           </p>
           <div class="mt-2 text-sm text-orange-700">
             <div v-for="diff in props.contactOcrComparison.differences" :key="diff.field" class="flex gap-2">
@@ -123,7 +123,7 @@
         <!-- ICO with ARES lookup -->
         <div class="mb-4">
           <label :for="icoInputId" class="block text-sm font-medium text-gray-700 mb-1">
-            ICO <span class="text-red-500" aria-label="povinna polozka">*</span>
+            IČO <span class="text-red-500" aria-label="povinná položka">*</span>
             <span v-if="isOcrCreated && form.company_id && autoFilled.company_id" class="text-blue-600 text-xs ml-2" aria-live="polite">
               (z OCR)
             </span>
@@ -140,7 +140,7 @@
                 'border-green-500 bg-green-50': icoTouched && isValidIco,
                 'border-red-500 bg-red-50': icoTouched && form.company_id && !isValidIco,
               }"
-              placeholder="8 cislic"
+              placeholder="8 číslic"
               maxlength="8"
               inputmode="numeric"
               required
@@ -154,12 +154,12 @@
               @click="lookupAres"
               :disabled="!isValidIco"
               :loading="aresLoading"
-              loading-text="Overuji..."
+              loading-text="Načítám..."
               variant="secondary"
               size="md"
-              aria-label="Overit ICO v registru ARES"
+              aria-label="Načíst ICO z registru ARES"
             >
-              Overit
+              Načíst z Aresu
             </LoadingButton>
           </div>
           <p v-if="icoTouched && icoError" :id="icoErrorId" class="text-red-500 text-xs mt-1" role="alert">
@@ -171,9 +171,9 @@
         <!-- Company Name -->
         <div class="mb-4">
           <label :for="companyNameInputId" class="block text-sm font-medium text-gray-700 mb-1">
-            Nazev firmy <span class="text-red-500" aria-label="povinna polozka">*</span>
+            Název firmy <span class="text-red-500" aria-label="povinná položka">*</span>
             <span v-if="autoFilled.name" class="text-green-600 text-xs ml-2" aria-live="polite">
-              (vyplneno z ARES)
+              (vyplněno z ARES)
             </span>
           </label>
           <input
@@ -193,7 +193,7 @@
             @blur="nameTouched = true"
           />
           <p v-if="nameTouched && !form.name" :id="nameErrorId" class="text-red-500 text-xs mt-1" role="alert">
-            Nazev firmy je povinne pole
+            Název firmy je povinné pole
           </p>
         </div>
 
@@ -205,16 +205,16 @@
               v-model="form.is_vat_payer"
               class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
             />
-            <span class="text-sm font-medium text-gray-700">Platce DPH</span>
+            <span class="text-sm font-medium text-gray-700">Plátce DPH</span>
           </label>
         </div>
 
         <!-- DIC (shown only when is_vat_payer is true) -->
         <div v-if="form.is_vat_payer" class="mb-4">
           <label for="dic-input" class="block text-sm font-medium text-gray-700 mb-1">
-            DIC <span class="text-red-500" aria-label="povinna polozka">*</span>
+            DIČ <span class="text-red-500" aria-label="povinná položka">*</span>
             <span v-if="autoFilled.vat_id" class="text-green-600 text-xs ml-2" aria-live="polite">
-              (vyplneno z ARES)
+              (vyplněno z ARES)
             </span>
           </label>
           <input
@@ -233,7 +233,7 @@
             @blur="vatIdTouched = true"
           />
           <p v-if="vatIdTouched && form.is_vat_payer && !form.vat_id" class="text-red-500 text-xs mt-1" role="alert">
-            DIC je povinne pro platce DPH
+            DIČ je povinné pro plátce DPH
           </p>
         </div>
       </template>
@@ -243,7 +243,7 @@
         <!-- Name -->
         <div class="mb-4">
           <label :for="personNameInputId" class="block text-sm font-medium text-gray-700 mb-1">
-            Jmeno a prijmeni <span class="text-red-500" aria-label="povinna polozka">*</span>
+            Jméno a příjmení <span class="text-red-500" aria-label="povinná položka">*</span>
             <span v-if="isOcrCreated && autoFilled.name" class="text-blue-600 text-xs ml-2" aria-live="polite">
               (z OCR)
             </span>
@@ -267,7 +267,7 @@
             @blur="nameTouched = true"
           />
           <p v-if="nameTouched && !form.name" :id="personNameErrorId" class="text-red-500 text-xs mt-1" role="alert">
-            Jmeno a prijmeni je povinne pole
+            Jméno a příjmení je povinné pole
           </p>
         </div>
 
@@ -275,7 +275,7 @@
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           <div>
             <label :for="rcInputId" class="block text-sm font-medium text-gray-700 mb-1">
-              Rodne cislo <span class="text-red-500" aria-label="povinna polozka">*</span>
+              Rodné číslo <span class="text-red-500" aria-label="povinná položka">*</span>
             </label>
             <input
               :id="rcInputId"
@@ -299,12 +299,12 @@
               {{ rcError }}
             </p>
             <p v-else-if="rcTouched && form.personal_id && !rcError" class="text-green-600 text-xs mt-1">
-              Platne rodne cislo
+              Platné rodné číslo
             </p>
           </div>
           <div>
             <label for="dob-input" class="block text-sm font-medium text-gray-700 mb-1">
-              Datum narozeni
+              Datum narození
             </label>
             <input
               id="dob-input"
@@ -319,7 +319,7 @@
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           <div>
             <label for="op-number-input" class="block text-sm font-medium text-gray-700 mb-1">
-              Cislo OP
+              Číslo OP
             </label>
             <input
               id="op-number-input"
@@ -349,7 +349,7 @@
         <label for="street-input" class="block text-sm font-medium text-gray-700 mb-1">
           Ulice
           <span v-if="autoFilled.address && !isOcrCreated" class="text-green-600 text-xs ml-2" aria-live="polite">
-            (vyplneno z ARES)
+            (vyplněno z ARES)
           </span>
           <span v-else-if="isOcrCreated && autoFilled.address" class="text-blue-600 text-xs ml-2" aria-live="polite">
             (z OCR)
@@ -371,7 +371,7 @@
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
         <div>
           <label :for="cityInputId" class="block text-sm font-medium text-gray-700 mb-1">
-            Mesto <span class="text-red-500" aria-label="povinna polozka">*</span>
+            Město <span class="text-red-500" aria-label="povinná položka">*</span>
           </label>
           <input
             :id="cityInputId"
@@ -391,12 +391,12 @@
             @blur="cityTouched = true"
           />
           <p v-if="cityTouched && !form.address_city" :id="cityErrorId" class="text-red-500 text-xs mt-1" role="alert">
-            Mesto je povinne pole
+            Město je povinné pole
           </p>
         </div>
         <div>
           <label :for="pscInputId" class="block text-sm font-medium text-gray-700 mb-1">
-            PSC <span class="text-red-500" aria-label="povinna polozka">*</span>
+            PSČ <span class="text-red-500" aria-label="povinná položka">*</span>
           </label>
           <input
             :id="pscInputId"
@@ -419,7 +419,7 @@
             @blur="pscTouched = true"
           />
           <p v-if="pscTouched && !form.address_postal_code" :id="pscErrorId" class="text-red-500 text-xs mt-1" role="alert">
-            PSC je povinne pole
+            PSČ je povinné pole
           </p>
         </div>
       </div>
@@ -456,7 +456,7 @@
       <!-- Bank Account -->
       <div class="mb-6">
         <label class="block text-sm font-medium text-gray-700 mb-1">
-          Bankovni ucet
+          Bankovní účet
           <span v-if="autoFilled.bank_account" class="text-green-600 text-xs ml-2" aria-live="polite">
             (z registru ADIS)
           </span>
@@ -487,7 +487,7 @@
               }"
             >
               {{ account }}
-              <span class="text-xs text-green-600 ml-1">(registrovan v ADIS)</span>
+              <span class="text-xs text-green-600 ml-1">(registrován v ADIS)</span>
             </label>
           </div>
 
@@ -506,7 +506,7 @@
               for="bank-account-manual"
               class="ml-2 text-sm cursor-pointer text-gray-700 hover:text-blue-600"
             >
-              Jiny ucet (zadat rucne)
+              Jiný účet (zadat ručně)
             </label>
           </div>
 
@@ -517,7 +517,7 @@
               v-model="form.bank_account"
               type="text"
               class="w-full px-4 py-2 border border-gray-300 rounded-lg font-mono focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              placeholder="cislo uctu/kod banky"
+              placeholder="číslo účtu/kód banky"
             />
           </div>
         </div>
@@ -536,7 +536,7 @@
               <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
                 <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
               </svg>
-              Zadne registrovane ucty v ADIS
+              Žádné registrované účty v ADIS
             </span>
           </p>
         </div>
@@ -560,7 +560,7 @@
           variant="outline"
           size="md"
         >
-          Zpet
+          Zpět
         </LoadingButton>
         <LoadingButton
           type="submit"
@@ -570,7 +570,7 @@
           variant="primary"
           size="md"
         >
-          Dalsi krok
+          Další krok
         </LoadingButton>
       </div>
     </form>
@@ -708,23 +708,23 @@ const isValidIco = computed(() => {
 
 // ICO error message
 const icoError = computed(() => {
-  if (!form.value.company_id) return 'ICO je povinne pole';
-  if (!/^\d+$/.test(form.value.company_id)) return 'ICO musi obsahovat pouze cislice';
-  if (form.value.company_id.length !== 8) return 'ICO musi mit presne 8 cislic';
-  if (!isValidIco.value) return 'Neplatne ICO (kontrolni soucet)';
+  if (!form.value.company_id) return 'IČO je povinné pole';
+  if (!/^\d+$/.test(form.value.company_id)) return 'IČO musí obsahovat pouze číslice';
+  if (form.value.company_id.length !== 8) return 'IČO musí mít přesně 8 číslic';
+  if (!isValidIco.value) return 'Neplatné IČO (kontrolní součet)';
   return null;
 });
 
 const rcError = computed(() => {
   const rc = form.value.personal_id?.replace(/\//g, '');
   if (!rc) return null;
-  if (rc.length < 9 || rc.length > 10) return 'Rodne cislo musi mit 9-10 cislic';
-  if (!/^\d+$/.test(rc)) return 'Rodne cislo musi obsahovat pouze cislice';
+  if (rc.length < 9 || rc.length > 10) return 'Rodné číslo musí mít 9-10 číslic';
+  if (!/^\d+$/.test(rc)) return 'Rodné číslo musí obsahovat pouze číslice';
 
   // Basic validation for RC format (born after 1954 should be divisible by 11)
   if (rc.length === 10) {
     const num = parseInt(rc, 10);
-    if (num % 11 !== 0) return 'Neplatne rodne cislo (kontrolni soucet)';
+    if (num % 11 !== 0) return 'Neplatné rodné číslo (kontrolní součet)';
   }
 
   return null;
@@ -851,7 +851,7 @@ async function lookupAres() {
       aresVerified.value = true;
       aresVerifiedAt.value = new Date().toISOString();
       aresStatus.value = 'verified';
-      aresMessage.value = `Firma overena: ${result.data.name}`;
+      aresMessage.value = `Firma ověřena: ${result.data.name}`;
     } else {
       aresStatus.value = 'not_found';
       aresMessage.value = result.message || 'Firma nebyla nalezena v ARES';
@@ -860,7 +860,7 @@ async function lookupAres() {
   } catch (e) {
     console.error('ARES lookup error:', e);
     aresStatus.value = 'error';
-    aresMessage.value = 'Chyba pri overovani v ARES';
+    aresMessage.value = 'Chyba při ověřování v ARES';
     aresVerified.value = false;
   } finally {
     aresLoading.value = false;
@@ -1041,7 +1041,7 @@ onMounted(async () => {
       aresVerified.value = true;
       aresVerifiedAt.value = props.existingVendor.ares_verified_at;
       aresStatus.value = 'verified';
-      aresMessage.value = 'Firma overena v ARES';
+      aresMessage.value = 'Firma ověřena v ARES';
     }
   }
 
