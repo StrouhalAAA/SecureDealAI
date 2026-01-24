@@ -236,7 +236,8 @@ describe('CreateOpportunityWizard', () => {
     await flushPromises()
 
     expect(wrapper.find('h2').text()).toBe('Nahrat ORV dokument')
-    expect(wrapper.text()).toContain('SPZ (registracni znacka)')
+    // SPZ input is now shown after OCR completes, not before
+    expect(wrapper.text()).toContain('Nahrat ORV dokument')
   })
 
   it('navigates to manual entry step when Manual Entry is clicked', async () => {
@@ -282,5 +283,46 @@ describe('CreateOpportunityWizard', () => {
 
     // Should be back to choice step
     expect(wrapper.find('h2').text()).toBe('Data vozidla')
+  })
+
+  it('shows DropZone for immediate file upload without SPZ requirement', async () => {
+    const wrapper = mount(CreateOpportunityWizard)
+    await flushPromises()
+
+    // Navigate to upload step
+    await navigateToContactStep(wrapper)
+    await wrapper.find('[data-testid="contact-next"]').trigger('click')
+    await flushPromises()
+
+    const uploadButton = wrapper.findAll('button').find(
+      btn => btn.text().includes('Nahrat ORV')
+    )
+    await uploadButton?.trigger('click')
+    await flushPromises()
+
+    // DropZone should be visible for immediate upload
+    expect(wrapper.find('[data-testid="drop-zone"]').exists()).toBe(true)
+    // SPZ input should NOT be visible until OCR completes
+    expect(wrapper.find('#upload-spz').exists()).toBe(false)
+  })
+
+  it('does not show SPZ field before OCR extraction completes', async () => {
+    const wrapper = mount(CreateOpportunityWizard)
+    await flushPromises()
+
+    // Navigate to upload step
+    await navigateToContactStep(wrapper)
+    await wrapper.find('[data-testid="contact-next"]').trigger('click')
+    await flushPromises()
+
+    const uploadButton = wrapper.findAll('button').find(
+      btn => btn.text().includes('Nahrat ORV')
+    )
+    await uploadButton?.trigger('click')
+    await flushPromises()
+
+    // SPZ field should not be visible before OCR
+    const spzInput = wrapper.find('#upload-spz')
+    expect(spzInput.exists()).toBe(false)
   })
 })
