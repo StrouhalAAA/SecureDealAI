@@ -8,6 +8,7 @@ import {
   notFound,
   methodNotAllowed,
   serverError,
+  success,
 } from './responses.ts';
 
 // Handler imports (tasks 6.3-6.5 - CRUD, lifecycle, and import/export handlers)
@@ -40,6 +41,7 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
  *   POST   /rules/:rule_id/clone     -> cloneRule
  *   GET    /rules/export             -> exportRules
  *   POST   /rules/import             -> importRules
+ *   GET    /rules/health             -> healthCheck (no auth required)
  */
 function parseRoute(url: URL): { action: string; ruleId?: string } {
   const path = url.pathname.replace('/rules', '').replace(/^\/+|\/+$/g, '');
@@ -47,6 +49,10 @@ function parseRoute(url: URL): { action: string; ruleId?: string } {
 
   if (segments.length === 0) {
     return { action: 'list' };
+  }
+
+  if (segments[0] === 'health') {
+    return { action: 'health' };
   }
 
   if (segments[0] === 'export') {
@@ -124,6 +130,27 @@ Deno.serve(async (req) => {
   const url = new URL(req.url);
   const route = parseRoute(url);
   const method = req.method;
+
+  // Health check endpoint (no auth required for monitoring)
+  if (route.action === 'health') {
+    if (method !== 'GET') {
+      return methodNotAllowed(['GET']);
+    }
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    try {
+      const { error } = await supabase.from('validation_rules').select('id').limit(1);
+      if (error) {
+        return serverError('Database connection failed');
+      }
+      return success({
+        status: 'healthy',
+        timestamp: new Date().toISOString(),
+        version: '1.0.0',
+      });
+    } catch {
+      return serverError('Health check failed');
+    }
+  }
 
   // Authenticate request
   const user = await getUser(req);

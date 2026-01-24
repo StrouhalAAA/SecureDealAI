@@ -61,3 +61,7 @@ verify_jwt = true
 # Rules management endpoint
 [functions.rules]
 verify_jwt = true
+
+# Rules API health check - open for external monitoring
+[functions.rules-health]
+verify_jwt = false
