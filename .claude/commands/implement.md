@@ -74,12 +74,33 @@ If the `--issue` flag is present:
 5. Follow existing patterns and conventions in the codebase
 6. Think carefully about each step before implementing
 
-### Step 5: Run Validation
+### Step 5: Deploy Modified Edge Functions
+
+After implementing changes, check if any Supabase Edge Functions were modified:
+
+1. **Detect modified functions**:
+   ```bash
+   git diff --name-only | grep '^supabase/functions/' | cut -d'/' -f3 | sort -u
+   ```
+
+2. **Deploy each modified function**:
+   For each function name found:
+   ```bash
+   supabase functions deploy <function-name>
+   ```
+
+3. **Report deployment status**:
+   - List functions deployed
+   - Note any deployment failures
+
+> **Note**: This step is skipped if no Edge Functions were modified.
+
+### Step 6: Run Validation
 
 Run all "Validation Commands" from the plan file at the end.
 Track which commands pass and which fail.
 
-### Step 6: Post Issue Update (if --issue provided)
+### Step 7: Post Issue Update (if --issue provided)
 
 If `--issue` flag was provided:
 
@@ -132,6 +153,7 @@ The first argument from `$ARGUMENTS` - the path to the implementation plan file.
 After execution, provide:
 - Summary of work completed in a concise bullet point list
 - Files and total lines changed with `git diff --stat`
+- Edge Functions deployed (if any)
 - Validation command results (pass/fail for each)
 - If issue tracking was enabled:
   - Confirm comments were posted
