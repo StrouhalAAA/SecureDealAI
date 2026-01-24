@@ -32,13 +32,13 @@ test.describe('Dashboard', () => {
   });
 
   test('has create new opportunity button', async ({ page }) => {
-    const createButton = page.getByRole('button', { name: /Nová příležitost|Nova prilezitost/i });
+    const createButton = page.getByRole('button', { name: /Nová výkupní příležitost|Nova vykupni prilezitost/i });
     await expect(createButton).toBeVisible();
   });
 
   test('can open create opportunity modal', async ({ page }) => {
     // Click create button
-    const createButton = page.getByRole('button', { name: /Nová příležitost|Nova prilezitost/i });
+    const createButton = page.getByRole('button', { name: /Nová výkupní příležitost|Nova vykupni prilezitost/i });
     await createButton.click();
 
     // Modal should appear with heading
@@ -52,7 +52,7 @@ test.describe('Dashboard', () => {
 
   test('can create new buying opportunity', async ({ page }) => {
     // Open modal
-    const createButton = page.getByRole('button', { name: /Nová příležitost|Nova prilezitost/i });
+    const createButton = page.getByRole('button', { name: /Nová výkupní příležitost|Nova vykupni prilezitost/i });
     await createButton.click();
 
     // Wait for modal
@@ -72,7 +72,7 @@ test.describe('Dashboard', () => {
 
   test('shows validation error for empty SPZ', async ({ page }) => {
     // Open modal
-    const createButton = page.getByRole('button', { name: /Nová příležitost|Nova prilezitost/i });
+    const createButton = page.getByRole('button', { name: /Nová výkupní příležitost|Nova vykupni prilezitost/i });
     await createButton.click();
 
     // Wait for modal
