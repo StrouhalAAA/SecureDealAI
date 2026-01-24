@@ -7,7 +7,7 @@
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
         <div>
           <label :for="spzInputId" class="block text-sm font-medium text-gray-700 mb-1">
-            SPZ <span class="text-red-500" aria-label="povinna polozka">*</span>
+            SPZ <span class="text-red-500" aria-label="povinná položka">*</span>
           </label>
           <input
             :id="spzInputId"
@@ -31,12 +31,12 @@
             {{ spzError }}
           </p>
           <p v-else-if="form.spz && spzTouched && !spzError" class="text-green-600 text-xs mt-1">
-            Platna SPZ
+            Platná SPZ
           </p>
         </div>
         <div>
           <label :for="vinInputId" class="block text-sm font-medium text-gray-700 mb-1">
-            VIN <span class="text-red-500" aria-label="povinna polozka">*</span>
+            VIN <span class="text-red-500" aria-label="povinná položka">*</span>
           </label>
           <input
             :id="vinInputId"
@@ -48,7 +48,7 @@
               'border-green-500 bg-green-50': form.vin && vinTouched && !vinError,
               'border-red-500 bg-red-50': vinTouched && vinError,
             }"
-            placeholder="17 znaku"
+            placeholder="17 znaků"
             required
             maxlength="17"
             :aria-describedby="vinError ? vinErrorId : undefined"
@@ -59,7 +59,7 @@
             {{ vinError }}
           </p>
           <p v-else-if="form.vin && vinTouched && !vinError" class="text-green-600 text-xs mt-1">
-            Platny VIN
+            Platný VIN
           </p>
         </div>
       </div>
@@ -68,7 +68,7 @@
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
         <div>
           <label for="znacka-input" class="block text-sm font-medium text-gray-700 mb-1">
-            Znacka
+            Značka
           </label>
           <input
             id="znacka-input"
@@ -96,7 +96,7 @@
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
         <div>
           <label for="rok-vyroby-input" class="block text-sm font-medium text-gray-700 mb-1">
-            Rok vyroby
+            Rok výroby
           </label>
           <input
             id="rok-vyroby-input"
@@ -124,7 +124,7 @@
       <!-- Row 4: Owner -->
       <div class="mb-4">
         <label :for="majitelInputId" class="block text-sm font-medium text-gray-700 mb-1">
-          Majitel / Provozovatel <span class="text-red-500" aria-label="povinna polozka">*</span>
+          Majitel / Provozovatel <span class="text-red-500" aria-label="povinná položka">*</span>
         </label>
         <input
           :id="majitelInputId"
@@ -136,14 +136,14 @@
             'border-green-500 bg-green-50': form.majitel && majitelTouched,
             'border-red-500 bg-red-50': majitelTouched && !form.majitel,
           }"
-          placeholder="Jmeno majitele nebo nazev firmy"
+          placeholder="Jméno majitele nebo název firmy"
           required
           :aria-describedby="majitelTouched && !form.majitel ? majitelErrorId : undefined"
           :aria-invalid="majitelTouched && !form.majitel"
           @blur="majitelTouched = true"
         />
         <p v-if="majitelTouched && !form.majitel" :id="majitelErrorId" class="text-red-500 text-xs mt-1" role="alert">
-          Majitel je povinne pole
+          Majitel je povinné pole
         </p>
       </div>
 
@@ -166,7 +166,7 @@
         </div>
         <div>
           <label for="vykon-input" class="block text-sm font-medium text-gray-700 mb-1">
-            Vykon (kW)
+            Výkon (kW)
           </label>
           <input
             id="vykon-input"
@@ -183,7 +183,7 @@
       <div class="mb-6">
         <label :for="tachometerInputId" class="block text-sm font-medium text-gray-700 mb-1">
           Stav tachometru (km)
-          <span class="text-xs text-gray-500 ml-1">- dulezite pro detekci manipulace</span>
+          <span class="text-xs text-gray-500 ml-1">- důležité pro detekci manipulace</span>
         </label>
         <input
           :id="tachometerInputId"
@@ -210,12 +210,12 @@
           <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
           </svg>
-          <h3 class="text-base font-medium text-gray-700">Udaje z OCR (technicky prukaz)</h3>
+          <h3 class="text-base font-medium text-gray-700">Údaje z OCR (technický průkaz)</h3>
           <span class="ml-auto text-xs text-gray-500 flex items-center gap-1">
             <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
               <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/>
             </svg>
-            Pouze pro cteni
+            Pouze pro čtení
           </span>
         </div>
 
@@ -242,13 +242,13 @@
 
           <!-- Seats -->
           <div>
-            <span class="text-gray-500 block text-xs">Pocet mist</span>
+            <span class="text-gray-500 block text-xs">Počet míst</span>
             <p class="font-medium">{{ getOCRFieldValue('pocet_mist') || '-' }}</p>
           </div>
 
           <!-- Power -->
           <div>
-            <span class="text-gray-500 block text-xs">Vykon</span>
+            <span class="text-gray-500 block text-xs">Výkon</span>
             <p class="font-medium">
               {{ getOCRFieldValue('vykon_kw') ? `${getOCRFieldValue('vykon_kw')} kW` : '-' }}
             </p>
@@ -278,29 +278,29 @@
         <!-- Extended VTP data (collapsible) -->
         <details class="mt-4">
           <summary class="cursor-pointer text-blue-600 hover:text-blue-800 text-sm">
-            Zobrazit rozsirene technicke udaje
+            Zobrazit rozšířené technické údaje
           </summary>
           <div class="mt-2 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm pt-2 border-t border-gray-200">
             <div>
-              <span class="text-gray-500 block text-xs">Hmotnost (provozni)</span>
+              <span class="text-gray-500 block text-xs">Hmotnost (provozní)</span>
               <p class="font-medium">
                 {{ getOCRFieldValue('provozni_hmotnost') ? `${getOCRFieldValue('provozni_hmotnost')} kg` : '-' }}
               </p>
             </div>
             <div>
-              <span class="text-gray-500 block text-xs">Delka</span>
+              <span class="text-gray-500 block text-xs">Délka</span>
               <p class="font-medium">
                 {{ getOCRFieldValue('delka') ? `${getOCRFieldValue('delka')} mm` : '-' }}
               </p>
             </div>
             <div>
-              <span class="text-gray-500 block text-xs">Sirka</span>
+              <span class="text-gray-500 block text-xs">Šířka</span>
               <p class="font-medium">
                 {{ getOCRFieldValue('sirka') ? `${getOCRFieldValue('sirka')} mm` : '-' }}
               </p>
             </div>
             <div>
-              <span class="text-gray-500 block text-xs">Vyska</span>
+              <span class="text-gray-500 block text-xs">Výška</span>
               <p class="font-medium">
                 {{ getOCRFieldValue('vyska') ? `${getOCRFieldValue('vyska')} mm` : '-' }}
               </p>
@@ -333,11 +333,11 @@
           type="submit"
           :loading="loading"
           :disabled="!isValid || !!tachometerError"
-          loading-text="Ukladam..."
+          loading-text="Ukládám..."
           variant="primary"
           size="md"
         >
-          Dalsi krok
+          Další krok
         </LoadingButton>
       </div>
     </form>
@@ -426,19 +426,19 @@ const fuelTypeLabel = computed(() => {
 
 // SPZ validation
 const spzError = computed(() => {
-  if (!form.value.spz) return 'SPZ je povinne pole';
+  if (!form.value.spz) return 'SPZ je povinné pole';
   // Czech SPZ format validation (simplified)
   if (form.value.spz.length < 5 || form.value.spz.length > 8) {
-    return 'SPZ musi mit 5-8 znaku';
+    return 'SPZ musí mít 5-8 znaků';
   }
   return null;
 });
 
 const vinError = computed(() => {
-  if (!form.value.vin) return 'VIN je povinne pole';
-  if (form.value.vin.length !== 17) return 'VIN musi mit presne 17 znaku';
+  if (!form.value.vin) return 'VIN je povinné pole';
+  if (form.value.vin.length !== 17) return 'VIN musí mít přesně 17 znaků';
   if (!/^[A-HJ-NPR-Z0-9]{17}$/.test(form.value.vin)) {
-    return 'VIN obsahuje neplatne znaky (I, O, Q nejsou povoleny)';
+    return 'VIN obsahuje neplatné znaky (I, O, Q nejsou povoleny)';
   }
   return null;
 });
@@ -449,10 +449,10 @@ const tachometerError = computed(() => {
     return null;
   }
   if (form.value.tachometer_km < 0) {
-    return 'Stav tachometru nemuze byt zaporny';
+    return 'Stav tachometru nemůže být záporný';
   }
   if (form.value.tachometer_km > 2000000) {
-    return 'Stav tachometru se zda nerealisticky (> 2 000 000 km)';
+    return 'Stav tachometru se zdá nerealistický (> 2 000 000 km)';
   }
   return null;
 });

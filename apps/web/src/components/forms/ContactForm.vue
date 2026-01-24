@@ -1,6 +1,6 @@
 <template>
   <div class="bg-white rounded-lg shadow p-6">
-    <h2 class="text-xl font-bold mb-6">Krok 1: Kontaktni osoba</h2>
+    <h2 class="text-xl font-bold mb-6">Krok 1: Kontaktní osoba</h2>
 
     <!-- Contact Type Toggle -->
     <fieldset class="mb-6">
@@ -33,7 +33,7 @@
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           <div>
             <label :for="`first-name-${uniqueId}`" class="block text-sm font-medium text-gray-700 mb-1">
-              Jmeno <span class="text-red-500" aria-label="povinna polozka">*</span>
+              Jméno <span class="text-red-500" aria-label="povinná položka">*</span>
             </label>
             <input
               :id="`first-name-${uniqueId}`"
@@ -47,12 +47,12 @@
               @blur="firstNameTouched = true"
             />
             <p v-if="firstNameTouched && !form.first_name" class="text-red-500 text-xs mt-1" role="alert">
-              Jmeno je povinne pole
+              Jméno je povinné pole
             </p>
           </div>
           <div>
             <label :for="`last-name-${uniqueId}`" class="block text-sm font-medium text-gray-700 mb-1">
-              Prijmeni <span class="text-red-500" aria-label="povinna polozka">*</span>
+              Příjmení <span class="text-red-500" aria-label="povinná položka">*</span>
             </label>
             <input
               :id="`last-name-${uniqueId}`"
@@ -65,7 +65,7 @@
               @blur="lastNameTouched = true"
             />
             <p v-if="lastNameTouched && !form.last_name" class="text-red-500 text-xs mt-1" role="alert">
-              Prijmeni je povinne pole
+              Příjmení je povinné pole
             </p>
           </div>
         </div>
@@ -74,7 +74,7 @@
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           <div>
             <label :for="`personal-id-${uniqueId}`" class="block text-sm font-medium text-gray-700 mb-1">
-              Rodne cislo
+              Rodné číslo
             </label>
             <input
               :id="`personal-id-${uniqueId}`"
@@ -88,7 +88,7 @@
           </div>
           <div>
             <label :for="`dob-${uniqueId}`" class="block text-sm font-medium text-gray-700 mb-1">
-              Datum narozeni
+              Datum narození
             </label>
             <input
               :id="`dob-${uniqueId}`"
@@ -102,10 +102,49 @@
 
       <!-- BUSINESS_PERSON (OSVČ) Form -->
       <template v-else-if="contactType === 'BUSINESS_PERSON'">
+        <!-- ICO with ARES lookup -->
+        <div class="mb-4">
+          <label :for="`ico-${uniqueId}`" class="block text-sm font-medium text-gray-700 mb-1">
+            IČO <span class="text-red-500" aria-label="povinná položka">*</span>
+          </label>
+          <div class="flex flex-col sm:flex-row gap-2">
+            <input
+              :id="`ico-${uniqueId}`"
+              ref="icoInputRef"
+              v-model="form.company_id"
+              type="text"
+              class="flex-1 px-4 py-2 border rounded-lg font-mono focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              :class="getIcoFieldClass()"
+              placeholder="8 číslic"
+              maxlength="8"
+              inputmode="numeric"
+              required
+              @input="onIcoInput"
+              @blur="icoTouched = true"
+            />
+            <LoadingButton
+              type="button"
+              @click="lookupAres"
+              :disabled="!isValidIco"
+              :loading="aresLoading"
+              loading-text="Načítám..."
+              variant="secondary"
+              size="md"
+              aria-label="Načíst ICO z registru ARES"
+            >
+              Načíst z Aresu
+            </LoadingButton>
+          </div>
+          <p v-if="icoTouched && icoError" class="text-red-500 text-xs mt-1" role="alert">
+            {{ icoError }}
+          </p>
+          <AresStatus :status="aresStatus" :message="aresMessage" class="mt-2" />
+        </div>
+
         <!-- Company Name -->
         <div class="mb-4">
           <label :for="`company-name-${uniqueId}`" class="block text-sm font-medium text-gray-700 mb-1">
-            Obchodni jmeno / Nazev <span class="text-red-500" aria-label="povinna polozka">*</span>
+            Obchodní jméno / Název <span class="text-red-500" aria-label="povinná položka">*</span>
             <span v-if="autoFilled.company_name" class="text-green-600 text-xs ml-2">(z ARES)</span>
           </label>
           <input
@@ -118,54 +157,15 @@
             @blur="companyNameTouched = true"
           />
           <p v-if="companyNameTouched && !form.company_name" class="text-red-500 text-xs mt-1" role="alert">
-            Nazev je povinne pole
+            Název je povinné pole
           </p>
-        </div>
-
-        <!-- ICO with ARES lookup -->
-        <div class="mb-4">
-          <label :for="`ico-${uniqueId}`" class="block text-sm font-medium text-gray-700 mb-1">
-            ICO <span class="text-red-500" aria-label="povinna polozka">*</span>
-          </label>
-          <div class="flex flex-col sm:flex-row gap-2">
-            <input
-              :id="`ico-${uniqueId}`"
-              ref="icoInputRef"
-              v-model="form.company_id"
-              type="text"
-              class="flex-1 px-4 py-2 border rounded-lg font-mono focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              :class="getIcoFieldClass()"
-              placeholder="8 cislic"
-              maxlength="8"
-              inputmode="numeric"
-              required
-              @input="onIcoInput"
-              @blur="icoTouched = true"
-            />
-            <LoadingButton
-              type="button"
-              @click="lookupAres"
-              :disabled="!isValidIco"
-              :loading="aresLoading"
-              loading-text="Overuji..."
-              variant="secondary"
-              size="md"
-              aria-label="Overit ICO v registru ARES"
-            >
-              Overit
-            </LoadingButton>
-          </div>
-          <p v-if="icoTouched && icoError" class="text-red-500 text-xs mt-1" role="alert">
-            {{ icoError }}
-          </p>
-          <AresStatus :status="aresStatus" :message="aresMessage" class="mt-2" />
         </div>
 
         <!-- VAT Payer Toggle -->
         <div class="mb-4">
           <fieldset>
             <legend class="block text-sm font-medium text-gray-700 mb-2">
-              Platce DPH
+              Plátce DPH
             </legend>
             <div class="flex gap-4" role="radiogroup">
               <label class="flex items-center cursor-pointer">
@@ -195,7 +195,7 @@
         <!-- DIC (only when VAT payer) -->
         <div v-if="form.is_vat_payer" class="mb-4">
           <label :for="`dic-${uniqueId}`" class="block text-sm font-medium text-gray-700 mb-1">
-            DIC <span class="text-red-500" aria-label="povinna polozka">*</span>
+            DIČ <span class="text-red-500" aria-label="povinná položka">*</span>
             <span v-if="autoFilled.vat_id" class="text-green-600 text-xs ml-2">(z ARES)</span>
           </label>
           <input
@@ -209,7 +209,7 @@
             @blur="vatIdTouched = true"
           />
           <p v-if="vatIdTouched && form.is_vat_payer && !form.vat_id" class="text-red-500 text-xs mt-1" role="alert">
-            DIC je povinne pro platce DPH
+            DIČ je povinné pro plátce DPH
           </p>
         </div>
 
@@ -217,7 +217,7 @@
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           <div>
             <label :for="`osvc-first-name-${uniqueId}`" class="block text-sm font-medium text-gray-700 mb-1">
-              Jmeno osoby
+              Jméno osoby
             </label>
             <input
               :id="`osvc-first-name-${uniqueId}`"
@@ -229,7 +229,7 @@
           </div>
           <div>
             <label :for="`osvc-last-name-${uniqueId}`" class="block text-sm font-medium text-gray-700 mb-1">
-              Prijmeni osoby
+              Příjmení osoby
             </label>
             <input
               :id="`osvc-last-name-${uniqueId}`"
@@ -244,10 +244,49 @@
 
       <!-- COMPANY (Firma) Form -->
       <template v-else-if="contactType === 'COMPANY'">
+        <!-- ICO with ARES lookup -->
+        <div class="mb-4">
+          <label :for="`firma-ico-${uniqueId}`" class="block text-sm font-medium text-gray-700 mb-1">
+            IČO <span class="text-red-500" aria-label="povinná položka">*</span>
+          </label>
+          <div class="flex flex-col sm:flex-row gap-2">
+            <input
+              :id="`firma-ico-${uniqueId}`"
+              ref="firmaIcoInputRef"
+              v-model="form.company_id"
+              type="text"
+              class="flex-1 px-4 py-2 border rounded-lg font-mono focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              :class="getIcoFieldClass()"
+              placeholder="8 číslic"
+              maxlength="8"
+              inputmode="numeric"
+              required
+              @input="onIcoInput"
+              @blur="icoTouched = true"
+            />
+            <LoadingButton
+              type="button"
+              @click="lookupAres"
+              :disabled="!isValidIco"
+              :loading="aresLoading"
+              loading-text="Načítám..."
+              variant="secondary"
+              size="md"
+              aria-label="Načíst ICO z registru ARES"
+            >
+              Načíst z Aresu
+            </LoadingButton>
+          </div>
+          <p v-if="icoTouched && icoError" class="text-red-500 text-xs mt-1" role="alert">
+            {{ icoError }}
+          </p>
+          <AresStatus :status="aresStatus" :message="aresMessage" class="mt-2" />
+        </div>
+
         <!-- Company Name -->
         <div class="mb-4">
           <label :for="`firma-name-${uniqueId}`" class="block text-sm font-medium text-gray-700 mb-1">
-            Nazev firmy <span class="text-red-500" aria-label="povinna polozka">*</span>
+            Název firmy <span class="text-red-500" aria-label="povinná položka">*</span>
             <span v-if="autoFilled.company_name" class="text-green-600 text-xs ml-2">(z ARES)</span>
           </label>
           <input
@@ -260,54 +299,15 @@
             @blur="companyNameTouched = true"
           />
           <p v-if="companyNameTouched && !form.company_name" class="text-red-500 text-xs mt-1" role="alert">
-            Nazev firmy je povinne pole
+            Název firmy je povinné pole
           </p>
-        </div>
-
-        <!-- ICO with ARES lookup -->
-        <div class="mb-4">
-          <label :for="`firma-ico-${uniqueId}`" class="block text-sm font-medium text-gray-700 mb-1">
-            ICO <span class="text-red-500" aria-label="povinna polozka">*</span>
-          </label>
-          <div class="flex flex-col sm:flex-row gap-2">
-            <input
-              :id="`firma-ico-${uniqueId}`"
-              ref="firmaIcoInputRef"
-              v-model="form.company_id"
-              type="text"
-              class="flex-1 px-4 py-2 border rounded-lg font-mono focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              :class="getIcoFieldClass()"
-              placeholder="8 cislic"
-              maxlength="8"
-              inputmode="numeric"
-              required
-              @input="onIcoInput"
-              @blur="icoTouched = true"
-            />
-            <LoadingButton
-              type="button"
-              @click="lookupAres"
-              :disabled="!isValidIco"
-              :loading="aresLoading"
-              loading-text="Overuji..."
-              variant="secondary"
-              size="md"
-              aria-label="Overit ICO v registru ARES"
-            >
-              Overit
-            </LoadingButton>
-          </div>
-          <p v-if="icoTouched && icoError" class="text-red-500 text-xs mt-1" role="alert">
-            {{ icoError }}
-          </p>
-          <AresStatus :status="aresStatus" :message="aresMessage" class="mt-2" />
         </div>
 
         <!-- VAT Payer Toggle -->
         <div class="mb-4">
           <fieldset>
             <legend class="block text-sm font-medium text-gray-700 mb-2">
-              Platce DPH
+              Plátce DPH
             </legend>
             <div class="flex gap-4" role="radiogroup">
               <label class="flex items-center cursor-pointer">
@@ -337,7 +337,7 @@
         <!-- DIC (only when VAT payer) -->
         <div v-if="form.is_vat_payer" class="mb-4">
           <label :for="`firma-dic-${uniqueId}`" class="block text-sm font-medium text-gray-700 mb-1">
-            DIC <span class="text-red-500" aria-label="povinna polozka">*</span>
+            DIČ <span class="text-red-500" aria-label="povinná položka">*</span>
             <span v-if="autoFilled.vat_id" class="text-green-600 text-xs ml-2">(z ARES)</span>
           </label>
           <input
@@ -351,18 +351,18 @@
             @blur="vatIdTouched = true"
           />
           <p v-if="vatIdTouched && form.is_vat_payer && !form.vat_id" class="text-red-500 text-xs mt-1" role="alert">
-            DIC je povinne pro platce DPH
+            DIČ je povinné pro plátce DPH
           </p>
         </div>
 
         <!-- Contact Person Section -->
         <div class="mb-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
-          <h3 class="text-md font-semibold text-gray-800 mb-4">Kontaktni osoba firmy</h3>
+          <h3 class="text-md font-semibold text-gray-800 mb-4">Kontaktní osoba firmy</h3>
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             <div>
               <label :for="`cp-first-name-${uniqueId}`" class="block text-sm font-medium text-gray-700 mb-1">
-                Jmeno <span class="text-red-500" aria-label="povinna polozka">*</span>
+                Jméno <span class="text-red-500" aria-label="povinná položka">*</span>
               </label>
               <input
                 :id="`cp-first-name-${uniqueId}`"
@@ -374,12 +374,12 @@
                 @blur="cpFirstNameTouched = true"
               />
               <p v-if="cpFirstNameTouched && !form.contact_person_first_name" class="text-red-500 text-xs mt-1" role="alert">
-                Jmeno je povinne pole
+                Jméno je povinné pole
               </p>
             </div>
             <div>
               <label :for="`cp-last-name-${uniqueId}`" class="block text-sm font-medium text-gray-700 mb-1">
-                Prijmeni <span class="text-red-500" aria-label="povinna polozka">*</span>
+                Příjmení <span class="text-red-500" aria-label="povinná položka">*</span>
               </label>
               <input
                 :id="`cp-last-name-${uniqueId}`"
@@ -391,7 +391,7 @@
                 @blur="cpLastNameTouched = true"
               />
               <p v-if="cpLastNameTouched && !form.contact_person_last_name" class="text-red-500 text-xs mt-1" role="alert">
-                Prijmeni je povinne pole
+                Příjmení je povinné pole
               </p>
             </div>
           </div>
@@ -488,7 +488,7 @@
           variant="outline"
           size="md"
         >
-          Zrusit
+          Zrušit
         </LoadingButton>
         <LoadingButton
           type="submit"
@@ -498,7 +498,7 @@
           variant="primary"
           size="md"
         >
-          Dalsi krok
+          Další krok
         </LoadingButton>
       </div>
     </form>
@@ -532,8 +532,8 @@ const uniqueId = Math.random().toString(36).substr(2, 9);
 
 // Contact type options
 const contactTypes: { value: ContactType; label: string }[] = [
-  { value: 'PHYSICAL_PERSON', label: 'Fyzicka osoba' },
-  { value: 'BUSINESS_PERSON', label: 'OSVC' },
+  { value: 'PHYSICAL_PERSON', label: 'Fyzická osoba' },
+  { value: 'BUSINESS_PERSON', label: 'OSVČ' },
   { value: 'COMPANY', label: 'Firma' },
 ];
 
@@ -548,7 +548,7 @@ const contactId = ref<string | null>(null);
 
 const form = ref<ContactFormState>({
   contact_type: 'PHYSICAL_PERSON',
-  country: 'Ceska Republika',
+  country: 'Česká republika',
   country_code: 'CZ',
   phone_prefix: '+420',
   phone_number: '',
@@ -624,10 +624,10 @@ const isValidIco = computed(() => {
 });
 
 const icoError = computed(() => {
-  if (!form.value.company_id) return 'ICO je povinne pole';
-  if (!/^\d+$/.test(form.value.company_id)) return 'ICO musi obsahovat pouze cislice';
-  if (form.value.company_id.length !== 8) return 'ICO musi mit presne 8 cislic';
-  if (!isValidIco.value) return 'Neplatne ICO (kontrolni soucet)';
+  if (!form.value.company_id) return 'IČO je povinné pole';
+  if (!/^\d+$/.test(form.value.company_id)) return 'IČO musí obsahovat pouze číslice';
+  if (form.value.company_id.length !== 8) return 'IČO musí mít přesně 8 číslic';
+  if (!isValidIco.value) return 'Neplatné IČO (kontrolní součet)';
   return null;
 });
 
@@ -733,7 +733,7 @@ async function lookupAres() {
   } catch (e) {
     console.error('ARES lookup error:', e);
     aresStatus.value = 'error';
-    aresMessage.value = 'Chyba pri overovani v ARES';
+    aresMessage.value = 'Chyba při ověřování v ARES';
     aresVerified.value = false;
   } finally {
     aresLoading.value = false;
