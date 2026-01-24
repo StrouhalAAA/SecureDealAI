@@ -6,7 +6,7 @@
  *
  * Request (multipart/form-data):
  * - file: Document file (PDF, JPEG, PNG) - required
- * - spz: License plate (links to buying opportunity) - required
+ * - spz: License plate (links to buying opportunity) - optional (placeholder generated if not provided)
  * - document_type: ORV, VTP, or OP - required
  *
  * Environment variables:
@@ -152,16 +152,18 @@ async function validateRequest(req: Request): Promise<ValidationResult> {
       }
     }
 
-    // Validate SPZ
-    if (!spzField || typeof spzField !== 'string') {
-      errors.push('spz is required');
-    } else {
+    // Validate SPZ (optional - generate placeholder if not provided)
+    if (spzField && typeof spzField === 'string' && spzField.trim()) {
       // Normalize SPZ: uppercase and remove spaces
       spz = spzField.toUpperCase().replace(/\s/g, '');
 
       if (spz.length < 1 || spz.length > 20) {
         errors.push('spz must be between 1 and 20 characters');
       }
+    } else {
+      // Generate placeholder SPZ for OCR-first flow
+      // Use base36 encoding to keep within VARCHAR(20) limit (results in ~10-11 chars)
+      spz = `P${Date.now().toString(36).toUpperCase()}`;
     }
 
     // Validate document type
