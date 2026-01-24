@@ -52,3 +52,4 @@ supabase/functions/deno.lock
 
 # Agent workflow artifacts (may contain sensitive data)
 agents/
+!.claude/agents/
