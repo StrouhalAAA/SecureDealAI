@@ -48,9 +48,9 @@ vi.mock('@/components/forms/ContactForm.vue', () => ({
     emits: ['saved', 'next', 'back'],
     template: `
       <div data-testid="contact-form">
-        <h3>Krok 1: Kontaktni osoba</h3>
-        <button @click="$emit('next')" data-testid="contact-next">Dalsi krok</button>
-        <button @click="$emit('back')" data-testid="contact-back">Zrusit</button>
+        <h3>Krok 1: Kontaktní osoba</h3>
+        <button @click="$emit('next')" data-testid="contact-next">Další krok</button>
+        <button @click="$emit('back')" data-testid="contact-back">Zrušit</button>
       </div>
     `
   }
@@ -119,9 +119,9 @@ describe('CreateOpportunityWizard', () => {
 
   // Helper to navigate past deal-type step to contact step
   async function navigateToContactStep(wrapper: ReturnType<typeof mount>) {
-    // Click "Pobocka" button to select deal type
+    // Click "Pobočka" button to select deal type
     const branchButton = wrapper.findAll('button').find(
-      btn => btn.text().includes('Pobocka')
+      btn => btn.text().includes('Pobočka')
     )
     await branchButton?.trigger('click')
     await flushPromises()
@@ -132,10 +132,10 @@ describe('CreateOpportunityWizard', () => {
     await flushPromises()
 
     // The wizard should start with deal-type step
-    expect(wrapper.find('h2').text()).toBe('Typ vykupu')
-    expect(wrapper.text()).toContain('Vyberte typ vykupu')
-    expect(wrapper.text()).toContain('Pobocka')
-    expect(wrapper.text()).toContain('Mobilni vykup')
+    expect(wrapper.find('h2').text()).toBe('Typ výkupu')
+    expect(wrapper.text()).toContain('Vyberte typ výkupu')
+    expect(wrapper.text()).toContain('Pobočka')
+    expect(wrapper.text()).toContain('Mobilní výkup')
   })
 
   it('navigates to contact step when deal type is selected', async () => {
@@ -146,7 +146,7 @@ describe('CreateOpportunityWizard', () => {
 
     // Should now show contact form
     expect(wrapper.find('[data-testid="contact-form"]').exists()).toBe(true)
-    expect(wrapper.text()).toContain('Kontaktni osoba')
+    expect(wrapper.text()).toContain('Kontaktní osoba')
   })
 
   it('displays correct title on contact step', async () => {
@@ -155,7 +155,7 @@ describe('CreateOpportunityWizard', () => {
 
     await navigateToContactStep(wrapper)
 
-    expect(wrapper.find('h2').text()).toBe('Nova nakupni prilezitost')
+    expect(wrapper.find('h2').text()).toBe('Nová nákupní příležitost')
   })
 
   it('shows progress steps with correct labels', async () => {
@@ -173,14 +173,14 @@ describe('CreateOpportunityWizard', () => {
     await flushPromises()
 
     // Back button should not exist when stepHistory is empty
-    expect(wrapper.find('[aria-label="Zpet"]').exists()).toBe(false)
+    expect(wrapper.find('[aria-label="Zpět"]').exists()).toBe(false)
   })
 
   it('emits close event when close button is clicked', async () => {
     const wrapper = mount(CreateOpportunityWizard)
     await flushPromises()
 
-    const closeButton = wrapper.find('[aria-label="Zavrit"]')
+    const closeButton = wrapper.find('[aria-label="Zavřít"]')
     expect(closeButton.exists()).toBe(true)
 
     await closeButton.trigger('click')
@@ -203,9 +203,9 @@ describe('CreateOpportunityWizard', () => {
 
     // Should now show vehicle choice step
     expect(wrapper.find('h2').text()).toBe('Data vozidla')
-    expect(wrapper.text()).toContain('Vyberte zpusob pridani vozidla')
-    expect(wrapper.text()).toContain('Nahrat ORV')
-    expect(wrapper.text()).toContain('Zadat rucne')
+    expect(wrapper.text()).toContain('Vyberte způsob přidání vozidla')
+    expect(wrapper.text()).toContain('Nahrát ORV')
+    expect(wrapper.text()).toContain('Zadat ručně')
   })
 
   it('shows back button after navigating to contact step', async () => {
@@ -216,7 +216,7 @@ describe('CreateOpportunityWizard', () => {
     await navigateToContactStep(wrapper)
 
     // Back button should now be visible
-    expect(wrapper.find('[aria-label="Zpet"]').exists()).toBe(true)
+    expect(wrapper.find('[aria-label="Zpět"]').exists()).toBe(true)
   })
 
   it('navigates to upload step when Upload ORV is clicked', async () => {
@@ -230,14 +230,14 @@ describe('CreateOpportunityWizard', () => {
 
     // Click Upload ORV
     const uploadButton = wrapper.findAll('button').find(
-      btn => btn.text().includes('Nahrat ORV')
+      btn => btn.text().includes('Nahrát ORV')
     )
     await uploadButton?.trigger('click')
     await flushPromises()
 
-    expect(wrapper.find('h2').text()).toBe('Nahrat ORV dokument')
+    expect(wrapper.find('h2').text()).toBe('Nahrát ORV dokument')
     // SPZ input is now shown after OCR completes, not before
-    expect(wrapper.text()).toContain('Nahrat ORV dokument')
+    expect(wrapper.text()).toContain('Nahrát ORV dokument')
   })
 
   it('navigates to manual entry step when Manual Entry is clicked', async () => {
@@ -251,12 +251,12 @@ describe('CreateOpportunityWizard', () => {
 
     // Click Manual Entry
     const manualButton = wrapper.findAll('button').find(
-      btn => btn.text().includes('Zadat rucne')
+      btn => btn.text().includes('Zadat ručně')
     )
     await manualButton?.trigger('click')
     await flushPromises()
 
-    expect(wrapper.find('h2').text()).toBe('Rucni zadani vozidla')
+    expect(wrapper.find('h2').text()).toBe('Ruční zadání vozidla')
     expect(wrapper.find('[data-testid="quick-vehicle-form"]').exists()).toBe(true)
   })
 
@@ -271,13 +271,13 @@ describe('CreateOpportunityWizard', () => {
 
     // Navigate to upload step
     const uploadButton = wrapper.findAll('button').find(
-      btn => btn.text().includes('Nahrat ORV')
+      btn => btn.text().includes('Nahrát ORV')
     )
     await uploadButton?.trigger('click')
     await flushPromises()
 
     // Click back
-    const backButton = wrapper.find('[aria-label="Zpet"]')
+    const backButton = wrapper.find('[aria-label="Zpět"]')
     await backButton.trigger('click')
     await flushPromises()
 
@@ -295,7 +295,7 @@ describe('CreateOpportunityWizard', () => {
     await flushPromises()
 
     const uploadButton = wrapper.findAll('button').find(
-      btn => btn.text().includes('Nahrat ORV')
+      btn => btn.text().includes('Nahrát ORV')
     )
     await uploadButton?.trigger('click')
     await flushPromises()
@@ -316,7 +316,7 @@ describe('CreateOpportunityWizard', () => {
     await flushPromises()
 
     const uploadButton = wrapper.findAll('button').find(
-      btn => btn.text().includes('Nahrat ORV')
+      btn => btn.text().includes('Nahrát ORV')
     )
     await uploadButton?.trigger('click')
     await flushPromises()
