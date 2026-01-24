@@ -175,27 +175,7 @@
 
         <!-- Step 2a: Upload ORV -->
         <div v-else-if="currentStep === 'upload-orv'" class="space-y-4">
-          <!-- SPZ Input -->
-          <div>
-            <label for="upload-spz" class="block text-sm font-medium text-gray-700 mb-1">
-              SPZ (registracni znacka) <span class="text-red-500">*</span>
-            </label>
-            <input
-              id="upload-spz"
-              v-model="spz"
-              type="text"
-              placeholder="napr. 5L94454"
-              class="w-full px-4 py-2 border rounded-lg uppercase font-mono"
-              :class="{
-                'border-gray-300': !spzError,
-                'border-red-500 bg-red-50': spzError,
-              }"
-              @blur="validateSpz"
-            />
-            <p v-if="spzError" class="text-red-500 text-xs mt-1">{{ spzError }}</p>
-          </div>
-
-          <!-- DropZone -->
+          <!-- DropZone - First, upload the document -->
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-2">
               Nahrat ORV dokument <span class="text-red-500">*</span>
@@ -217,6 +197,47 @@
             :extraction="ocrExtraction"
             @retry="retryOcr"
           />
+
+          <!-- SPZ Display/Input - Show after OCR or for manual fallback -->
+          <div v-if="ocrExtraction?.ocr_status === 'COMPLETED' || ocrSpzExtractionFailed">
+            <label for="upload-spz" class="block text-sm font-medium text-gray-700 mb-1">
+              SPZ (registracni znacka) <span class="text-red-500">*</span>
+            </label>
+            <!-- Show extracted SPZ with edit option -->
+            <div v-if="extractedSpz && !editingSpz" class="flex items-center gap-2">
+              <div class="flex-1 px-4 py-2 border border-green-300 bg-green-50 rounded-lg uppercase font-mono text-green-800">
+                {{ spz }}
+              </div>
+              <button
+                @click="editingSpz = true"
+                type="button"
+                class="px-3 py-2 text-sm text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg"
+              >
+                Upravit
+              </button>
+            </div>
+            <!-- Editable input (for manual entry or correction) -->
+            <input
+              v-else
+              id="upload-spz"
+              v-model="spz"
+              type="text"
+              placeholder="napr. 5L94454"
+              class="w-full px-4 py-2 border rounded-lg uppercase font-mono"
+              :class="{
+                'border-gray-300': !spzError,
+                'border-red-500 bg-red-50': spzError,
+              }"
+              @blur="validateSpz"
+            />
+            <p v-if="extractedSpz && !editingSpz" class="text-green-600 text-xs mt-1">
+              SPZ byla automaticky extrahována z dokumentu
+            </p>
+            <p v-else-if="ocrSpzExtractionFailed" class="text-yellow-600 text-xs mt-1">
+              SPZ nebyla rozpoznána - zadejte prosím ručně
+            </p>
+            <p v-if="spzError" class="text-red-500 text-xs mt-1">{{ spzError }}</p>
+          </div>
 
           <!-- Error -->
           <div v-if="error" class="p-3 bg-red-50 text-red-700 rounded-lg">
@@ -449,6 +470,7 @@ const uploadedFile = ref<File | null>(null);
 const uploading = ref(false);
 const uploadError = ref<string | null>(null);
 const ocrExtraction = ref<OcrExtraction | null>(null);
+const editingSpz = ref(false);
 
 // Vendor decision state
 const vendorDecision = ref<'same' | 'different' | null>(null);
@@ -480,12 +502,24 @@ const stepTitle = computed(() => {
   }
 });
 
+// Extracted SPZ from OCR
+const extractedSpz = computed(() => {
+  const ocrData = ocrExtraction.value?.extracted_data as Record<string, unknown> | null;
+  if (!ocrData) return null;
+  const regPlate = ocrData.registrationPlateNumber as string | undefined;
+  return regPlate ? regPlate.toUpperCase().replace(/\s/g, '') : null;
+});
+
+// Check if OCR completed but failed to extract SPZ
+const ocrSpzExtractionFailed = computed(() => {
+  return ocrExtraction.value?.ocr_status === 'COMPLETED' && !extractedSpz.value;
+});
+
 const canSubmitUpload = computed(() => {
-  return (
-    spz.value.length >= 5 &&
-    !spzError.value &&
-    ocrExtraction.value?.ocr_status === 'COMPLETED'
-  );
+  // Need valid SPZ (from OCR or manual) and completed OCR
+  const hasValidSpz = spz.value.length >= 5 && !spzError.value;
+  const ocrCompleted = ocrExtraction.value?.ocr_status === 'COMPLETED';
+  return hasValidSpz && ocrCompleted;
 });
 
 const contactDisplayName = computed(() => {
@@ -572,19 +606,18 @@ function validateSpz() {
 }
 
 async function handleFileSelected(file: File) {
-  if (!validateSpz()) {
-    uploadError.value = 'Nejprve vyplnte SPZ';
-    return;
-  }
-
   uploadedFile.value = file;
   uploading.value = true;
   uploadError.value = null;
+  editingSpz.value = false;
 
   try {
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('spz', spz.value.toUpperCase());
+    // SPZ is now optional - backend will generate placeholder if not provided
+    if (spz.value.trim()) {
+      formData.append('spz', spz.value.toUpperCase());
+    }
     formData.append('document_type', 'ORV');
 
     const uploadResponse = await fetch(
@@ -625,6 +658,16 @@ async function handleFileSelected(file: File) {
 
     const ocrResult = await ocrResponse.json();
     ocrExtraction.value = ocrResult;
+
+    // Auto-populate SPZ from OCR extraction
+    const ocrData = ocrResult.extracted_data as Record<string, unknown> | null;
+    if (ocrData) {
+      const regPlate = ocrData.registrationPlateNumber as string | undefined;
+      if (regPlate) {
+        spz.value = regPlate.toUpperCase().replace(/\s/g, '');
+        spzError.value = null;
+      }
+    }
   } catch (e) {
     uploadError.value = e instanceof Error ? e.message : 'Chyba nahravani';
   } finally {
@@ -636,6 +679,9 @@ function removeFile() {
   uploadedFile.value = null;
   ocrExtraction.value = null;
   uploadError.value = null;
+  spz.value = '';
+  spzError.value = null;
+  editingSpz.value = false;
 }
 
 async function retryOcr() {
