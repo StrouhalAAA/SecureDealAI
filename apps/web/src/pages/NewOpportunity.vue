@@ -1,11 +1,38 @@
 <template>
   <div class="min-h-screen bg-white">
+    <!-- Draft Recovery Modal -->
+    <div
+      v-if="showDraftRecoveryModal"
+      class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+    >
+      <div class="bg-white rounded-lg shadow-xl p-6 max-w-md mx-4">
+        <h2 class="text-lg font-bold mb-4">Nalezen rozpracovaný formulář</h2>
+        <p class="text-gray-600 mb-6">
+          Máte rozpracovanou příležitost. Chcete pokračovat v práci nebo začít znovu?
+        </p>
+        <div class="flex gap-3">
+          <button
+            @click="startFresh"
+            class="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+          >
+            Začít znovu
+          </button>
+          <button
+            @click="resumeDraft"
+            class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            Pokračovat
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- Header -->
     <div class="border-b">
       <div class="max-w-4xl mx-auto px-6 py-4 flex justify-between items-center">
         <div class="flex items-center gap-2">
           <button
-            v-if="canGoBack"
+            v-if="draftStore.canGoBack"
             @click="goBack"
             class="p-1 hover:bg-gray-100 rounded"
             aria-label="Zpět"
@@ -71,7 +98,7 @@
     <!-- Content -->
     <div class="max-w-4xl mx-auto p-6">
       <!-- Step 0: Deal Type Selection -->
-      <div v-if="currentStep === 'deal-type'" class="space-y-4">
+      <div v-if="draftStore.currentStep === 'deal-type'" class="space-y-4">
         <p class="text-gray-600 text-center mb-6">
           Vyberte typ výkupu:
         </p>
@@ -119,7 +146,7 @@
       </div>
 
       <!-- Step 1: Contact -->
-      <div v-else-if="currentStep === 'contact'">
+      <div v-else-if="draftStore.currentStep === 'contact'">
         <!-- Guideline Banner -->
         <div class="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
           <div class="flex items-start gap-3">
@@ -137,7 +164,7 @@
         </div>
 
         <ContactForm
-          :buying-opportunity-id="tempOpportunityId"
+          :buying-opportunity-id="draftStore.tempOpportunityId"
           :existing-contact="existingContact"
           @saved="onContactSaved"
           @next="goToVehicleChoice"
@@ -146,7 +173,7 @@
       </div>
 
       <!-- Step 2: Vehicle Choice -->
-      <div v-else-if="currentStep === 'choice'" class="space-y-4">
+      <div v-else-if="draftStore.currentStep === 'choice'" class="space-y-4">
         <p class="text-gray-600 text-center mb-6">
           Vyberte způsob přidání vozidla:
         </p>
@@ -193,7 +220,25 @@
       </div>
 
       <!-- Step 2a: Upload ORV -->
-      <div v-else-if="currentStep === 'upload-orv'" class="space-y-4">
+      <div v-else-if="draftStore.currentStep === 'upload-orv'" class="space-y-4">
+        <!-- File needs re-upload notice -->
+        <div
+          v-if="draftStore.uploadedFileMetadata && !uploadedFile"
+          class="p-4 bg-yellow-50 border border-yellow-200 rounded-lg"
+        >
+          <div class="flex items-start gap-3">
+            <svg class="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <div>
+              <h4 class="font-medium text-yellow-800">Soubor je třeba znovu nahrát</h4>
+              <p class="text-sm text-yellow-700 mt-1">
+                Dříve nahraný soubor ({{ draftStore.uploadedFileMetadata.name }}) je potřeba znovu nahrát.
+              </p>
+            </div>
+          </div>
+        </div>
+
         <!-- DropZone - First, upload the document -->
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-2">
@@ -202,7 +247,7 @@
           <DropZone
             :file="uploadedFile"
             :uploading="uploading"
-            :uploaded="!!ocrExtraction"
+            :uploaded="!!draftStore.ocrExtraction"
             :error="uploadError"
             accept=".pdf,.jpg,.jpeg,.png"
             @file-selected="handleFileSelected"
@@ -212,20 +257,20 @@
 
         <!-- OCR Status -->
         <OcrStatus
-          v-if="ocrExtraction"
-          :extraction="ocrExtraction"
+          v-if="draftStore.ocrExtraction"
+          :extraction="draftStore.ocrExtraction"
           @retry="retryOcr"
         />
 
         <!-- SPZ Display/Input - Show after OCR or for manual fallback -->
-        <div v-if="ocrExtraction?.ocr_status === 'COMPLETED' || ocrSpzExtractionFailed">
+        <div v-if="draftStore.ocrExtraction?.ocr_status === 'COMPLETED' || ocrSpzExtractionFailed">
           <label for="upload-spz" class="block text-sm font-medium text-gray-700 mb-1">
             SPZ (registrační značka) <span class="text-red-500">*</span>
           </label>
           <!-- Show extracted SPZ with edit option -->
           <div v-if="extractedSpz && !editingSpz" class="flex items-center gap-2">
             <div class="flex-1 px-4 py-2 border border-green-300 bg-green-50 rounded-lg uppercase font-mono text-green-800">
-              {{ spz }}
+              {{ localSpz }}
             </div>
             <button
               @click="editingSpz = true"
@@ -239,7 +284,7 @@
           <input
             v-else
             id="upload-spz"
-            v-model="spz"
+            v-model="localSpz"
             type="text"
             placeholder="napr. 5L94454"
             class="w-full px-4 py-2 border rounded-lg uppercase font-mono"
@@ -248,6 +293,7 @@
               'border-red-500 bg-red-50': spzError,
             }"
             @blur="validateSpz"
+            @input="onSpzInput"
           />
           <p v-if="extractedSpz && !editingSpz" class="text-green-600 text-xs mt-1">
             SPZ byla automaticky extrahována z dokumentu
@@ -282,7 +328,7 @@
       </div>
 
       <!-- Step 2b: Manual Entry -->
-      <div v-else-if="currentStep === 'manual-entry'">
+      <div v-else-if="draftStore.currentStep === 'manual-entry'">
         <QuickVehicleForm
           :loading="loading"
           :error="error"
@@ -292,15 +338,15 @@
       </div>
 
       <!-- Step 3: Vendor Decision -->
-      <div v-else-if="currentStep === 'vendor-decision'" class="space-y-6">
+      <div v-else-if="draftStore.currentStep === 'vendor-decision'" class="space-y-6">
         <h3 class="text-lg font-semibold">Je dodavatel stejný jako kontakt?</h3>
 
         <!-- Contact Summary -->
         <div class="p-4 bg-gray-50 rounded-lg border border-gray-200">
           <p class="text-sm text-gray-500 mb-1">Kontakt:</p>
           <p class="font-medium text-lg">{{ contactDisplayName }}</p>
-          <p v-if="savedContact?.company_id" class="text-sm text-gray-600">
-            ICO: {{ savedContact.company_id }}
+          <p v-if="draftStore.savedContact?.company_id" class="text-sm text-gray-600">
+            ICO: {{ draftStore.savedContact.company_id }}
           </p>
         </div>
 
@@ -328,13 +374,13 @@
           <label
             class="flex items-start gap-3 p-4 border-2 rounded-lg cursor-pointer transition-colors"
             :class="{
-              'border-blue-500 bg-blue-50': vendorDecision === 'same',
-              'border-gray-200 hover:border-gray-300': vendorDecision !== 'same',
+              'border-blue-500 bg-blue-50': localVendorDecision === 'same',
+              'border-gray-200 hover:border-gray-300': localVendorDecision !== 'same',
             }"
           >
             <input
               type="radio"
-              v-model="vendorDecision"
+              v-model="localVendorDecision"
               value="same"
               class="mt-1 w-4 h-4 text-blue-600 focus:ring-blue-500"
             />
@@ -349,13 +395,13 @@
           <label
             class="flex items-start gap-3 p-4 border-2 rounded-lg cursor-pointer transition-colors"
             :class="{
-              'border-blue-500 bg-blue-50': vendorDecision === 'different',
-              'border-gray-200 hover:border-gray-300': vendorDecision !== 'different',
+              'border-blue-500 bg-blue-50': localVendorDecision === 'different',
+              'border-gray-200 hover:border-gray-300': localVendorDecision !== 'different',
             }"
           >
             <input
               type="radio"
-              v-model="vendorDecision"
+              v-model="localVendorDecision"
               value="different"
               class="mt-1 w-4 h-4 text-blue-600 focus:ring-blue-500"
             />
@@ -378,7 +424,7 @@
           </button>
           <button
             @click="handleVendorDecision"
-            :disabled="!vendorDecision || loading"
+            :disabled="!localVendorDecision || loading"
             class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {{ loading ? 'Zpracovávám...' : 'Pokračovat' }}
@@ -387,9 +433,9 @@
       </div>
 
       <!-- Step 3a: Vendor Form (when different) -->
-      <div v-else-if="currentStep === 'vendor-form'">
+      <div v-else-if="draftStore.currentStep === 'vendor-form'">
         <VendorForm
-          :buying-opportunity-id="createdOpportunityId!"
+          :buying-opportunity-id="draftStore.createdOpportunityId!"
           :existing-vendor="existingVendor"
           @saved="onVendorSaved"
           @next="completeWizard"
@@ -401,35 +447,25 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, watch, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { supabase } from '@/composables/useSupabase';
 import { useErrorHandler } from '@/composables/useErrorHandler';
+import { useOpportunityDraftStore } from '@/stores/opportunityDraftStore';
+import { useWizardNavigation } from '@/composables/useWizardNavigation';
 import DropZone from '@/components/ocr/DropZone.vue';
 import OcrStatus from '@/components/ocr/OcrStatus.vue';
 import QuickVehicleForm from '@/components/shared/QuickVehicleForm.vue';
 import ContactForm from '@/components/forms/ContactForm.vue';
 import VendorForm from '@/components/forms/VendorForm.vue';
 import { extractPowerKw } from '@/utils/addressParser';
-import type { OcrExtraction, Contact, Vendor } from '@/types';
+import type { Contact, Vendor } from '@/types';
 import { getContactDisplayName } from '@/types/contact';
 
 const router = useRouter();
 const { handleError } = useErrorHandler();
-
-type WizardStep =
-  | 'deal-type'
-  | 'contact'
-  | 'choice'
-  | 'upload-orv'
-  | 'manual-entry'
-  | 'vendor-decision'
-  | 'vendor-form';
-
-// Step state
-const currentStep = ref<WizardStep>('deal-type');
-const stepHistory = ref<WizardStep[]>([]);
-const buyingType = ref<'BRANCH' | 'MOBILE_BUYING'>('BRANCH');
+const draftStore = useOpportunityDraftStore();
+const { pushStepWithUrl, goBackWithUrl } = useWizardNavigation();
 
 // Progress steps for visual indicator
 const progressSteps = [
@@ -440,7 +476,7 @@ const progressSteps = [
 ];
 
 const currentStepIndex = computed(() => {
-  switch (currentStep.value) {
+  switch (draftStore.currentStep) {
     case 'deal-type':
       return 0;
     case 'contact':
@@ -457,41 +493,71 @@ const currentStepIndex = computed(() => {
   }
 });
 
-// Shared state
+// Local state (not persisted or transient)
 const loading = ref(false);
 const error = ref<string | null>(null);
-
-// Temporary opportunity ID (created when saving contact)
-const tempOpportunityId = ref<string>('');
-const createdOpportunityId = ref<string | null>(null);
-
-// Contact state
-const savedContact = ref<Contact | null>(null);
-const existingContact = ref<Contact | null>(null);
-
-// Vehicle entry method
-const entryMethod = ref<'upload' | 'manual'>('upload');
-
-// Upload step state
-const spz = ref('');
-const spzError = ref<string | null>(null);
 const uploadedFile = ref<File | null>(null);
 const uploading = ref(false);
 const uploadError = ref<string | null>(null);
-const ocrExtraction = ref<OcrExtraction | null>(null);
 const editingSpz = ref(false);
-
-// Vendor decision state
-const vendorDecision = ref<'same' | 'different' | null>(null);
+const spzError = ref<string | null>(null);
+const existingContact = ref<Contact | null>(null);
 const existingVendor = ref<Vendor | null>(null);
+const showDraftRecoveryModal = ref(false);
 
-// Computed
-const canGoBack = computed(() => {
-  return stepHistory.value.length > 0;
+// Local copies that sync with store
+const localSpz = ref('');
+const localVendorDecision = ref<'same' | 'different' | null>(null);
+
+// Initialize local state from store
+onMounted(() => {
+  // Check for existing draft
+  if (draftStore.hasStoredDraft()) {
+    const hasProgress = draftStore.loadFromStorage();
+    if (hasProgress && draftStore.hasDraft) {
+      showDraftRecoveryModal.value = true;
+    }
+  }
+
+  // Sync local state from store
+  localSpz.value = draftStore.spz;
+  localVendorDecision.value = draftStore.vendorDecision;
 });
 
+// Watch store values and sync to local
+watch(() => draftStore.spz, (newVal) => {
+  if (newVal !== localSpz.value) {
+    localSpz.value = newVal;
+  }
+});
+
+watch(() => draftStore.vendorDecision, (newVal) => {
+  if (newVal !== localVendorDecision.value) {
+    localVendorDecision.value = newVal;
+  }
+});
+
+// Watch local values and sync to store
+watch(localVendorDecision, (newVal) => {
+  if (newVal !== draftStore.vendorDecision) {
+    draftStore.setVendorDecision(newVal);
+  }
+});
+
+// Draft recovery handlers
+function startFresh() {
+  showDraftRecoveryModal.value = false;
+  draftStore.clearDraft();
+}
+
+function resumeDraft() {
+  showDraftRecoveryModal.value = false;
+  // State is already loaded, just continue
+}
+
+// Computed
 const stepTitle = computed(() => {
-  switch (currentStep.value) {
+  switch (draftStore.currentStep) {
     case 'deal-type':
       return 'Typ výkupu';
     case 'contact':
@@ -513,7 +579,7 @@ const stepTitle = computed(() => {
 
 // Extracted SPZ from OCR
 const extractedSpz = computed(() => {
-  const ocrData = ocrExtraction.value?.extracted_data as Record<string, unknown> | null;
+  const ocrData = draftStore.ocrExtraction?.extracted_data as Record<string, unknown> | null;
   if (!ocrData) return null;
   const regPlate = ocrData.registrationPlateNumber as string | undefined;
   return regPlate ? regPlate.toUpperCase().replace(/\s/g, '') : null;
@@ -521,30 +587,30 @@ const extractedSpz = computed(() => {
 
 // Check if OCR completed but failed to extract SPZ
 const ocrSpzExtractionFailed = computed(() => {
-  return ocrExtraction.value?.ocr_status === 'COMPLETED' && !extractedSpz.value;
+  return draftStore.ocrExtraction?.ocr_status === 'COMPLETED' && !extractedSpz.value;
 });
 
 const canSubmitUpload = computed(() => {
   // Need valid SPZ (from OCR or manual) and completed OCR
-  const hasValidSpz = spz.value.length >= 5 && !spzError.value;
-  const ocrCompleted = ocrExtraction.value?.ocr_status === 'COMPLETED';
+  const hasValidSpz = localSpz.value.length >= 5 && !spzError.value;
+  const ocrCompleted = draftStore.ocrExtraction?.ocr_status === 'COMPLETED';
   return hasValidSpz && ocrCompleted;
 });
 
 const contactDisplayName = computed(() => {
-  if (!savedContact.value) return '';
-  return getContactDisplayName(savedContact.value);
+  if (!draftStore.savedContact) return '';
+  return getContactDisplayName(draftStore.savedContact);
 });
 
 // OCR Majitel comparison
 const ocrMajitelName = computed(() => {
-  const ocrData = ocrExtraction.value?.extracted_data as Record<string, unknown> | null;
+  const ocrData = draftStore.ocrExtraction?.extracted_data as Record<string, unknown> | null;
   if (!ocrData) return null;
   return (ocrData.keeperParsedName as string) || (ocrData.keeperName as string) || null;
 });
 
 const ocrMajitelDiffers = computed(() => {
-  if (!ocrMajitelName.value || !savedContact.value) return false;
+  if (!ocrMajitelName.value || !draftStore.savedContact) return false;
 
   const contactName = contactDisplayName.value.toUpperCase();
   const ocrName = ocrMajitelName.value.toUpperCase();
@@ -553,26 +619,9 @@ const ocrMajitelDiffers = computed(() => {
 });
 
 // Navigation methods
-function pushStep(step: WizardStep) {
-  stepHistory.value.push(currentStep.value);
-  currentStep.value = step;
-}
-
-function goBack() {
-  if (stepHistory.value.length > 0) {
-    const previousStep = stepHistory.value.pop()!;
-    currentStep.value = previousStep;
-    error.value = null;
-
-    if (previousStep === 'choice') {
-      uploadedFile.value = null;
-      ocrExtraction.value = null;
-      uploadError.value = null;
-    }
-    if (previousStep === 'vendor-decision') {
-      vendorDecision.value = null;
-    }
-  }
+async function goBack() {
+  await goBackWithUrl();
+  error.value = null;
 }
 
 function handleClose() {
@@ -581,35 +630,34 @@ function handleClose() {
 
 // Deal type step handler
 async function selectDealType(type: 'BRANCH' | 'MOBILE_BUYING') {
-  buyingType.value = type;
+  draftStore.setBuyingType(type);
   const success = await initializeOpportunity();
   if (success) {
-    pushStep('contact');
+    await pushStepWithUrl('contact');
   }
 }
 
 // Contact step handlers
 function onContactSaved(contact: Contact) {
-  savedContact.value = contact;
-  createdOpportunityId.value = contact.buying_opportunity_id;
+  draftStore.setContactData(contact);
 }
 
-function goToVehicleChoice() {
-  pushStep('choice');
+async function goToVehicleChoice() {
+  await pushStepWithUrl('choice');
 }
 
 // Vehicle choice handlers
-function selectVehicleEntry(method: 'upload-orv' | 'manual-entry') {
-  entryMethod.value = method === 'upload-orv' ? 'upload' : 'manual';
-  pushStep(method);
+async function selectVehicleEntry(method: 'upload-orv' | 'manual-entry') {
+  draftStore.setEntryMethod(method === 'upload-orv' ? 'upload' : 'manual');
+  await pushStepWithUrl(method);
 }
 
 function validateSpz() {
-  if (!spz.value) {
+  if (!localSpz.value) {
     spzError.value = 'SPZ je povinné pole';
     return false;
   }
-  if (spz.value.length < 5 || spz.value.length > 8) {
+  if (localSpz.value.length < 5 || localSpz.value.length > 8) {
     spzError.value = 'SPZ musí mít 5-8 znaků';
     return false;
   }
@@ -617,8 +665,13 @@ function validateSpz() {
   return true;
 }
 
+function onSpzInput() {
+  draftStore.setSpz(localSpz.value);
+}
+
 async function handleFileSelected(file: File) {
   uploadedFile.value = file;
+  draftStore.setUploadedFileMetadata(file);
   uploading.value = true;
   uploadError.value = null;
   editingSpz.value = false;
@@ -627,8 +680,8 @@ async function handleFileSelected(file: File) {
     const formData = new FormData();
     formData.append('file', file);
     // SPZ is now optional - backend will generate placeholder if not provided
-    if (spz.value.trim()) {
-      formData.append('spz', spz.value.toUpperCase());
+    if (localSpz.value.trim()) {
+      formData.append('spz', localSpz.value.toUpperCase());
     }
     formData.append('document_type', 'ORV');
 
@@ -649,7 +702,7 @@ async function handleFileSelected(file: File) {
     }
 
     const extraction = await uploadResponse.json();
-    ocrExtraction.value = extraction;
+    draftStore.setOcrExtraction(extraction);
 
     const ocrResponse = await fetch(
       `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ocr-extract`,
@@ -669,14 +722,16 @@ async function handleFileSelected(file: File) {
     }
 
     const ocrResult = await ocrResponse.json();
-    ocrExtraction.value = ocrResult;
+    draftStore.setOcrExtraction(ocrResult);
 
     // Auto-populate SPZ from OCR extraction
     const ocrData = ocrResult.extracted_data as Record<string, unknown> | null;
     if (ocrData) {
       const regPlate = ocrData.registrationPlateNumber as string | undefined;
       if (regPlate) {
-        spz.value = regPlate.toUpperCase().replace(/\s/g, '');
+        const normalizedSpz = regPlate.toUpperCase().replace(/\s/g, '');
+        localSpz.value = normalizedSpz;
+        draftStore.setSpz(normalizedSpz);
         spzError.value = null;
       }
     }
@@ -689,15 +744,17 @@ async function handleFileSelected(file: File) {
 
 function removeFile() {
   uploadedFile.value = null;
-  ocrExtraction.value = null;
+  draftStore.setOcrExtraction(null);
+  draftStore.setUploadedFileMetadata(null);
   uploadError.value = null;
-  spz.value = '';
+  localSpz.value = '';
+  draftStore.setSpz('');
   spzError.value = null;
   editingSpz.value = false;
 }
 
 async function retryOcr() {
-  if (!ocrExtraction.value) return;
+  if (!draftStore.ocrExtraction) return;
 
   uploading.value = true;
   uploadError.value = null;
@@ -711,7 +768,7 @@ async function retryOcr() {
           Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ ocr_extraction_id: ocrExtraction.value.id }),
+        body: JSON.stringify({ ocr_extraction_id: draftStore.ocrExtraction.id }),
       }
     );
 
@@ -721,7 +778,7 @@ async function retryOcr() {
     }
 
     const result = await response.json();
-    ocrExtraction.value = result;
+    draftStore.setOcrExtraction(result);
   } catch (e) {
     uploadError.value = e instanceof Error ? e.message : 'Chyba OCR';
   } finally {
@@ -730,7 +787,7 @@ async function retryOcr() {
 }
 
 async function createVehicleFromUpload() {
-  if (!canSubmitUpload.value || !createdOpportunityId.value) return;
+  if (!canSubmitUpload.value || !draftStore.createdOpportunityId) return;
 
   loading.value = true;
   error.value = null;
@@ -738,18 +795,18 @@ async function createVehicleFromUpload() {
   try {
     const { error: updateError } = await supabase
       .from('buying_opportunities')
-      .update({ spz: spz.value.toUpperCase() })
-      .eq('id', createdOpportunityId.value);
+      .update({ spz: localSpz.value.toUpperCase() })
+      .eq('id', draftStore.createdOpportunityId);
 
     if (updateError) throw updateError;
 
-    const ocrData = ocrExtraction.value?.extracted_data as Record<string, unknown> | null;
+    const ocrData = draftStore.ocrExtraction?.extracted_data as Record<string, unknown> | null;
     if (ocrData) {
       const keeperDisplayName = (ocrData.keeperParsedName as string) || (ocrData.keeperName as string) || null;
 
       const { error: vehicleError } = await supabase.from('vehicles').insert({
-        buying_opportunity_id: createdOpportunityId.value,
-        spz: spz.value.toUpperCase(),
+        buying_opportunity_id: draftStore.createdOpportunityId,
+        spz: localSpz.value.toUpperCase(),
         vin: (ocrData.vin as string) || null,
         znacka: (ocrData.make as string) || null,
         model: (ocrData.model as string) || null,
@@ -768,7 +825,7 @@ async function createVehicleFromUpload() {
       if (vehicleError) throw vehicleError;
     }
 
-    pushStep('vendor-decision');
+    await pushStepWithUrl('vendor-decision');
   } catch (e) {
     error.value = handleError(e, 'NewOpportunity.createVehicleFromUpload');
   } finally {
@@ -785,21 +842,23 @@ interface ManualFormData {
 }
 
 async function createVehicleFromManual(formData: ManualFormData) {
-  if (!createdOpportunityId.value) return;
+  if (!draftStore.createdOpportunityId) return;
 
   loading.value = true;
   error.value = null;
 
   try {
+    draftStore.setManualVehicleData(formData);
+
     const { error: updateError } = await supabase
       .from('buying_opportunities')
       .update({ spz: formData.spz.toUpperCase() })
-      .eq('id', createdOpportunityId.value);
+      .eq('id', draftStore.createdOpportunityId);
 
     if (updateError) throw updateError;
 
     const { error: vehicleError } = await supabase.from('vehicles').insert({
-      buying_opportunity_id: createdOpportunityId.value,
+      buying_opportunity_id: draftStore.createdOpportunityId,
       spz: formData.spz.toUpperCase(),
       vin: formData.vin.toUpperCase() || null,
       znacka: formData.znacka || null,
@@ -810,7 +869,7 @@ async function createVehicleFromManual(formData: ManualFormData) {
 
     if (vehicleError) throw vehicleError;
 
-    pushStep('vendor-decision');
+    await pushStepWithUrl('vendor-decision');
   } catch (e) {
     error.value = handleError(e, 'NewOpportunity.createVehicleFromManual');
   } finally {
@@ -820,22 +879,24 @@ async function createVehicleFromManual(formData: ManualFormData) {
 
 // Vendor decision handlers
 async function handleVendorDecision() {
-  if (!vendorDecision.value || !createdOpportunityId.value || !savedContact.value) return;
+  if (!localVendorDecision.value || !draftStore.createdOpportunityId || !draftStore.savedContact) return;
 
   loading.value = true;
   error.value = null;
 
   try {
-    if (vendorDecision.value === 'same') {
+    draftStore.setVendorDecision(localVendorDecision.value);
+
+    if (localVendorDecision.value === 'same') {
       const { error: copyError } = await supabase.rpc('copy_contact_to_vendor', {
-        p_contact_id: savedContact.value.id,
+        p_contact_id: draftStore.savedContact.id,
       });
 
       if (copyError) throw copyError;
 
       completeWizard();
     } else {
-      pushStep('vendor-form');
+      await pushStepWithUrl('vendor-form');
     }
   } catch (e) {
     error.value = handleError(e, 'NewOpportunity.handleVendorDecision');
@@ -849,18 +910,21 @@ function onVendorSaved(vendor: Vendor) {
 }
 
 function completeWizard() {
-  if (!createdOpportunityId.value) return;
+  if (!draftStore.createdOpportunityId) return;
 
   const query: Record<string, string> = {
-    from: entryMethod.value,
+    from: draftStore.entryMethod,
   };
 
-  if (entryMethod.value === 'upload' && ocrExtraction.value?.ocr_status === 'COMPLETED') {
+  if (draftStore.entryMethod === 'upload' && draftStore.ocrExtraction?.ocr_status === 'COMPLETED') {
     query.ocr = 'completed';
   }
 
+  // Clear draft on successful completion
+  draftStore.clearDraft();
+
   router.push({
-    path: `/opportunity/${createdOpportunityId.value}`,
+    path: `/opportunity/${draftStore.createdOpportunityId}`,
     query,
   });
 }
@@ -874,21 +938,18 @@ async function initializeOpportunity(): Promise<boolean> {
       .from('buying_opportunities')
       .insert({
         spz: placeholderSpz,
-        buying_type: buyingType.value,
+        buying_type: draftStore.buyingType,
       })
       .select()
       .single();
 
     if (createError) throw createError;
 
-    tempOpportunityId.value = data.id;
-    createdOpportunityId.value = data.id;
+    draftStore.setOpportunityIds(data.id, data.id);
     return true;
   } catch (e) {
     error.value = handleError(e, 'NewOpportunity.initializeOpportunity');
     return false;
   }
 }
-
-// Note: initializeOpportunity is now called when user selects deal type
 </script>
