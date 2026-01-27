@@ -35,18 +35,24 @@ verify_jwt = true
 verify_jwt = true
 
 # Document management endpoints
+# NOTE: verify_jwt = false to allow CORS preflight (OPTIONS) requests through.
+# JWT validation is done manually inside the function.
 [functions.document-upload]
-verify_jwt = true
+verify_jwt = false
 
 [functions.get-document-url]
 verify_jwt = true
 
+# NOTE: verify_jwt = false to allow CORS preflight (OPTIONS) requests through.
+# JWT validation is done manually inside the function.
 [functions.ocr-extract]
-verify_jwt = true
+verify_jwt = false
 
 # Validation endpoints
+# NOTE: verify_jwt = false to allow CORS preflight (OPTIONS) requests through.
+# JWT validation is done manually inside the function.
 [functions.validation-run]
-verify_jwt = true
+verify_jwt = false
 
 [functions.validation-preview]
 verify_jwt = true

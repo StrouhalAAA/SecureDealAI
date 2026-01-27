@@ -108,10 +108,13 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import { supabase } from '@/composables/useSupabase';
+import { useAuthStore } from '@/stores/authStore';
 import DropZone from './DropZone.vue';
 import OcrStatus from './OcrStatus.vue';
 import DocumentPreview from './DocumentPreview.vue';
 import type { OcrExtraction } from '@/types';
+
+const authStore = useAuthStore();
 
 const props = defineProps<{
   spz: string;
@@ -150,9 +153,7 @@ async function uploadDocument(file: File, type: 'ORV' | 'VTP' | 'OP') {
     `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/document-upload`,
     {
       method: 'POST',
-      headers: {
-        Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-      },
+      headers: authStore.getAuthHeader(),
       body: formData,
     }
   );
@@ -171,7 +172,7 @@ async function triggerOcr(extractionId: string) {
     {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        ...authStore.getAuthHeader(),
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ ocr_extraction_id: extractionId }),
@@ -316,7 +317,7 @@ async function runValidation() {
       {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          ...authStore.getAuthHeader(),
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
