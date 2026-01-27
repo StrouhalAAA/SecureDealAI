@@ -25,13 +25,16 @@
             :disabled="isSpzLocked"
             :aria-describedby="spzError ? spzErrorId : undefined"
             :aria-invalid="spzTouched && !!spzError"
-            @blur="spzTouched = true"
+            @blur="handleSpzBlur"
           />
           <p v-if="spzTouched && spzError" :id="spzErrorId" class="text-red-500 text-xs mt-1" role="alert">
             {{ spzError }}
           </p>
+          <p v-else-if="isCheckingSpzHistory" class="text-gray-500 text-xs mt-1">
+            Kontroluji historii...
+          </p>
           <p v-else-if="form.spz && spzTouched && !spzError" class="text-green-600 text-xs mt-1">
-            Platná SPZ
+            Platna SPZ
           </p>
         </div>
         <div>
@@ -63,6 +66,9 @@
           </p>
         </div>
       </div>
+
+      <!-- SPZ History Warning -->
+      <SpzHistoryWarning v-if="hasExistingRecords" :history="spzHistory" />
 
       <!-- Row 2: Brand + Model -->
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
@@ -345,10 +351,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, nextTick } from 'vue';
+import { ref, computed, onMounted, nextTick, watch } from 'vue';
 import { supabase } from '@/composables/useSupabase';
 import { useErrorHandler } from '@/composables/useErrorHandler';
+import { useSpzHistory } from '@/composables/useSpzHistory';
 import LoadingButton from '@/components/shared/LoadingButton.vue';
+import SpzHistoryWarning from '@/components/shared/SpzHistoryWarning.vue';
 import type { Vehicle, VehicleOCRData } from '@/types';
 import { getFuelTypeLabel, FUEL_TYPE_OPTIONS } from '@/types';
 
@@ -365,6 +373,7 @@ const emit = defineEmits<{
 }>();
 
 const { handleError } = useErrorHandler();
+const { spzHistory, isChecking: isCheckingSpzHistory, hasExistingRecords, checkSpzHistory, clearHistory } = useSpzHistory();
 
 const currentYear = new Date().getFullYear();
 
@@ -561,5 +570,48 @@ onMounted(async () => {
   if (!isSpzLocked.value && spzInputRef.value) {
     spzInputRef.value.focus();
   }
+
+  // Check SPZ history for existing vehicle
+  if (props.existingVehicle?.spz) {
+    await checkSpzHistory(props.existingVehicle.spz, props.existingVehicle.id);
+  }
 });
+
+// Debounce timer for SPZ history check
+let spzHistoryTimer: ReturnType<typeof setTimeout> | null = null;
+
+// Watch SPZ changes for history check (debounced)
+watch(() => form.value.spz, (newSpz) => {
+  // Clear any pending timer
+  if (spzHistoryTimer) {
+    clearTimeout(spzHistoryTimer);
+  }
+
+  // Clear history if SPZ is empty or invalid
+  if (!newSpz || newSpz.length < 5) {
+    clearHistory();
+    return;
+  }
+
+  // Debounce the check (500ms after last keystroke)
+  spzHistoryTimer = setTimeout(async () => {
+    const excludeId = props.existingVehicle?.id;
+    await checkSpzHistory(newSpz, excludeId);
+  }, 500);
+});
+
+// Handle SPZ blur event for immediate check
+async function handleSpzBlur() {
+  spzTouched.value = true;
+
+  // Clear any pending timer and check immediately
+  if (spzHistoryTimer) {
+    clearTimeout(spzHistoryTimer);
+  }
+
+  if (form.value.spz && form.value.spz.length >= 5) {
+    const excludeId = props.existingVehicle?.id;
+    await checkSpzHistory(form.value.spz, excludeId);
+  }
+}
 </script>
