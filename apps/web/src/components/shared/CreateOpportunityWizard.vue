@@ -239,6 +239,9 @@
             <p v-if="spzError" class="text-red-500 text-xs mt-1">{{ spzError }}</p>
           </div>
 
+          <!-- SPZ History Warning -->
+          <SpzHistoryWarning v-if="hasExistingRecords" :history="spzHistory" />
+
           <!-- Error -->
           <div v-if="error" class="p-3 bg-red-50 text-red-700 rounded-lg">
             {{ error }}
@@ -383,19 +386,22 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { supabase } from '@/composables/useSupabase';
 import { useErrorHandler } from '@/composables/useErrorHandler';
+import { useSpzHistory } from '@/composables/useSpzHistory';
 import DropZone from '@/components/ocr/DropZone.vue';
 import OcrStatus from '@/components/ocr/OcrStatus.vue';
 import QuickVehicleForm from './QuickVehicleForm.vue';
 import ContactForm from '@/components/forms/ContactForm.vue';
 import VendorForm from '@/components/forms/VendorForm.vue';
+import SpzHistoryWarning from '@/components/shared/SpzHistoryWarning.vue';
 import { extractPowerKw } from '@/utils/addressParser';
 import type { BuyingOpportunity, OcrExtraction, Contact, Vendor } from '@/types';
 import { getContactDisplayName } from '@/types/contact';
 
 const { handleError } = useErrorHandler();
+const { spzHistory, hasExistingRecords, checkSpzHistory, clearHistory } = useSpzHistory();
 
 type WizardStep =
   | 'deal-type'
@@ -544,6 +550,27 @@ const ocrMajitelDiffers = computed(() => {
   return contactName !== ocrName && !ocrName.includes(contactName) && !contactName.includes(ocrName);
 });
 
+// Watch SPZ changes for history check (debounced)
+let spzHistoryTimer: ReturnType<typeof setTimeout> | null = null;
+
+watch(spz, (newSpz) => {
+  // Clear any pending timer
+  if (spzHistoryTimer) {
+    clearTimeout(spzHistoryTimer);
+  }
+
+  // Clear history if SPZ is empty or invalid
+  if (!newSpz || newSpz.length < 5) {
+    clearHistory();
+    return;
+  }
+
+  // Debounce the check (500ms after last keystroke)
+  spzHistoryTimer = setTimeout(async () => {
+    await checkSpzHistory(newSpz);
+  }, 500);
+});
+
 // Navigation methods
 function pushStep(step: WizardStep) {
   stepHistory.value.push(currentStep.value);
@@ -592,7 +619,7 @@ function selectVehicleEntry(method: 'upload-orv' | 'manual-entry') {
   pushStep(method);
 }
 
-function validateSpz() {
+async function validateSpz() {
   if (!spz.value) {
     spzError.value = 'SPZ je povinné pole';
     return false;
@@ -602,6 +629,13 @@ function validateSpz() {
     return false;
   }
   spzError.value = null;
+
+  // Clear any pending timer and check history immediately
+  if (spzHistoryTimer) {
+    clearTimeout(spzHistoryTimer);
+  }
+  await checkSpzHistory(spz.value);
+
   return true;
 }
 
