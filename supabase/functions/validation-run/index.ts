@@ -27,6 +27,96 @@ import { validate, ValidationEngineResult } from './engine.ts';
 type AnySupabaseClient = SupabaseClient<any, any, any>;
 
 // =============================================================================
+// JWT VALIDATION
+// =============================================================================
+
+/**
+ * Validates JWT token from Authorization header.
+ * Since verify_jwt = false in config.toml (to allow OPTIONS preflight),
+ * we must manually validate JWT for POST requests.
+ */
+async function validateJWT(authHeader: string | null): Promise<{ valid: boolean; error?: string }> {
+  if (!authHeader) {
+    return { valid: false, error: 'Missing Authorization header' };
+  }
+
+  const token = authHeader.replace('Bearer ', '');
+  if (!token || token === authHeader) {
+    return { valid: false, error: 'Invalid Authorization header format' };
+  }
+
+  const jwtSecret = Deno.env.get('JWT_SECRET');
+  if (!jwtSecret) {
+    console.error('[JWT] Missing JWT_SECRET environment variable');
+    return { valid: false, error: 'Server configuration error' };
+  }
+
+  try {
+    // Decode and verify JWT
+    const parts = token.split('.');
+    if (parts.length !== 3) {
+      return { valid: false, error: 'Invalid token format' };
+    }
+
+    const [headerB64, payloadB64, signatureB64] = parts;
+
+    // Verify signature
+    const signatureInput = `${headerB64}.${payloadB64}`;
+    const key = await crypto.subtle.importKey(
+      'raw',
+      new TextEncoder().encode(jwtSecret),
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['verify']
+    );
+
+    // Decode signature from base64url
+    const signatureBytes = base64urlDecode(signatureB64);
+    const isValid = await crypto.subtle.verify(
+      'HMAC',
+      key,
+      signatureBytes,
+      new TextEncoder().encode(signatureInput)
+    );
+
+    if (!isValid) {
+      return { valid: false, error: 'Invalid token signature' };
+    }
+
+    // Decode payload and check expiration
+    const payloadJson = new TextDecoder().decode(base64urlDecode(payloadB64));
+    const payload = JSON.parse(payloadJson);
+
+    if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) {
+      return { valid: false, error: 'Token expired' };
+    }
+
+    return { valid: true };
+  } catch (err) {
+    console.error('[JWT] Validation error:', err);
+    return { valid: false, error: 'Token validation failed' };
+  }
+}
+
+/**
+ * Decode base64url to Uint8Array
+ */
+function base64urlDecode(str: string): Uint8Array {
+  // Convert base64url to base64
+  let base64 = str.replace(/-/g, '+').replace(/_/g, '/');
+  // Add padding if needed
+  while (base64.length % 4) {
+    base64 += '=';
+  }
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
+}
+
+// =============================================================================
 // CORS HEADERS
 // =============================================================================
 
@@ -471,6 +561,12 @@ serve(async (request: Request) => {
       'METHOD_NOT_ALLOWED',
       405
     );
+  }
+
+  // Validate JWT for POST requests (since verify_jwt = false in config.toml)
+  const jwtResult = await validateJWT(request.headers.get('Authorization'));
+  if (!jwtResult.valid) {
+    return createErrorResponse(jwtResult.error || 'Unauthorized', 'UNAUTHORIZED', 401);
   }
 
   return handleValidationRequest(request);
