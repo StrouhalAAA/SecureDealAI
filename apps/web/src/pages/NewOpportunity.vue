@@ -64,24 +64,34 @@
             :key="step.key"
             class="flex items-center"
           >
-            <div
-              class="flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium"
+            <button
+              type="button"
+              @click="navigateToProgressStep(index)"
+              :disabled="!canNavigateToProgressStep(index)"
+              class="flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium transition-all"
               :class="{
                 'bg-blue-600 text-white': currentStepIndex >= index,
                 'bg-gray-200 text-gray-500': currentStepIndex < index,
+                'cursor-pointer hover:ring-2 hover:ring-blue-300': canNavigateToProgressStep(index),
+                'cursor-not-allowed': !canNavigateToProgressStep(index),
               }"
+              :aria-label="`Krok ${index + 1}: ${step.label}`"
             >
               {{ index + 1 }}
-            </div>
-            <span
-              class="ml-2 text-sm hidden sm:inline"
+            </button>
+            <button
+              type="button"
+              @click="navigateToProgressStep(index)"
+              :disabled="!canNavigateToProgressStep(index)"
+              class="ml-2 text-sm hidden sm:inline transition-colors"
               :class="{
-                'text-blue-600 font-medium': currentStepIndex >= index,
-                'text-gray-400': currentStepIndex < index,
+                'text-blue-600 font-medium hover:text-blue-800': currentStepIndex >= index && canNavigateToProgressStep(index),
+                'text-blue-600 font-medium cursor-not-allowed': currentStepIndex >= index && !canNavigateToProgressStep(index),
+                'text-gray-400 cursor-not-allowed': currentStepIndex < index,
               }"
             >
               {{ step.label }}
-            </span>
+            </button>
             <div
               v-if="index < progressSteps.length - 1"
               class="w-8 sm:w-12 h-0.5 mx-2"
@@ -165,7 +175,7 @@
 
         <ContactForm
           :buying-opportunity-id="draftStore.tempOpportunityId"
-          :existing-contact="existingContact"
+          :existing-contact="draftStore.savedContact"
           @saved="onContactSaved"
           @next="goToVehicleChoice"
           @back="goBack"
@@ -447,11 +457,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue';
+import { ref, computed, watch, onMounted, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
 import { supabase } from '@/composables/useSupabase';
 import { useErrorHandler } from '@/composables/useErrorHandler';
-import { useOpportunityDraftStore } from '@/stores/opportunityDraftStore';
+import { useOpportunityDraftStore, type WizardStep } from '@/stores/opportunityDraftStore';
 import { useWizardNavigation } from '@/composables/useWizardNavigation';
 import DropZone from '@/components/ocr/DropZone.vue';
 import OcrStatus from '@/components/ocr/OcrStatus.vue';
@@ -465,7 +475,7 @@ import { getContactDisplayName } from '@/types/contact';
 const router = useRouter();
 const { handleError } = useErrorHandler();
 const draftStore = useOpportunityDraftStore();
-const { pushStepWithUrl, goBackWithUrl } = useWizardNavigation();
+const { pushStepWithUrl, goBackWithUrl, navigateToStep, syncStepFromUrl } = useWizardNavigation();
 
 // Progress steps for visual indicator
 const progressSteps = [
@@ -501,7 +511,6 @@ const uploading = ref(false);
 const uploadError = ref<string | null>(null);
 const editingSpz = ref(false);
 const spzError = ref<string | null>(null);
-const existingContact = ref<Contact | null>(null);
 const existingVendor = ref<Vendor | null>(null);
 const showDraftRecoveryModal = ref(false);
 
@@ -510,8 +519,8 @@ const localSpz = ref('');
 const localVendorDecision = ref<'same' | 'different' | null>(null);
 
 // Initialize local state from store
-onMounted(() => {
-  // Check for existing draft
+onMounted(async () => {
+  // Check for existing draft first
   if (draftStore.hasStoredDraft()) {
     const hasProgress = draftStore.loadFromStorage();
     if (hasProgress && draftStore.hasDraft) {
@@ -522,6 +531,11 @@ onMounted(() => {
   // Sync local state from store
   localSpz.value = draftStore.spz;
   localVendorDecision.value = draftStore.vendorDecision;
+
+  // Ensure URL is synced with store state after loading draft
+  // Wait a tick to ensure store is ready
+  await nextTick();
+  syncStepFromUrl();
 });
 
 // Watch store values and sync to local
@@ -626,6 +640,54 @@ async function goBack() {
 
 function handleClose() {
   router.push('/');
+}
+
+// Progress step navigation
+function canNavigateToProgressStep(index: number): boolean {
+  // Can always navigate to completed steps
+  if (index < currentStepIndex.value) return true;
+  // Can navigate to current step
+  if (index === currentStepIndex.value) return true;
+  return false;
+}
+
+async function navigateToProgressStep(index: number) {
+  if (!canNavigateToProgressStep(index)) return;
+
+  // Map progress step index to actual wizard step
+  let targetStep: WizardStep;
+  switch (index) {
+    case 0:
+      targetStep = 'deal-type';
+      break;
+    case 1:
+      targetStep = 'contact';
+      break;
+    case 2:
+      // Vehicle step - go to choice if no vehicle data, otherwise current sub-step
+      if (draftStore.ocrExtraction) {
+        targetStep = 'upload-orv';
+      } else if (draftStore.manualVehicleData) {
+        targetStep = 'manual-entry';
+      } else {
+        targetStep = 'choice';
+      }
+      break;
+    case 3:
+      // Vendor step
+      if (draftStore.vendorDecision === 'different') {
+        targetStep = 'vendor-form';
+      } else {
+        targetStep = 'vendor-decision';
+      }
+      break;
+    default:
+      return;
+  }
+
+  // Update store and URL
+  draftStore.setCurrentStep(targetStep);
+  await navigateToStep(targetStep, { replace: true });
 }
 
 // Deal type step handler

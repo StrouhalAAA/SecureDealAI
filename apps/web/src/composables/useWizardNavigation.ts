@@ -160,8 +160,9 @@ export function useWizardNavigation() {
   }
 
   // Lifecycle hooks
+  // Note: syncStepFromUrl() is NOT called automatically on mount.
+  // The parent component should call it after loading any draft data from storage.
   onMounted(() => {
-    syncStepFromUrl()
     setupBeforeUnload()
   })
 
