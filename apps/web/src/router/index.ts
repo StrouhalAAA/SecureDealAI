@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory, RouteLocationNormalized } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
+import { VALID_STEPS, type WizardStep } from '@/stores/opportunityDraftStore'
 
 const routes = [
   {
@@ -86,6 +87,20 @@ router.beforeEach((to: RouteLocationNormalized) => {
     // Redirect to dashboard or intended destination
     const redirect = to.query.redirect as string || '/'
     return { path: redirect }
+  }
+
+  // Handle /new-opportunity step query param validation
+  if (to.path === '/new-opportunity') {
+    const stepParam = to.query.step as string | undefined
+
+    // If step param exists but is invalid, redirect to deal-type
+    if (stepParam && !VALID_STEPS.includes(stepParam as WizardStep)) {
+      return {
+        path: '/new-opportunity',
+        query: { step: 'deal-type' },
+        replace: true
+      }
+    }
   }
 
   // Allow navigation
